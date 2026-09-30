@@ -38,13 +38,9 @@ function Shell() {
   const [noteOpen, setNoteOpen] = useState(false)
   // Quick notes started on a client's profile are pre-filed under that client.
   const clientMatch = useMatch('/clients/:id')
-  // The quick-note button would cover the chat's Send button; on Train and programme pages it
-  // floats above the bottom bar instead.
+  // The quick-note button would cover the chat's Send button.
   const createMatch = useMatch('/create/:id')
-  const trainMatch = useMatch('/train')
-  const programmeMatch = useMatch('/programmes/:id')
   const hideFab = Boolean(createMatch)
-  const raiseFab = Boolean(trainMatch || programmeMatch)
 
   return (
     <div className="shell">
@@ -78,7 +74,7 @@ function Shell() {
       </main>
 
       {!hideFab && (
-        <button type="button" className={`fab${raiseFab ? ' raised' : ''}`} aria-label="Quick note" onClick={() => setNoteOpen(true)}>
+        <button type="button" className="fab" aria-label="Quick note" onClick={() => setNoteOpen(true)}>
           <IconPlus />
         </button>
       )}

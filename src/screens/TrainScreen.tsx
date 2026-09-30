@@ -15,9 +15,10 @@ import { ConfirmButton } from '../components/ConfirmButton'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { cancelWorkout, finishWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
+import { createNextBlock } from '../data/programmeActions'
 import { mapSession } from '../data/programmeEdits'
 import { formatClock } from '../data/programmeUtils'
-import { useClients, useProgrammes, useWorkouts } from '../data/store'
+import { updateProgrammeFields, useClients, useProgrammes, useWorkouts } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { Programme, Workout } from '../data/types'
 import { getTrainProgrammeId, setTrainProgrammeId } from '../settings'
@@ -181,7 +182,10 @@ function TrainProgramme({ stored, clientName, others, onSwitch }: TrainProgramme
           <MenuItem title="Edit programme" meta="Days, exercises, goal and notes" onClick={() => { setMenuOpen(false); setEditOpen(true) }} />
           <MenuItem title="Export" meta="HTML or Word, English or German" onClick={() => { setMenuOpen(false); setExportOpen(true) }} />
           <MenuItem title="Rework with Claude" meta="Open this programme in Create" onClick={() => { flush(); navigate(`/create/${programme.id}`) }} />
-          <MenuItem title="Programme page" meta="Status, next block, history" onClick={() => { flush(); navigate(`/programmes/${programme.id}`) }} />
+          <MenuItem title="Build next block" meta="New draft based on this programme, in Create" onClick={() => { flush(); navigate(`/create/${createNextBlock(user.uid, programme)}`) }} />
+          {!running && (
+            <MenuItem title="Archive" meta="Finished with it; it stays in the client's history" onClick={() => { flush(); updateProgrammeFields(user.uid, programme.id, { status: 'archived' }); setMenuOpen(false); toast('Programme archived') }} />
+          )}
           {!running &&
             others.map((o) => (
               <MenuItem key={o.id} title={`Switch to ${o.label}`} meta="Another active programme" onClick={() => { setMenuOpen(false); onSwitch(o.id) }} />

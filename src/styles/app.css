@@ -696,9 +696,6 @@ a { color: var(--color-accent-2); }
 /* ── Train clock bar ──────────────────────────────────────────────── */
 .train-day { touch-action: pan-y; }
 .clock-bar {
-  position: sticky;
-  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + var(--space-2));
-  z-index: 5;
   display: flex; align-items: center; gap: var(--space-3);
   margin-top: var(--space-3);
 }
@@ -711,8 +708,5 @@ a { color: var(--color-accent-2); }
 }
 .clock-time { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; }
 .clock-day { flex: 1; min-width: 0; font-size: var(--type-sm); color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (min-width: 900px) { .clock-bar { bottom: var(--space-3); } }
 .tab .dot.live { background: var(--color-success); }
 .menu-btn { font-size: 1.6rem; line-height: 1; }
-.fab.raised { bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 84px); }
-@media (min-width: 900px) { .fab.raised { bottom: calc(var(--space-4) + 72px); } }
