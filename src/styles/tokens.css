@@ -1,0 +1,99 @@
+/*
+ * Pete's Gym design tokens. Components never use raw hex values — only these variables.
+ * Dark-first: bare :root holds the dark palette. Light applies when the OS asks for it
+ * (unless the user forced dark in Settings) or when the user forced light.
+ */
+:root {
+  /* Surfaces */
+  --color-bg: #0D0E17;
+  --color-surface: #171927;
+  --color-raised: #20233A;
+  --color-border: #2A2D45;
+  --color-scrim: rgba(5, 6, 12, 0.6);
+
+  /* Text */
+  --color-text: #F2F3F8;
+  --color-text-muted: #9097B3;
+
+  /* Accents */
+  --color-accent: #FF6A33;          /* Ember — primary actions, Claude's edits */
+  --color-accent-wash: #2B1710;
+  --color-on-accent: #FFFFFF;
+  --color-accent-2: #6D83FF;        /* Cobalt — Pete's edits, links, rest */
+  --color-accent-2-wash: #1A2045;
+  --color-success: #2DD4A3;         /* Mint — completed sets */
+  --color-success-wash: #0F2A24;
+  --color-note: #FFC247;            /* Solar — notes */
+  --color-danger: #FF5C72;
+
+  /* Type */
+  --font-display: "Oswald", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --type-xs: 0.75rem;
+  --type-sm: 0.875rem;
+  --type-md: 1rem;
+  --type-lg: 1.25rem;
+  --type-xl: 1.75rem;
+
+  /* Spacing — 8pt grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+
+  /* Shape & motion */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-sheet: 28px;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Layout */
+  --nav-height: 64px;
+  --rail-width: 200px;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --color-bg: #F4F5FA;
+    --color-surface: #FFFFFF;
+    --color-raised: #EBEDF5;
+    --color-border: #DDE0EA;
+    --color-scrim: rgba(18, 19, 31, 0.45);
+    --color-text: #12131F;
+    --color-text-muted: #5C6178;
+    --color-accent: #F2541B;
+    --color-accent-wash: #FDE9E1;
+    --color-accent-2: #3050F0;
+    --color-accent-2-wash: #E6EAFE;
+    --color-success: #0E9F73;
+    --color-success-wash: #DDF6EE;
+    --color-note: #D08A00;
+    --color-danger: #D6334A;
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --color-bg: #F4F5FA;
+  --color-surface: #FFFFFF;
+  --color-raised: #EBEDF5;
+  --color-border: #DDE0EA;
+  --color-scrim: rgba(18, 19, 31, 0.45);
+  --color-text: #12131F;
+  --color-text-muted: #5C6178;
+  --color-accent: #F2541B;
+  --color-accent-wash: #FDE9E1;
+  --color-accent-2: #3050F0;
+  --color-accent-2-wash: #E6EAFE;
+  --color-success: #0E9F73;
+  --color-success-wash: #DDF6EE;
+  --color-note: #D08A00;
+  --color-danger: #D6334A;
+  color-scheme: light;
+}

@@ -1,0 +1,92 @@
+import { useState } from 'react'
+import { Sheet } from './Sheet'
+import { toast } from './toast'
+import { useAuth } from '../auth/useAuth'
+import { getApiKey, setApiKey, useTheme, type ThemeSetting } from '../settings'
+
+const THEMES: { value: ThemeSetting; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
+]
+
+export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Sheet open={open} onClose={onClose} title="Settings">
+      <SettingsForm onDone={onClose} />
+    </Sheet>
+  )
+}
+
+function SettingsForm({ onDone }: { onDone: () => void }) {
+  const { user, signOut } = useAuth()
+  const [theme, setTheme] = useTheme()
+  const [key, setKey] = useState(getApiKey)
+  const [showKey, setShowKey] = useState(false)
+  const savedKey = getApiKey()
+
+  return (
+    <div className="form">
+      <div className="field">
+        <span className="label">Theme</span>
+        <div className="chips" role="group" aria-label="Theme">
+          {THEMES.map((t) => (
+            <button type="button" key={t.value} className="chip" aria-pressed={theme === t.value} onClick={() => setTheme(t.value)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="field">
+        <label className="label" htmlFor="api-key">Anthropic API key</label>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <input
+            id="api-key"
+            className="input mono"
+            type={showKey ? 'text' : 'password'}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="sk-ant-…"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+          />
+          <button type="button" className="btn-ghost" onClick={() => setShowKey(!showKey)}>
+            {showKey ? 'Hide' : 'Show'}
+          </button>
+        </div>
+        <span className="muted" style={{ fontSize: 'var(--type-sm)' }}>
+          Stored on this device only. It is never synced or uploaded, so enter it once on each device.
+        </span>
+        <button
+          type="button"
+          className="btn-acc"
+          disabled={key.trim() === savedKey}
+          onClick={() => {
+            setApiKey(key)
+            toast(key.trim() ? 'API key saved on this device' : 'API key removed')
+          }}
+        >
+          Save key
+        </button>
+      </div>
+
+      <div className="field">
+        <span className="label">Account</span>
+        <span>{user?.email}</span>
+        <button
+          type="button"
+          className="btn-ghost danger"
+          style={{ alignSelf: 'flex-start', paddingLeft: 0 }}
+          onClick={() => {
+            onDone()
+            signOut()
+          }}
+        >
+          Sign out
+        </button>
+      </div>
+      <span className="muted mono" style={{ fontSize: 'var(--type-xs)' }}>Pete's Gym v{__APP_VERSION__}</span>
+    </div>
+  )
+}
