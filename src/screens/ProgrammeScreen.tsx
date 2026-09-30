@@ -10,7 +10,7 @@ import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { activateProgramme, createNextBlock, duplicateProgramme } from '../data/programmeActions'
 import { mapSession } from '../data/programmeEdits'
-import { deleteProgramme, updateProgrammeFields, useClients, useProgramme, useProgrammes } from '../data/store'
+import { restoreProgramme, softDeleteProgramme, updateProgrammeFields, useClients, useProgramme, useProgrammes } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { Programme, ProgrammeStatus } from '../data/types'
 import { setTrainProgrammeId } from '../settings'
@@ -74,6 +74,12 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
         <button type="button" className="icon-btn menu-btn" aria-label="Programme menu" onClick={() => setMoreOpen(true)}>⋯</button>
       </header>
 
+      {programme.deletedAt && (
+        <div className="banner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <span>This programme is in Recently deleted.</span>
+          <button type="button" className="btn-acc" onClick={() => { restoreProgramme(uid, programme.id); toast('Programme restored') }}>Restore</button>
+        </div>
+      )}
       {programme.goal && <p className="muted" style={{ margin: 0 }}>{programme.goal}</p>}
 
       <div className="tabs" role="tablist" aria-label="Days">
@@ -116,8 +122,9 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
           <MenuItem title="Duplicate" meta="An independent copy, as a draft" onClick={() => { flush(); const nid = duplicateProgramme(uid, programme); setMoreOpen(false); navigate(`/programmes/${nid}`) }} />
           <ConfirmButton
             onConfirm={() => {
-              deleteProgramme(uid, programme.id)
-              toast('Programme deleted')
+              flush()
+              softDeleteProgramme(uid, programme.id)
+              toast('Moved to Recently deleted')
               navigate(client ? `/clients/${client.id}` : '/clients')
             }}
           >

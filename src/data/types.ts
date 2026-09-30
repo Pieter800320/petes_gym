@@ -27,7 +27,8 @@ export interface Client {
   questionnaire?: string
   /** When the questionnaire was filled in (YYYY-MM-DD). */
   questionnaireDate?: string
-  archived: boolean
+  /** Set when moved to Recently deleted; null/absent otherwise. */
+  deletedAt?: Millis | null
   createdAt: Millis
   updatedAt: Millis
 }
@@ -70,6 +71,10 @@ export interface Programme {
   parentId: string | null
   /** Cached German translations of client-facing text (see claude/translate.ts). */
   translationsDe?: TranslationPair[]
+  /** Set when moved to Recently deleted; null/absent otherwise. */
+  deletedAt?: Millis | null
+  /** True when it was deleted together with its client, so restoring the client restores it. */
+  deletedWithClient?: boolean
   createdAt: Millis
   updatedAt: Millis
 }

@@ -12,6 +12,8 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
+  writeBatch,
   onSnapshot,
   orderBy,
   query,
@@ -89,11 +91,13 @@ export const EMPTY_CLIENT: ClientDraft = {
   sessionLength: '',
   equipment: '',
   background: '',
-  archived: false,
 }
 
-export function useClients() {
-  return useLiveCollection<Client>('clients', { orderField: 'name' })
+/** Clients, without the ones in Recently deleted (pass true to get only those). */
+export function useClients(deleted = false) {
+  const live = useLiveCollection<Client>('clients', { orderField: 'name' })
+  const data = useMemo(() => live.data.filter((c) => Boolean(c.deletedAt) === deleted), [live.data, deleted])
+  return { ...live, data }
 }
 
 /** Pete's own profile uses the fixed id SELF_CLIENT_ID so two offline devices can't create duplicates. */
@@ -173,9 +177,17 @@ function decodeProgramme(raw: WithoutId<Programme>, id: string): Programme {
 }
 
 /** clientId: one client's programmes, or 'all'. Sorted newest first on the device. */
-export function useProgrammes(clientId: string | 'all') {
+/** Programmes (newest first), without the ones in Recently deleted (pass true to get only those). */
+export function useProgrammes(clientId: string | 'all', deleted = false) {
   const live = useLiveCollection<Programme>('programmes', clientId === 'all' ? {} : { whereField: 'clientId', whereValue: clientId })
-  const data = useMemo(() => live.data.map((p) => decodeProgramme(p, p.id)).sort((a, b) => b.updatedAt - a.updatedAt), [live.data])
+  const data = useMemo(
+    () =>
+      live.data
+        .map((p) => decodeProgramme(p, p.id))
+        .filter((p) => Boolean(p.deletedAt) === deleted)
+        .sort((a, b) => b.updatedAt - a.updatedAt),
+    [live.data, deleted],
+  )
   return { ...live, data }
 }
 
@@ -218,10 +230,6 @@ export function updateProgrammeFields(uid: string, id: string, patch: Partial<Pr
   updateDoc(doc(userCollection(uid, 'programmes'), id), { ...encodeProgramme(patch), updatedAt: Date.now() }).catch(reportWriteError)
 }
 
-export function deleteProgramme(uid: string, id: string) {
-  deleteDoc(doc(userCollection(uid, 'programmes'), id)).catch(reportWriteError)
-}
-
 // ── Workouts (completed sessions) ───────────────────────────────────
 
 /** Workouts for a programme or a client, newest first. */
@@ -240,4 +248,65 @@ export function saveWorkout(uid: string, workout: Omit<Workout, 'id'>): string {
 
 export function deleteWorkout(uid: string, id: string) {
   deleteDoc(doc(userCollection(uid, 'workouts'), id)).catch(reportWriteError)
+}
+
+// ── Recently deleted ─────────────────────────────────────────────────
+//
+// Deleting moves things to Recently deleted (deletedAt set) so they can be restored.
+// A client takes its programmes along (deletedWithClient); its notes and sessions simply stay
+// hidden with it. "Delete forever" removes the documents for good.
+
+async function clientProgrammeIds(uid: string, clientId: string): Promise<{ id: string; deletedAt?: number | null; deletedWithClient?: boolean }[]> {
+  const snap = await getDocs(query(userCollection(uid, 'programmes'), where('clientId', '==', clientId)))
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as { deletedAt?: number | null; deletedWithClient?: boolean }) }))
+}
+
+export async function deleteClient(uid: string, clientId: string) {
+  const now = Date.now()
+  const batch = writeBatch(requireDb())
+  batch.update(doc(userCollection(uid, 'clients'), clientId), { deletedAt: now })
+  for (const p of await clientProgrammeIds(uid, clientId)) {
+    if (!p.deletedAt) batch.update(doc(userCollection(uid, 'programmes'), p.id), { deletedAt: now, deletedWithClient: true })
+  }
+  batch.commit().catch(reportWriteError)
+}
+
+export async function restoreClient(uid: string, clientId: string) {
+  const batch = writeBatch(requireDb())
+  batch.update(doc(userCollection(uid, 'clients'), clientId), { deletedAt: null })
+  for (const p of await clientProgrammeIds(uid, clientId)) {
+    if (p.deletedWithClient) batch.update(doc(userCollection(uid, 'programmes'), p.id), { deletedAt: null, deletedWithClient: false })
+  }
+  batch.commit().catch(reportWriteError)
+}
+
+/** Erases a client and everything that belongs to it: programmes, their chats, notes and sessions. */
+export async function purgeClient(uid: string, clientId: string) {
+  const batch = writeBatch(requireDb())
+  batch.delete(doc(userCollection(uid, 'clients'), clientId))
+  for (const p of await clientProgrammeIds(uid, clientId)) {
+    batch.delete(doc(userCollection(uid, 'programmes'), p.id))
+    batch.delete(doc(userCollection(uid, 'chats'), p.id))
+  }
+  for (const name of ['notes', 'workouts']) {
+    const snap = await getDocs(query(userCollection(uid, name), where('clientId', '==', clientId)))
+    snap.docs.forEach((d) => batch.delete(d.ref))
+  }
+  batch.commit().catch(reportWriteError)
+}
+
+export function softDeleteProgramme(uid: string, id: string) {
+  updateDoc(doc(userCollection(uid, 'programmes'), id), { deletedAt: Date.now(), deletedWithClient: false }).catch(reportWriteError)
+}
+
+export function restoreProgramme(uid: string, id: string) {
+  updateDoc(doc(userCollection(uid, 'programmes'), id), { deletedAt: null, deletedWithClient: false }).catch(reportWriteError)
+}
+
+/** Erases a programme and its Claude chat for good. */
+export function purgeProgramme(uid: string, id: string) {
+  const batch = writeBatch(requireDb())
+  batch.delete(doc(userCollection(uid, 'programmes'), id))
+  batch.delete(doc(userCollection(uid, 'chats'), id))
+  batch.commit().catch(reportWriteError)
 }

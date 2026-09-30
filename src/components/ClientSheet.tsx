@@ -87,11 +87,6 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
           />
         </label>
       ))}
-      {client && !client.isSelf && (
-        <button type="button" className="chip" aria-pressed={draft.archived} onClick={() => set('archived', !draft.archived)} style={{ alignSelf: 'flex-start' }}>
-          Archived (hidden from the client list)
-        </button>
-      )}
       <button type="button" className="btn-cta btn-block" onClick={save} disabled={!draft.name.trim()}>
         {client ? 'Save changes' : 'Add client'}
       </button>

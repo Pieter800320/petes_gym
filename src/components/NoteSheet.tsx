@@ -34,7 +34,6 @@ function NoteForm({ note, defaultClientId, initialText, onDone }: { note?: Note;
   const [pinned, setPinned] = useState(note?.pinnedToNextSession ?? false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const active = clients.filter((c) => !c.archived)
 
   function save() {
     if (!user || !text.trim()) return
@@ -59,7 +58,7 @@ function NoteForm({ note, defaultClientId, initialText, onDone }: { note?: Note;
         <button type="button" className="chip" aria-pressed={clientId === null} onClick={() => setClientId(null)}>
           General
         </button>
-        {active.map((c) => (
+        {clients.map((c) => (
           <button type="button" key={c.id} className="chip" aria-pressed={clientId === c.id} onClick={() => setClientId(c.id)}>
             {c.name}
           </button>

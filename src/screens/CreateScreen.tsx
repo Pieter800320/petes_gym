@@ -8,14 +8,14 @@ import { Sheet } from '../components/Sheet'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { describeClaudeError } from '../claude/client'
-import { clearUndo, clientHistoryText, deleteChat, historyTooLarge, parseHistory, recordTurn, runTurn, toDisplay, useChat, type ChatDoc, type DisplayItem } from '../claude/chat'
+import { clearUndo, clientHistoryText, historyTooLarge, parseHistory, recordTurn, runTurn, toDisplay, useChat, type ChatDoc, type DisplayItem } from '../claude/chat'
 import { ACCEPTED_FILES, extractText } from '../claude/extract'
 import { usePlaybook } from '../claude/playbook'
 import { changedRowIds } from '../claude/programmeTools'
 import { checkProgramme } from '../data/health'
 import { activateProgramme } from '../data/programmeActions'
 import { blankProgramme } from '../data/programmeUtils'
-import { createProgramme, deleteProgramme, saveProgramme, useClients, useNotes, useProgramme, useProgrammes, useWorkouts } from '../data/store'
+import { createProgramme, saveProgramme, softDeleteProgramme, useClients, useNotes, useProgramme, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Programme } from '../data/types'
 import { getApiKey, getCreateProgrammeId, setCreateProgrammeId } from '../settings'
 
@@ -51,10 +51,10 @@ function CreateHome() {
 
   function removeDraft(id: string) {
     if (!user) return
-    deleteProgramme(user.uid, id)
-    deleteChat(user.uid, id)
+    // Drafts go to Recently deleted (Clients tab) and keep their chat, so they can be restored.
+    softDeleteProgramme(user.uid, id)
     if (getCreateProgrammeId() === id) setCreateProgrammeId(null)
-    toast('Draft deleted')
+    toast('Draft moved to Recently deleted')
   }
 
   function start(client: Client) {
@@ -110,7 +110,7 @@ function CreateHome() {
 
       <Sheet open={pickOpen} onClose={() => setPickOpen(false)} title="Programme for…">
         <div className="list">
-          {clients.filter((c) => !c.archived).map((c) => (
+          {clients.map((c) => (
             <button type="button" key={c.id} className="row-link" onClick={() => start(c)}>
               <div className="grow">
                 <div className="title">{c.name}{c.isSelf ? ' (me)' : ''}</div>

@@ -9,6 +9,7 @@ import { UpdateBanner } from './components/UpdateBanner'
 import { ClientScreen } from './screens/ClientScreen'
 import { ClientsScreen } from './screens/ClientsScreen'
 import { CreateScreen } from './screens/CreateScreen'
+import { DeletedScreen } from './screens/DeletedScreen'
 import { LoadingScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
 import { ImportScreen } from './screens/ImportScreen'
 import { NotesScreen } from './screens/NotesScreen'
@@ -67,6 +68,7 @@ function Shell() {
           <Route path="/clients" element={<ClientsScreen />} />
           <Route path="/clients/:id" element={<ClientScreen />} />
           <Route path="/notes" element={<NotesScreen />} />
+          <Route path="/deleted" element={<DeletedScreen />} />
           <Route path="/import" element={<ImportScreen />} />
           <Route path="/import-profiles" element={<ProfileImportScreen />} />
           <Route path="*" element={<Navigate to="/train" replace />} />
