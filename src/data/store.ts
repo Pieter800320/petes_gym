@@ -240,6 +240,10 @@ export function useWorkouts(by: { programmeId: string } | { clientId: string } |
   return { ...live, data }
 }
 
+export function deleteWorkout(uid: string, id: string) {
+  deleteDoc(doc(userCollection(uid, 'workouts'), id)).catch(reportWriteError)
+}
+
 export function saveWorkout(uid: string, workout: Omit<Workout, 'id'>): string {
   const ref = doc(userCollection(uid, 'workouts'))
   setDoc(ref, workout).catch(reportWriteError)

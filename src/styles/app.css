@@ -182,8 +182,9 @@ svg { flex: none; }
 .note-line { border: 0; border-left: 2px solid var(--color-accent); background: none; padding: 4px 0 4px 12px; text-align: left; font-size: 14px; line-height: 1.5; color: var(--color-text); }
 .about { display: flex; flex-direction: column; gap: 14px; }
 .about summary { cursor: pointer; padding: 6px 0; }
-.session-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; font-size: var(--type-sm); }
-.session-lines li { display: flex; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
+.session-lines { display: flex; flex-direction: column; font-size: var(--type-sm); }
+.session-lines p { margin: var(--space-2) 0 0; }
+.session-line { display: flex; gap: var(--space-3); min-height: 44px; align-items: center; border-bottom: 1px solid var(--color-border); }
 .session-lines .grow { color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Older card-style rows (sheets, pickers, import screens) */
@@ -440,7 +441,11 @@ svg { flex: none; }
 .sheet-handle::before { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--color-border); }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: 0 var(--gutter) var(--space-2); }
 .sheet-head h2 { font-size: 24px; }
-.sheet-body { overflow-y: auto; padding: var(--space-2) var(--gutter) var(--space-4); }
+.sheet-body { overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2) var(--gutter) var(--space-4); }
+/* While a sheet is on screen, the bottom-pinned nav and round button step aside (see Sheet.tsx). */
+.sheet-open body { overflow: hidden; }
+.sheet-open .nav, .sheet-open .dial-dock { visibility: hidden; }
+@media (min-width: 900px) { .sheet-open .nav { visibility: visible; } }
 .sheet-footer {
   position: sticky; bottom: calc(-1 * var(--space-4));
   display: flex; flex-direction: column; gap: 2px;

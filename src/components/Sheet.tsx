@@ -6,8 +6,12 @@ const DISMISS_DRAG_PX = 100
 /** Matches the .sheet transform transition in app.css. */
 const ANIMATION_MS = 300
 
-/** Open sheets across the app; page scroll stays locked until the last one closes (sheets can stack). */
-let openSheets = 0
+/**
+ * Sheets on screen across the app (they can stack). While any is on screen, the page marks
+ * itself with .sheet-open so the nav and the round button hide: otherwise the keyboard
+ * opening and closing for a sheet's text box makes those bottom-pinned elements jump.
+ */
+let mountedSheets = 0
 
 interface SheetProps {
   open: boolean
@@ -62,16 +66,32 @@ export function Sheet({ open, onClose, title, action, tall = false, paper = fals
   }, [open, mounted])
 
   useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    openSheets += 1
-    document.body.style.overflow = 'hidden'
+    if (!mounted) return
+    mountedSheets += 1
+    document.documentElement.classList.add('sheet-open')
     return () => {
-      document.removeEventListener('keydown', onKey)
-      openSheets -= 1
-      if (openSheets === 0) document.body.style.overflow = ''
+      mountedSheets -= 1
+      if (mountedSheets === 0) document.documentElement.classList.remove('sheet-open')
     }
+  }, [mounted])
+
+  // Closing also puts the keyboard away straight away, while the sheet slides down.
+  const close = () => {
+    const focused = document.activeElement
+    if (focused instanceof HTMLElement) focused.blur()
+    onClose()
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const focused = document.activeElement
+      if (focused instanceof HTMLElement) focused.blur()
+      onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
   if (!mounted) return null
@@ -80,13 +100,13 @@ export function Sheet({ open, onClose, title, action, tall = false, paper = fals
   // snapping back to the top first is what made it jump.
   const endDrag = (dismiss: boolean) => {
     setDragStartY(null)
-    if (dismiss) onClose()
+    if (dismiss) close()
     else setDragY(0)
   }
 
   return createPortal(
     <>
-      <div className={`sheet-overlay${visible ? ' visible' : ''}`} onClick={onClose} />
+      <div className={`sheet-overlay${visible ? ' visible' : ''}`} onClick={close} />
       <div
         className={`sheet${tall ? ' tall' : ''}${paper ? ' paper' : ''}${visible ? ' open' : ''}${dragStartY !== null ? ' dragging' : ''}`}
         role="dialog"

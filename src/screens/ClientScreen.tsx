@@ -8,12 +8,13 @@ import { NoteSheet } from '../components/NoteSheet'
 import { PinnedNotes } from '../components/PinnedNotes'
 import { SettingsSheet } from '../components/SettingsSheet'
 import { Sheet } from '../components/Sheet'
+import { SwipeRow } from '../components/SwipeRow'
 import { BigTitle, TopBar } from '../components/TopBar'
 import { shareProfileLink } from '../components/shareProfileLink'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { blankProgramme, sessionRows } from '../data/programmeUtils'
-import { createProgramme, deleteClient, useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
+import { createProgramme, deleteClient, deleteWorkout, useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Note, Programme } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
 
@@ -105,15 +106,18 @@ export function ClientScreen() {
             <span className="mono muted">{showSessions ? '−' : '›'}</span>
           </button>
           {showSessions && (
-            <ul className="session-lines">
+            <div className="session-lines">
               {workouts.map((w) => (
-                <li key={w.id}>
-                  <span>{new Date(w.startedAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-                  <span className="grow">{w.sessionTitle || 'Session'}</span>
-                  <span className="mono">{Math.max(1, Math.round(w.durationSec / 60))} min</span>
-                </li>
+                <SwipeRow key={w.id} onDelete={() => { deleteWorkout(user.uid, w.id); toast('Session deleted') }}>
+                  <div className="session-line">
+                    <span>{new Date(w.startedAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                    <span className="grow">{w.sessionTitle || 'Session'}</span>
+                    <span className="mono">{Math.max(1, Math.round(w.durationSec / 60))} min</span>
+                  </div>
+                </SwipeRow>
               ))}
-            </ul>
+              <p className="muted small">Swipe a session to the left to delete it.</p>
+            </div>
           )}
         </>
       )}
