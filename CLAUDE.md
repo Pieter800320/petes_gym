@@ -39,7 +39,6 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   blocks are bound to the conversation, and the prompt cache depends on an unchanged prefix.
 - **Claude models:** `MODEL_DESIGN = claude-opus-5-5` (chat), `MODEL_UTILITY = claude-sonnet-5-5`
   (translation, import). Forced `tool_choice` is rejected on these models; steer via the prompt.
-
 - **Offline writes are fire-and-forget.** Never `await` a Firestore write in UI code: the promise only
   resolves when the server acknowledges, which never happens without signal. Use the helpers in
   `src/data/store.ts` (they attach `.catch(reportWriteError)`).
