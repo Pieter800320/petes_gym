@@ -320,7 +320,7 @@ const ROW_FIELDS: { key: keyof Pick<ExerciseRow, 'prescription' | 'rest' | 'note
   { key: 'superset', label: 'Superset label', placeholder: 'A1', mono: true },
 ]
 
-function RowSheet({ programme, rowId, onClose, onChange }: { programme: Programme; rowId: string | null; onClose: () => void; onChange: Change }) {
+export function RowSheet({ programme, rowId, onClose, onChange }: { programme: Programme; rowId: string | null; onClose: () => void; onChange: Change }) {
   const loc = rowId ? locateRow(programme, rowId) : null
   const row = loc?.section.rows[loc.index] ?? null
 

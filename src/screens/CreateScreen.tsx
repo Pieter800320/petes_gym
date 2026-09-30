@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { IconBack } from '../components/Icons'
 import { LibraryBrowser } from '../components/LibraryBrowser'
-import { MetaEditor, SessionEditor } from '../components/ProgrammeEditor'
-import { ProgressionBlockView, SessionView } from '../components/ProgrammeView'
+import { ProgrammeSheet } from '../components/ProgrammeSheet'
 import { Sheet } from '../components/Sheet'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
@@ -17,7 +16,7 @@ import { activateProgramme } from '../data/programmeActions'
 import { blankProgramme } from '../data/programmeUtils'
 import { createProgramme, saveProgramme, useClients, useNotes, useProgramme, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Programme } from '../data/types'
-import { getApiKey } from '../settings'
+import { getApiKey, getCreateProgrammeId, setCreateProgrammeId } from '../settings'
 
 /** Delay before a manual edit is written to Firestore, so typing doesn't write on every key. */
 const AUTOSAVE_MS = 700
@@ -32,11 +31,20 @@ export function CreateScreen() {
 function CreateHome() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { data: programmes, loading } = useProgrammes('all')
   const { data: clients } = useClients()
   const [pickOpen, setPickOpen] = useState(false)
   const drafts = programmes.filter((p) => p.status === 'draft')
   const clientName = (id: string) => clients.find((c) => c.id === id)?.name ?? ''
+
+  // Tapping the Create tab reopens the programme Pete was working on; the back arrow
+  // in the chat sets `stay` to show this list instead.
+  const stay = (location.state as { stay?: boolean } | null)?.stay
+  useEffect(() => {
+    const last = getCreateProgrammeId()
+    if (!stay && last) navigate(`/create/${last}`, { replace: true })
+  }, [stay, navigate])
 
   function start(client: Client) {
     if (!user) return
@@ -98,18 +106,25 @@ function CreateHome() {
   )
 }
 
-// ── Workspace: chat + programme (+ library on wide screens) ──────────
+// ── Workspace: full-screen chat; the programme opens in a sheet ──────
 
 function Workspace({ id }: { id: string }) {
   const { data: programme, loading } = useProgramme(id)
   const { chat, loading: chatLoading } = useChat(id)
+  const missing = !loading && !programme
+
+  // A deleted programme shouldn't keep reopening from the Create tab.
+  useEffect(() => {
+    if (missing && getCreateProgrammeId() === id) setCreateProgrammeId(null)
+  }, [missing, id])
+
   if (!programme || chatLoading) {
     return (
       <div className="screen">
-        {!loading && !programme ? (
+        {missing ? (
           <div className="empty">
             <h3 className="display">Programme not found</h3>
-            <Link to="/create" className="btn-acc" style={{ textDecoration: 'none' }}>Back to Create</Link>
+            <Link to="/create" state={{ stay: true }} className="btn-acc" style={{ textDecoration: 'none' }}>Back to Create</Link>
           </div>
         ) : (
           <span className="label">Loading…</span>
@@ -139,18 +154,16 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   /** Local copy while Claude is working or Pete is editing; otherwise the stored programme. */
   const [local, setLocal] = useState<Programme | null>(null)
   const programme = local ?? stored
-  const [editing, setEditing] = useState(false)
-  const [detailsOpen, setDetailsOpen] = useState(false)
-  const [sessionId, setSessionId] = useState(stored.sessions[0]?.id ?? '')
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<{ name: string; text: string }[]>([])
   const [attaching, setAttaching] = useState(false)
   const [pending, setPending] = useState<Pending | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [split, setSplit] = useState(45)
-  const [libraryOpen, setLibraryOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  /** Edit waiting for the autosave timer; written immediately if the screen closes first. */
+  const unsaved = useRef<Programme | null>(null)
   const chatEnd = useRef<HTMLDivElement | null>(null)
 
   const history = useMemo(() => parseHistory(chat), [chat])
@@ -159,31 +172,45 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   const claudeMarks = useMemo(() => new Set(chat?.lastChanged ?? []), [chat])
   const mineMarks = useMemo(() => (baseline ? changedRowIds(baseline, programme) : new Set<string>()), [baseline, programme])
   const issues = useMemo(() => checkProgramme(programme, client), [programme, client])
-  const session = programme.sessions.find((s) => s.id === sessionId) ?? programme.sessions[0]
   const busy = pending !== null
   const parent = clientProgrammes.find((p) => p.id === stored.parentId)
+  const exerciseCount = programme.sessions.reduce((n, s) => n + s.sections.reduce((m, sec) => m + sec.rows.length, 0), 0)
+
+  // The Create tab reopens this programme next time.
+  useEffect(() => setCreateProgrammeId(stored.id), [stored.id])
 
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ block: 'end' })
   }, [display.length, pending?.replyText, pending?.tools.length])
 
-  // Flush a pending autosave when leaving the workspace.
-  useEffect(() => () => clearTimeout(saveTimer.current), [])
+  // Leaving the screen: write any edit still waiting for the autosave timer.
+  useEffect(
+    () => () => {
+      clearTimeout(saveTimer.current)
+      if (unsaved.current && user) saveProgramme(user.uid, unsaved.current)
+    },
+    [user],
+  )
 
   if (!user) return null
   const uid = user.uid
 
   function manualChange(next: Programme) {
     setLocal(next)
+    unsaved.current = next
     clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => saveProgramme(uid, next), AUTOSAVE_MS)
+    saveTimer.current = setTimeout(() => {
+      saveProgramme(uid, next)
+      unsaved.current = null
+    }, AUTOSAVE_MS)
   }
 
-  function finishEditing() {
+  /** Writes pending edits now and goes back to showing the stored programme. */
+  function flushEdits() {
     clearTimeout(saveTimer.current)
-    if (local) saveProgramme(uid, local)
+    if (unsaved.current) saveProgramme(uid, unsaved.current)
+    unsaved.current = null
     setLocal(null)
-    setEditing(false)
   }
 
   async function addFiles(files: FileList | null) {
@@ -205,13 +232,13 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   async function send(text: string) {
     const userText = text.trim()
     if ((!userText && !attachments.length) || busy) return
-    if (editing) finishEditing()
+    const before = programme
+    flushEdits()
     setError(null)
     setInput('')
     const sentAttachments = attachments
     setAttachments([])
     setPending({ userText: userText || 'See attached.', replyText: '', tools: [] })
-    const before = programme
     const controller = new AbortController()
     abortRef.current = controller
     try {
@@ -256,8 +283,9 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   }
 
   function confirm() {
-    if (editing) finishEditing()
+    flushEdits()
     activateProgramme(uid, programme, clientProgrammes)
+    setCreateProgrammeId(null)
     toast('Programme confirmed and active')
     navigate(`/programmes/${programme.id}`)
   }
@@ -268,161 +296,105 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
     'Ask me what you need to know first.',
   ].filter(Boolean) as string[]
 
+  const changedCount = chat?.lastChanged.length ?? 0
+
   return (
-    <div className="create" style={{ ['--chat-share' as string]: `${split}%` }}>
-      <header className="create-head">
-        <Link to="/create" className="icon-btn" aria-label="Back to Create"><IconBack /></Link>
-        <button type="button" className="create-title" onClick={() => setDetailsOpen(true)}>
+    <div className="chat-screen">
+      <header className="chat-head">
+        <Link to="/create" state={{ stay: true }} className="icon-btn" aria-label="All drafts"><IconBack /></Link>
+        <div className="chat-head-title">
           <span className="display">{programme.title}</span>
-          <span className="muted">{client?.name}{programme.status !== 'draft' ? ` · ${programme.status}` : ''} · details</span>
+          <span className="muted">{client?.name}</span>
+        </div>
+        <button type="button" className="btn-cta see-programme" onClick={() => setSheetOpen(true)}>
+          See programme
+          {changedCount > 0 && <span className="badge">{changedCount}</span>}
         </button>
-        <button type="button" className="btn-cta" disabled={busy} onClick={confirm}>Confirm</button>
       </header>
 
-      <div className="create-panes">
-        {/* ── Chat ── */}
-        <section className="pane chat-pane" aria-label="Chat with Claude">
-          <div className="chat-log">
-            {display.length === 0 && !pending && (
-              <div className="chat-empty">
-                <p className="muted">Tell Claude what you want, attach a client profile, or start with one of these:</p>
-                {starters.map((s) => (
-                  <button type="button" key={s} className="chip" onClick={() => send(s)}>{s}</button>
-                ))}
-              </div>
-            )}
-            {display.map((m, i) => <Bubble key={i} item={m} />)}
-            {pending && (
-              <>
-                <Bubble item={{ role: 'user', text: pending.userText }} />
-                {pending.tools.map((t, i) => <Bubble key={i} item={{ role: 'tool', text: t }} />)}
-                <Bubble item={{ role: 'assistant', text: pending.replyText || 'Thinking…' }} />
-              </>
-            )}
-            <div ref={chatEnd} />
-          </div>
-
-          {chat?.undo && !busy && (
-            <div className="undo-bar">
-              <span>Claude changed {chat.lastChanged.length || 'the'} exercise{chat.lastChanged.length === 1 ? '' : 's'}</span>
-              <button type="button" className="btn-ghost" onClick={undo}>Undo</button>
-            </div>
-          )}
-          {error && <div className="banner error">{error}</div>}
-
-          <div className="composer">
-            {attachments.length > 0 && (
-              <div className="chips">
-                {attachments.map((a, i) => (
-                  <button type="button" key={i} className="chip" aria-pressed="true" onClick={() => setAttachments((x) => x.filter((_, j) => j !== i))} title="Remove">
-                    📎 {a.name} ✕
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="composer-row">
-              <label className="icon-btn attach" aria-label="Attach a file" title="Attach a client profile or old programme">
-                <input type="file" accept={ACCEPTED_FILES} multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
-                {attaching ? '…' : '📎'}
-              </label>
-              <textarea
-                id="chat-input"
-                className="textarea composer-input"
-                placeholder={busy ? 'Claude is working…' : 'e.g. “Client can’t squat. Swap it for something knee-friendly.”'}
-                value={input}
-                disabled={busy}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send(input)
-                }}
-                rows={2}
-              />
-              {busy ? (
-                <button type="button" className="btn-acc" onClick={() => abortRef.current?.abort()}>Stop</button>
-              ) : (
-                <button type="button" className="btn-cta" disabled={!input.trim() && !attachments.length} onClick={() => send(input)}>Send</button>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* Drag handle between chat and programme (phones only). */}
-        <div
-          className="split-handle"
-          role="separator"
-          aria-label="Resize chat and programme"
-          onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)}
-          onPointerMove={(e) => {
-            if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
-            const box = e.currentTarget.parentElement!.getBoundingClientRect()
-            setSplit(Math.min(80, Math.max(20, ((e.clientY - box.top) / box.height) * 100)))
-          }}
-        />
-
-        {/* ── Programme ── */}
-        <section className="pane programme-pane" aria-label="Programme">
-          {issues.length > 0 && (
-            <details className="health">
-              <summary>
-                <span className={`tag${issues.some((i) => i.level === 'warn') ? ' warn' : ''}`}>{issues.length} check{issues.length > 1 ? 's' : ''}</span>
-                <span className="muted">Programme health</span>
-              </summary>
-              <ul>{issues.map((i, k) => <li key={k} className={i.level}>{i.text}</li>)}</ul>
-            </details>
-          )}
-          <div className="toolbar">
-            <div className="tabs" role="tablist" aria-label="Sessions" style={{ flex: 1 }}>
-              {programme.sessions.map((s, i) => (
-                <button type="button" role="tab" key={s.id} className="tab" aria-selected={s.id === session?.id} onClick={() => setSessionId(s.id)}>
-                  {s.title || `Session ${i + 1}`}
-                </button>
-              ))}
-            </div>
-            {editing ? (
-              <button type="button" className="btn-cta" onClick={finishEditing}>Done</button>
-            ) : (
-              <button type="button" className="btn-acc" disabled={busy} onClick={() => { setLocal(structuredClone(stored)); setEditing(true) }}>Edit</button>
-            )}
-            <button type="button" className="btn-ghost lib-toggle" onClick={() => setLibraryOpen(true)}>Library</button>
-          </div>
-          {programme.progression && !editing && <ProgressionBlockView block={programme.progression} />}
-          {session &&
-            (editing ? (
-              <SessionEditor programme={programme} session={session} onChange={manualChange} onSelectSession={setSessionId} claude={claudeMarks} mine={mineMarks} />
-            ) : (
-              <SessionView session={session} index={programme.sessions.indexOf(session)} claude={claudeMarks} mine={mineMarks} />
+      <div className="chat-log" aria-live="polite">
+        {display.length === 0 && !pending && (
+          <div className="chat-empty">
+            <h2 className="display">What are we building?</h2>
+            <p className="muted">Describe what you want, attach a client profile with 📎, or start with one of these:</p>
+            {starters.map((st) => (
+              <button type="button" key={st} className="chip" onClick={() => send(st)}>{st}</button>
             ))}
-          <p className="legend muted">
-            <span className="swatch claude" /> Claude's last changes <span className="swatch mine" /> your edits since
-          </p>
-        </section>
-
-        <aside className="pane library-pane" aria-label="Exercise library">
-          <LibraryBrowser compact />
-        </aside>
+          </div>
+        )}
+        {display.map((m, i) => <Bubble key={i} item={m} />)}
+        {pending && (
+          <>
+            <Bubble item={{ role: 'user', text: pending.userText }} />
+            {pending.tools.map((t, i) => <Bubble key={i} item={{ role: 'tool', text: t }} />)}
+            <Bubble item={{ role: 'assistant', text: pending.replyText || 'Thinking…' }} />
+          </>
+        )}
+        <div ref={chatEnd} />
       </div>
 
-      <Sheet open={libraryOpen} onClose={() => setLibraryOpen(false)} title="Exercise library">
-        <LibraryBrowser compact />
-      </Sheet>
+      <div className="chat-bottom">
+        {chat?.undo && !busy && (
+          <div className="undo-bar">
+            <button type="button" className="btn-ghost" onClick={() => setSheetOpen(true)}>
+              Claude changed {changedCount || 'some'} exercise{changedCount === 1 ? '' : 's'} · see them
+            </button>
+            <button type="button" className="btn-ghost" onClick={undo}>Undo</button>
+          </div>
+        )}
+        {error && <div className="banner error">{error}</div>}
+        {attachments.length > 0 && (
+          <div className="chips">
+            {attachments.map((a, i) => (
+              <button type="button" key={i} className="chip" aria-pressed="true" onClick={() => setAttachments((x) => x.filter((_, j) => j !== i))} title="Remove">
+                📎 {a.name} ✕
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="composer-row">
+          <label className="icon-btn attach" aria-label="Attach a file" title="Attach a client profile or old programme">
+            <input type="file" accept={ACCEPTED_FILES} multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
+            {attaching ? '…' : '📎'}
+          </label>
+          <textarea
+            id="chat-input"
+            className="textarea composer-input"
+            placeholder={busy ? 'Claude is working…' : 'Message Claude…'}
+            value={input}
+            disabled={busy}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send(input)
+            }}
+            rows={1}
+          />
+          {busy ? (
+            <button type="button" className="btn-acc" onClick={() => abortRef.current?.abort()}>Stop</button>
+          ) : (
+            <button type="button" className="btn-cta send-btn" disabled={!input.trim() && !attachments.length} onClick={() => send(input)} aria-label="Send">↑</button>
+          )}
+        </div>
+        <p className="chat-foot muted">
+          {programme.sessions.length} session{programme.sessions.length === 1 ? '' : 's'} · {exerciseCount} exercises
+          {issues.some((i) => i.level === 'warn') ? ' · ⚠ checks need attention' : ''}
+        </p>
+      </div>
 
-      <Sheet open={detailsOpen} onClose={() => setDetailsOpen(false)} title="Programme details">
-        <MetaEditor
-          programme={programme}
-          onChange={(p) => manualChange(p)}
-        />
-        <button
-          type="button"
-          className="btn-cta btn-block"
-          style={{ marginTop: 'var(--space-3)' }}
-          onClick={() => {
-            if (!editing) finishEditing()
-            setDetailsOpen(false)
-          }}
-        >
-          Done
-        </button>
-      </Sheet>
+      <ProgrammeSheet
+        open={sheetOpen}
+        onClose={() => {
+          flushEdits()
+          setSheetOpen(false)
+        }}
+        programme={programme}
+        onChange={manualChange}
+        locked={busy}
+        claude={claudeMarks}
+        mine={mineMarks}
+        issues={issues}
+        onConfirm={confirm}
+      />
     </div>
   )
 }

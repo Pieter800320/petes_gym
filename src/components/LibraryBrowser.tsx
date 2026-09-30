@@ -14,7 +14,7 @@ import type { Exercise } from '../data/types'
 /** Results rendered at once; the rest appear with "Show more" to keep the list fast on phones. */
 const PAGE_SIZE = 40
 
-export function LibraryBrowser({ compact = false }: { compact?: boolean }) {
+export function LibraryBrowser() {
   const [text, setText] = useState('')
   const [pattern, setPattern] = useState<string | null>(null)
   const [equipment, setEquipment] = useState<string | null>(null)
@@ -68,7 +68,7 @@ export function LibraryBrowser({ compact = false }: { compact?: boolean }) {
         </select>
       </div>
 
-      <div className="field" hidden={compact}>
+      <div className="field">
         <span className="label">Hide exercises contraindicated for</span>
         <div className="chips">
           {CONTRAINDICATIONS.map((c) => (

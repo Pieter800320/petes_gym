@@ -66,3 +66,14 @@ export function getTrainProgrammeId(): string | null {
 export function setTrainProgrammeId(id: string) {
   write(TRAIN_PROGRAMME_KEY, id)
 }
+
+const CREATE_PROGRAMME_KEY = 'pg_create_programme_v1'
+
+/** The programme open in Create last on this device, so the Create tab reopens it. */
+export function getCreateProgrammeId(): string | null {
+  return read(CREATE_PROGRAMME_KEY)
+}
+
+export function setCreateProgrammeId(id: string | null) {
+  write(CREATE_PROGRAMME_KEY, id)
+}

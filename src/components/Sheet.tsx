@@ -6,12 +6,17 @@ const DISMISS_DRAG_PX = 100
 /** Matches the .sheet transform transition in app.css. */
 const ANIMATION_MS = 300
 
+/** Open sheets across the app; page scroll stays locked until the last one closes (sheets can stack). */
+let openSheets = 0
+
 interface SheetProps {
   open: boolean
   onClose: () => void
   title: string
   /** Optional element on the right of the title row (e.g. a delete button). */
   action?: ReactNode
+  /** Full-height sheet for long content (the programme sheet). */
+  tall?: boolean
   children: ReactNode
 }
 
@@ -20,7 +25,7 @@ interface SheetProps {
  * Stays mounted through the close animation, then unmounts so each open starts with fresh state.
  * Only the handle is draggable, so a drag never swallows taps on inputs and buttons inside.
  */
-export function Sheet({ open, onClose, title, action, children }: SheetProps) {
+export function Sheet({ open, onClose, title, action, tall = false, children }: SheetProps) {
   const [mounted, setMounted] = useState(open)
   const [visible, setVisible] = useState(false)
   /** Pointer Y where the current handle drag began; null when not dragging. */
@@ -55,10 +60,12 @@ export function Sheet({ open, onClose, title, action, children }: SheetProps) {
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
+    openSheets += 1
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      openSheets -= 1
+      if (openSheets === 0) document.body.style.overflow = ''
     }
   }, [open, onClose])
 
@@ -74,7 +81,7 @@ export function Sheet({ open, onClose, title, action, children }: SheetProps) {
     <>
       <div className={`sheet-overlay${visible ? ' visible' : ''}`} onClick={onClose} />
       <div
-        className={`sheet${visible ? ' open' : ''}${dragStartY !== null ? ' dragging' : ''}`}
+        className={`sheet${tall ? ' tall' : ''}${visible ? ' open' : ''}${dragStartY !== null ? ' dragging' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
