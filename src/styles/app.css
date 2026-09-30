@@ -413,6 +413,11 @@ svg { flex: none; }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .chip { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: var(--radius-pill); border: 1px solid var(--color-border); background: none; color: var(--color-text); font-size: 14px; font-weight: 500; }
 .chip[aria-pressed="true"] { border-color: var(--color-text); background: var(--color-text); color: var(--color-bg); }
+/* Note sheet: find any client beyond the chips. */
+.client-find { display: flex; flex-direction: column; margin-top: calc(-1 * var(--space-2)); }
+.client-find .search-line { margin-top: 0; }
+.client-find-hit { min-height: 44px; padding: 0; border: 0; border-bottom: 1px solid var(--color-border); background: none; text-align: left; font-size: 15px; }
+.client-find-hit:active { opacity: 0.6; }
 .chip-warn { border-color: var(--color-danger); color: var(--color-danger); }
 .banner { padding: 10px 14px; border-radius: var(--radius-md); background: var(--color-surface); font-size: 14px; }
 .banner.error { color: var(--color-danger); }
