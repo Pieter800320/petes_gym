@@ -36,6 +36,10 @@ function Shell() {
   const [noteOpen, setNoteOpen] = useState(false)
   // Quick notes started on a client's profile are pre-filed under that client.
   const clientMatch = useMatch('/clients/:id')
+  // The quick-note button would cover the chat's Send button and the live-session controls.
+  const createMatch = useMatch('/create/:id')
+  const liveMatch = useMatch('/train/live')
+  const hideFab = Boolean(createMatch || liveMatch)
 
   return (
     <div className="shell">
@@ -67,9 +71,11 @@ function Shell() {
         </Routes>
       </main>
 
-      <button type="button" className="fab" aria-label="Quick note" onClick={() => setNoteOpen(true)}>
-        <IconPlus />
-      </button>
+      {!hideFab && (
+        <button type="button" className="fab" aria-label="Quick note" onClick={() => setNoteOpen(true)}>
+          <IconPlus />
+        </button>
+      )}
       <NoteSheet open={noteOpen} onClose={() => setNoteOpen(false)} defaultClientId={clientMatch?.params.id ?? null} />
       <Snackbar />
     </div>

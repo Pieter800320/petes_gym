@@ -9,10 +9,16 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.1.0, milestone **M1 Foundation**: app shell, Firebase sign-in + offline sync,
-  clients, notes (general and per client), exercise library browser, settings, light/dark theme.
-- **Next:** M2 Train (programme view, session tabs, live session with set logging + stopwatch),
-  then M3 Export (HTML + Word, Sophie house style, EN/DE), M4 Create (Claude), M5 Archive import.
+- **Version:** 0.2.0. All five milestones built (2026-09-30):
+  - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
+  - M2 Train: programmes (free-shaped), editor, Train tab with Up next, live session (stopwatch,
+    wake lock, per-set logging), client stats.
+  - M3 Export: HTML + Word in the Sophie house style, EN/DE (German via Claude, cached per programme).
+  - M4 Create: Claude co-author (`src/claude/chat.ts`, tools in `programmeTools.ts`), highlights,
+    undo, health strip, attachments, editable Coach Playbook (Settings).
+  - M5 Import: old programmes (Word/PDF/HTML/MD/photos) → archived programmes (`/import`).
+- **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
+  checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
 
 ## 1. Stack (fixed)
 
@@ -26,6 +32,13 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 | Fonts | Oswald / IBM Plex Sans / IBM Plex Mono via `@fontsource` (latin subsets) | Match the Sophie export style; bundled for offline |
 
 ## 2. Rules specific to this repo
+
+- **No nested arrays in Firestore.** Progression-table rows are encoded as `[{cells}]` in
+  `store.ts` (encode/decodeProgramme). Chat history is stored as a JSON string for the same reason.
+- **Claude history is append-only** (`chat.ts`): never edit or drop earlier turns. Opus 5.5 thinking
+  blocks are bound to the conversation, and the prompt cache depends on an unchanged prefix.
+- **Claude models:** `MODEL_DESIGN = claude-opus-5-5` (chat), `MODEL_UTILITY = claude-sonnet-5-5`
+  (translation, import). Forced `tool_choice` is rejected on these models; steer via the prompt.
 
 - **Offline writes are fire-and-forget.** Never `await` a Firestore write in UI code: the promise only
   resolves when the server acknowledges, which never happens without signal. Use the helpers in
