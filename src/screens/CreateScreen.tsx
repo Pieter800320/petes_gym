@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { IconAttach, IconBack, IconPen, IconSend } from '../components/Icons'
 import { openNote } from '../components/noteEvents'
@@ -9,8 +9,8 @@ import { SwipeRow } from '../components/SwipeRow'
 import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
-import { describeClaudeError } from '../claude/client'
-import { clearUndo, clientHistoryText, historyTooLarge, parseHistory, recordTurn, runTurn, toDisplay, useChat, type ChatDoc, type DisplayItem } from '../claude/chat'
+import { describeClaudeError, formatUsd } from '../claude/client'
+import { chatCost, clearUndo, clientHistoryText, historyTooLarge, parseHistory, recordTurn, runTurn, toDisplay, useChat, type ChatDoc, type DisplayItem } from '../claude/chat'
 import { ACCEPTED_FILES, extractText } from '../claude/extract'
 import { usePlaybook } from '../claude/playbook'
 import { changedRowIds } from '../claude/programmeTools'
@@ -272,7 +272,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
         onProgramme: (p) => setLocal(p),
         signal: controller.signal,
       })
-      if (recordTurn(uid, before, result)) saveProgramme(uid, result.programme)
+      if (recordTurn(uid, before, chat, result)) saveProgramme(uid, result.programme)
       if (result.error) setError(result.error)
       if (historyTooLarge(result.history)) setError('This chat is getting very long. Confirm the programme and start the next block in a fresh chat.')
     } catch (err) {
@@ -320,7 +320,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
         <Link to="/create" state={{ stay: true }} className="icon-btn" aria-label="Back to Create"><IconBack /></Link>
         <div className="chat-head-title">
           <span className="display">{client?.isSelf ? 'You' : client?.name ?? 'Client'}</span>
-          <span className="muted small">{programme.title}</span>
+          <span className="muted small">{programme.title}{chatCost(chat) > 0 && ` · ${formatUsd(chatCost(chat))} so far`}</span>
         </div>
         <button type="button" className="icon-btn" aria-label="Quick note" onClick={() => openNote({ clientId: programme.clientId })}><IconPen /></button>
       </div>
@@ -334,7 +334,17 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
           following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
         }}
       >
-        {display.map((m, i) => <Bubble key={i} item={m} />)}
+        {display.map((m, i) => {
+          // After the last line of each reply: what that reply cost.
+          const cost = chat?.costs?.[m.turn]
+          const endOfTurn = display[i + 1]?.turn !== m.turn
+          return (
+            <Fragment key={i}>
+              <Bubble item={m} />
+              {endOfTurn && cost !== undefined && <div className="msg-cost mono">{formatUsd(cost)}</div>}
+            </Fragment>
+          )
+        })}
         {pending && (
           <>
             <Bubble item={{ role: 'user', text: pending.userText }} />
@@ -413,7 +423,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
 }
 
 /** Pete's messages as dark bubbles; Claude's replies as plain text on paper. */
-function Bubble({ item }: { item: DisplayItem }) {
+function Bubble({ item }: { item: Omit<DisplayItem, 'turn'> }) {
   if (item.role === 'tool') return <div className="msg-tool mono">{item.text}</div>
   const blocks = item.text.split(/\n{2,}/)
   const body = blocks.map((b, i) => {

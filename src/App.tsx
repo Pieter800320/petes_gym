@@ -17,7 +17,8 @@ import { ProfileImportScreen } from './screens/ProfileImportScreen'
 import { ProgrammeScreen } from './screens/ProgrammeScreen'
 import { TrainScreen } from './screens/TrainScreen'
 import { EXERCISES } from './data/exercises'
-import { useProgramme } from './data/store'
+import { recordCost, useProgramme } from './data/store'
+import { setCostSink } from './claude/client'
 import { recordPath } from './util/navHistory'
 import { useTheme } from './settings'
 
@@ -70,6 +71,14 @@ function Shell() {
   const pageClient = clientMatch?.params.id ?? openProgramme?.clientId ?? null
 
   useEffect(() => onOpenNote(setNote), [])
+  const { user } = useAuth()
+  // Every Claude response adds its cost to the ledger (Settings shows the totals).
+  useEffect(() => {
+    if (!user) return
+    const uid = user.uid
+    setCostSink((kind, usd) => recordCost(uid, kind, usd))
+    return () => setCostSink(null)
+  }, [user])
   useScrollMemory()
 
   return (

@@ -3,7 +3,7 @@
  * Word/HTML/text are converted on the device; PDFs and photos are transcribed once by Claude.
  * Keeping attachments as text keeps chat history small enough for Firestore and cheap to resend.
  */
-import { getClaude, MODEL_UTILITY } from './client'
+import { getClaude, MODEL_LIGHT, trackCost } from './client'
 
 /** Largest file sent to Claude for transcription (the API allows 32 MB per request). */
 const MAX_TRANSCRIBE_BYTES = 20 * 1024 * 1024
@@ -45,9 +45,8 @@ async function transcribe(file: File): Promise<string> {
     : ({ type: 'image', source: { type: 'base64', media_type: imageType!, data } } as const)
 
   const response = await getClaude().messages.create({
-    model: MODEL_UTILITY,
+    model: MODEL_LIGHT,
     max_tokens: 16000,
-    output_config: { effort: 'low' },
     messages: [
       {
         role: 'user',
@@ -61,6 +60,7 @@ async function transcribe(file: File): Promise<string> {
       },
     ],
   })
+  trackCost('import', response)
   if (response.stop_reason === 'refusal') throw new Error(`Claude could not read ${file.name}.`)
   return response.content
     .filter((b) => b.type === 'text')

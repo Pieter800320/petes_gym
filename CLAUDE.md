@@ -35,10 +35,12 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 - **No nested arrays in Firestore.** Progression-table rows are encoded as `[{cells}]` in
   `store.ts` (encode/decodeProgramme). Chat history is stored as a JSON string for the same reason.
-- **Claude history is append-only** (`chat.ts`): never edit or drop earlier turns. Opus 5.5 thinking
+- **Claude history is append-only** (`chat.ts`): never edit or drop earlier turns. Thinking
   blocks are bound to the conversation, and the prompt cache depends on an unchanged prefix.
-- **Claude models:** `MODEL_DESIGN = claude-opus-5-5` (chat), `MODEL_UTILITY = claude-sonnet-5-5`
-  (translation, import). Forced `tool_choice` is rejected on these models; steer via the prompt.
+- **Claude models** (Pieter's cost decision, 2026-09-30): `MODEL_DESIGN = claude-sonnet-5-5` (Create chat,
+  archive import), `MODEL_LIGHT = claude-haiku-4-5` (translation, questionnaire import, reading files;
+  send no `effort`). Forced `tool_choice` is rejected; steer via the prompt. Every response goes
+  through `trackCost()` (prices in `client.ts`; update them when models change).
 - **Offline writes are fire-and-forget.** Never `await` a Firestore write in UI code: the promise only
   resolves when the server acknowledges, which never happens without signal. Use the helpers in
   `src/data/store.ts` (they attach `.catch(reportWriteError)`).

@@ -13,6 +13,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  increment,
   writeBatch,
   onSnapshot,
   orderBy,
@@ -24,6 +25,7 @@ import {
 } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
+import type { CostKind } from '../claude/client'
 import type { Client, ClientDraft, Note, Programme, ProgrammeDraft, ProgressionBlock, Workout } from './types'
 
 type WithoutId<T> = Omit<T, 'id'>
@@ -331,4 +333,44 @@ export function purgeProgramme(uid: string, id: string) {
   batch.delete(doc(userCollection(uid, 'programmes'), id))
   batch.delete(doc(userCollection(uid, 'chats'), id))
   batch.commit().catch(reportWriteError)
+}
+
+// ── Claude spending ──────────────────────────────────────────────────
+//
+// One document, users/{uid}/meta/costs: { "2026-09": { create: 1.23, translate: 0.04, import: 0.10 } }.
+// Totals only (USD); what each Create reply cost is kept with its chat.
+
+export type CostMonth = Partial<Record<CostKind, number>>
+
+function costsRef(uid: string) {
+  return doc(requireDb(), 'users', uid, 'meta', 'costs')
+}
+
+function monthKey(ms: number): string {
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+export function recordCost(uid: string, kind: CostKind, usd: number) {
+  setDoc(costsRef(uid), { [monthKey(Date.now())]: { [kind]: increment(usd) } }, { merge: true }).catch(reportWriteError)
+}
+
+/** This month's and last month's spending by kind. */
+export function useCostLedger(): { thisMonth: CostMonth; lastMonth: CostMonth } {
+  const { user } = useAuth()
+  const [ledger, setLedger] = useState<{ thisMonth: CostMonth; lastMonth: CostMonth }>({ thisMonth: {}, lastMonth: {} })
+  useEffect(() => {
+    if (!user) return
+    return onSnapshot(
+      costsRef(user.uid),
+      (snap) => {
+        const months = (snap.data() as Record<string, CostMonth> | undefined) ?? {}
+        const now = new Date()
+        const last = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        setLedger({ thisMonth: months[monthKey(now.getTime())] ?? {}, lastMonth: months[monthKey(last.getTime())] ?? {} })
+      },
+      (err) => console.error(err),
+    )
+  }, [user])
+  return ledger
 }

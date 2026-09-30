@@ -4,7 +4,7 @@
  */
 import type Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
-import { getClaude, MODEL_UTILITY } from './client'
+import { getClaude, MODEL_DESIGN, trackCost } from './client'
 import { libraryIndex } from './programmeTools'
 import { newId, withLibraryLink } from '../data/programmeUtils'
 import type { ProgrammeDraft, ProgressionBlock } from '../data/types'
@@ -121,7 +121,7 @@ export interface ImportedProgramme {
 
 export async function parseProgrammeDocument(fileName: string, text: string): Promise<ImportedProgramme> {
   const stream = getClaude().messages.stream({
-    model: MODEL_UTILITY,
+    model: MODEL_DESIGN,
     max_tokens: 32000,
     output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA as unknown as Record<string, unknown> } },
     system: [
@@ -132,6 +132,7 @@ export async function parseProgrammeDocument(fileName: string, text: string): Pr
     messages: [{ role: 'user', content: `File name: ${fileName}\n\n<document>\n${text}\n</document>` }],
   })
   const message = await stream.finalMessage()
+  trackCost('import', message)
   if (message.stop_reason === 'refusal') throw new Error('Claude could not convert this file.')
   if (message.stop_reason === 'max_tokens') throw new Error('This programme is too long to convert in one go.')
   const json = message.content.find((b) => b.type === 'text')?.text ?? ''

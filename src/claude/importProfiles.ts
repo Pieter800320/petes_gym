@@ -4,7 +4,7 @@
  * answers onto the profile fields; matching and merging happen on the device.
  */
 import { z } from 'zod'
-import { getClaude, MODEL_UTILITY } from './client'
+import { getClaude, MODEL_LIGHT, trackCost } from './client'
 import type { Client, ClientDraft } from '../data/types'
 
 const SYSTEM = `You read responses to a personal trainer's "Fitness Profile" questionnaire (a Google Forms CSV export or pasted text) and turn each person's response into profile fields.
@@ -64,13 +64,14 @@ export type ParsedProfile = z.infer<typeof zProfile>
 
 export async function parseProfiles(text: string): Promise<ParsedProfile[]> {
   const stream = getClaude().messages.stream({
-    model: MODEL_UTILITY,
+    model: MODEL_LIGHT,
     max_tokens: 32000,
     system: SYSTEM,
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
+    output_config: { format: { type: 'json_schema', schema: SCHEMA } },
     messages: [{ role: 'user', content: `<responses>\n${text}\n</responses>` }],
   })
   const message = await stream.finalMessage()
+  trackCost('import', message)
   if (message.stop_reason === 'refusal') throw new Error('Claude could not read these responses.')
   if (message.stop_reason === 'max_tokens') throw new Error('Too many responses at once. Import them in smaller batches.')
   const json = message.content.find((b) => b.type === 'text')?.text ?? ''

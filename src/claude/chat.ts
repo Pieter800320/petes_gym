@@ -2,8 +2,9 @@
  * The Create chat: one conversation per programme, stored in Firestore at users/{uid}/chats/{programmeId}.
  *
  * History is append-only: every request resends exactly what was sent before plus new turns.
- * That keeps the prompt cache warm and is required by Opus 5.5's thinking blocks, which are
- * bound to the conversation that produced them.
+ * That keeps the prompt cache warm and is required by the model's thinking blocks, which are
+ * bound to the conversation that produced them. (Chats begun on Opus keep working on Sonnet:
+ * the API drops the Opus thinking blocks it can't read, and the request still succeeds.)
  *
  * Stored as JSON strings because API content (tool inputs with nested arrays) isn't
  * representable in Firestore documents.
@@ -13,7 +14,7 @@ import { useEffect, useState } from 'react'
 import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
-import { FALLBACK_BETA, MODEL_DESIGN, getClaude } from './client'
+import { FALLBACK_BETA, MODEL_DESIGN, getClaude, trackCost } from './client'
 import { PROGRAMME_TOOLS, changedRowIds, describeEdits, libraryIndex, programmeForClaude, runTool, type ToolContext } from './programmeTools'
 import { formatSets } from '../data/activeWorkout'
 import type { Client, Note, Programme, Workout } from '../data/types'
@@ -37,7 +38,19 @@ export interface ChatDoc {
   lastChanged: string[]
   /** JSON of the programme before Claude's last reply, for Undo. */
   undo: string | null
+  /** USD per reply, keyed by turn number (0 = Pete's first message). Older chats have none. */
+  costs?: Record<string, number>
   updatedAt: number
+}
+
+/** Pete's messages so far: user messages carrying text, not just tool results. */
+function countTurns(history: MessageParam[]): number {
+  return history.filter((m) => m.role === 'user' && typeof m.content !== 'string' && m.content.some((b) => b.type === 'text')).length
+}
+
+/** What the whole chat has cost so far. */
+export function chatCost(chat: ChatDoc | null): number {
+  return Object.values(chat?.costs ?? {}).reduce((sum, c) => sum + c, 0)
 }
 
 function chatRef(uid: string, programmeId: string) {
@@ -70,9 +83,11 @@ export function saveChat(uid: string, programmeId: string, chat: ChatDoc) {
 }
 
 /** Stores the outcome of a reply: new history, what Claude now knows, highlights, and the undo point. */
-export function recordTurn(uid: string, before: Programme, result: TurnResult) {
+export function recordTurn(uid: string, before: Programme, chat: ChatDoc | null, result: TurnResult) {
   const changedAnything = JSON.stringify(result.programme) !== JSON.stringify(before)
+  const turn = countTurns(parseHistory(chat))
   saveChat(uid, before.id, {
+    costs: { ...chat?.costs, [turn]: result.costUsd },
     history: JSON.stringify(result.history),
     baseline: JSON.stringify(result.programme),
     lastChanged: [...result.changed],
@@ -187,6 +202,8 @@ export interface TurnResult {
   programme: Programme
   changed: Set<string>
   error: string | null
+  /** Sum over every request this reply made (tool rounds included). */
+  costUsd: number
 }
 
 function userContent(input: TurnInput, isFirst: boolean): ContentBlockParam[] {
@@ -220,6 +237,8 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
   let programme = input.programme
   const client = getClaude()
   const system = buildSystem(input.playbook)
+  let costUsd = 0
+  const done = (error: string | null): TurnResult => ({ history: messages, programme, changed: changedRowIds(before, programme), error, costUsd })
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const stream = client.beta.messages.stream(
@@ -246,18 +265,19 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     } catch (err) {
       // Nothing from this round is kept, so the stored history stays a valid, append-only prefix.
       if (round === 0) throw err
-      return { history: messages, programme, changed: changedRowIds(before, programme), error: 'Claude stopped part-way. The changes so far are kept.' }
+      return done('Claude stopped part-way. The changes so far are kept.')
     }
+    costUsd += trackCost('create', message)
     messages.push({ role: 'assistant', content: message.content as ContentBlockParam[] })
 
     if (message.stop_reason === 'refusal') {
-      return { history: messages, programme, changed: changedRowIds(before, programme), error: 'Claude declined to answer that. Try rephrasing.' }
+      return done('Claude declined to answer that. Try rephrasing.')
     }
     if (message.stop_reason === 'pause_turn') continue
     const toolUses = message.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use')
     const cutOff = message.stop_reason === 'max_tokens'
     if (cutOff && !toolUses.length) {
-      return { history: messages, programme, changed: changedRowIds(before, programme), error: 'Claude’s reply hit the length limit. Ask it to continue.' }
+      return done('Claude’s reply hit the length limit. Ask it to continue.')
     }
     if (!toolUses.length) break
 
@@ -286,7 +306,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     messages.push({ role: 'user', content: results })
   }
 
-  return { history: messages, programme, changed: changedRowIds(before, programme), error: null }
+  return done(null)
 }
 
 export function historyTooLarge(history: MessageParam[]): boolean {
@@ -298,6 +318,8 @@ export function historyTooLarge(history: MessageParam[]): boolean {
 export interface DisplayItem {
   role: 'user' | 'assistant' | 'tool'
   text: string
+  /** Which of Pete's messages this belongs to (0-based), for the cost line after each reply. */
+  turn: number
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -313,24 +335,27 @@ const TOOL_LABELS: Record<string, string> = {
 /** Turns the API history into chat bubbles: user text (without context blocks), Claude's text, tool chips. */
 export function toDisplay(history: MessageParam[]): DisplayItem[] {
   const items: DisplayItem[] = []
+  let turn = -1
   for (const m of history) {
     if (m.role === 'system') continue
     if (typeof m.content === 'string') {
-      items.push({ role: m.role, text: m.content })
+      if (m.role === 'user') turn++
+      items.push({ role: m.role, text: m.content, turn })
       continue
     }
+    if (m.role === 'user' && m.content.some((b) => b.type === 'text')) turn++
     for (const b of m.content) {
       if (b.type === 'text') {
         if (m.role === 'user' && b.text.startsWith('<context')) continue
         if (m.role === 'user' && b.text.startsWith('<attachment')) {
-          items.push({ role: 'tool', text: `Attached ${b.text.match(/name="([^"]*)"/)?.[1] ?? 'a file'}` })
+          items.push({ role: 'tool', text: `Attached ${b.text.match(/name="([^"]*)"/)?.[1] ?? 'a file'}`, turn })
           continue
         }
-        if (b.text.trim()) items.push({ role: m.role, text: b.text })
+        if (b.text.trim()) items.push({ role: m.role, text: b.text, turn })
       } else if (b.type === 'tool_use') {
         const input = b.input as { title?: string; query?: string }
         const detail = input?.title ? `: ${input.title}` : input?.query ? `: “${input.query}”` : ''
-        items.push({ role: 'tool', text: `${TOOL_LABELS[b.name] ?? b.name}${detail}` })
+        items.push({ role: 'tool', text: `${TOOL_LABELS[b.name] ?? b.name}${detail}`, turn })
       }
     }
   }

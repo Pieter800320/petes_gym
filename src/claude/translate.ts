@@ -3,7 +3,7 @@
  * Translations are cached on the programme (translationsDe) so each string is only ever sent
  * to Claude once; re-exporting an unchanged programme costs nothing.
  */
-import { getClaude, MODEL_UTILITY } from './client'
+import { getClaude, MODEL_LIGHT, trackCost } from './client'
 import type { Programme, TranslationPair } from '../data/types'
 
 const SYSTEM = `You translate strength & conditioning programmes from English into German for a personal trainer in Weimar.
@@ -41,11 +41,10 @@ export async function translateToGerman(strings: string[], cache: TranslationPai
   if (!missing.length) return cache
 
   const response = await getClaude().messages.create({
-    model: MODEL_UTILITY,
+    model: MODEL_LIGHT,
     max_tokens: 16000,
     system: SYSTEM,
     output_config: {
-      effort: 'low',
       format: {
         type: 'json_schema',
         schema: {
@@ -59,6 +58,7 @@ export async function translateToGerman(strings: string[], cache: TranslationPai
     messages: [{ role: 'user', content: `Translate these ${missing.length} strings:\n${JSON.stringify(missing)}` }],
   })
 
+  trackCost('translate', response)
   if (response.stop_reason === 'refusal') throw new Error('Claude declined to translate this programme.')
   if (response.stop_reason === 'max_tokens') throw new Error('The programme is too long to translate in one go.')
   const text = response.content.find((b) => b.type === 'text')?.text ?? ''

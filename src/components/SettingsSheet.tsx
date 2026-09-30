@@ -4,6 +4,25 @@ import { PlaybookSheet } from './PlaybookSheet'
 import { Sheet } from './Sheet'
 import { useAuth } from '../auth/useAuth'
 import { getApiKey, setApiKey, useTheme, type ThemeSetting } from '../settings'
+import { formatUsd } from '../claude/client'
+import { useCostLedger, type CostMonth } from '../data/store'
+
+const COST_LABELS = { create: 'Create', translate: 'German exports', import: 'Imports' } as const
+
+function CostLine({ label, month }: { label: string; month: CostMonth }) {
+  const total = (month.create ?? 0) + (month.translate ?? 0) + (month.import ?? 0)
+  const parts = (Object.keys(COST_LABELS) as (keyof typeof COST_LABELS)[])
+    .filter((k) => (month[k] ?? 0) > 0)
+    .map((k) => `${COST_LABELS[k]} ${formatUsd(month[k] ?? 0)}`)
+  return (
+    <div className="cost-line">
+      <span>{label}</span>
+      <span className="ex-dots" aria-hidden="true" />
+      <b className="mono">{formatUsd(total)}</b>
+      {parts.length > 0 && <span className="cost-parts muted small">{parts.join(' · ')}</span>}
+    </div>
+  )
+}
 
 const THEMES: { value: ThemeSetting; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -26,6 +45,7 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
   const [key, setKey] = useState(getApiKey)
   const [showKey, setShowKey] = useState(false)
   const [playbookOpen, setPlaybookOpen] = useState(false)
+  const costs = useCostLedger()
 
   return (
     <div className="form">
@@ -63,6 +83,15 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
         </div>
         <span className="muted" style={{ fontSize: 'var(--type-sm)' }}>
           {key.trim() ? 'Saved on this device. ' : ''}Stored on this device only and never synced or uploaded, so enter it once on each device.
+        </span>
+      </div>
+
+      <div className="field">
+        <span className="label">Claude costs (USD)</span>
+        <CostLine label="This month" month={costs.thisMonth} />
+        <CostLine label="Last month" month={costs.lastMonth} />
+        <span className="muted" style={{ fontSize: 'var(--type-sm)' }}>
+          Worked out from the token counts Claude reports, at list prices. Create uses Sonnet; exports and imports mostly Haiku.
         </span>
       </div>
 

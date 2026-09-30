@@ -356,6 +356,9 @@ svg { flex: none; }
 .msg-user p, .msg-claude p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .msg-user ul, .msg-claude ul { margin: 0; padding-left: 1.1em; }
 .msg-label { font-size: 11px; letter-spacing: 0.14em; color: var(--color-accent); }
+.cost-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 15px; }
+.cost-parts { flex-basis: 100%; }
+.msg-cost { align-self: flex-start; margin-top: -10px; font-size: 11px; color: var(--color-text-muted); }
 .msg-tool { font-size: 11px; letter-spacing: 0.06em; color: var(--color-accent); margin-bottom: -10px; }
 .msg-tool::before { content: "— "; }
 .chat-bottom { flex: none; display: flex; flex-direction: column; gap: 10px; }
