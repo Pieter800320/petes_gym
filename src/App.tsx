@@ -9,7 +9,9 @@ import { ClientScreen } from './screens/ClientScreen'
 import { ClientsScreen } from './screens/ClientsScreen'
 import { CreateScreen } from './screens/CreateScreen'
 import { LoadingScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
+import { LiveSessionScreen } from './screens/LiveSessionScreen'
 import { NotesScreen } from './screens/NotesScreen'
+import { ProgrammeScreen } from './screens/ProgrammeScreen'
 import { TrainScreen } from './screens/TrainScreen'
 import { useTheme } from './settings'
 
@@ -52,7 +54,10 @@ function Shell() {
         <Routes>
           <Route path="/" element={<Navigate to="/train" replace />} />
           <Route path="/create" element={<CreateScreen />} />
+          <Route path="/create/:id" element={<CreateScreen />} />
           <Route path="/train" element={<TrainScreen />} />
+          <Route path="/train/live" element={<LiveSessionScreen />} />
+          <Route path="/programmes/:id" element={<ProgrammeScreen />} />
           <Route path="/clients" element={<ClientsScreen />} />
           <Route path="/clients/:id" element={<ClientScreen />} />
           <Route path="/notes" element={<NotesScreen />} />

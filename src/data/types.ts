@@ -127,3 +127,44 @@ export interface Exercise {
   regression: string[]
   progression: string[]
 }
+
+export type ProgrammeDraft = Omit<Programme, 'id' | 'createdAt' | 'updatedAt'>
+
+/** One logged set. load is free text so "BW", "20 kg", "red band" all work. */
+export interface SetLog {
+  load: string
+  reps: string
+  done: boolean
+}
+
+export interface WorkoutEntry {
+  rowId: string
+  exerciseName: string
+  prescription: string
+  sets: SetLog[]
+}
+
+/** A completed training session, saved when "End session" is confirmed. */
+export interface Workout {
+  id: string
+  programmeId: string
+  clientId: string
+  sessionId: string
+  sessionTitle: string
+  startedAt: Millis
+  endedAt: Millis
+  durationSec: number
+  entries: WorkoutEntry[]
+  note: string
+}
+
+/** In-progress session, kept in localStorage so it survives reloads and app switches. */
+export interface ActiveWorkout {
+  programmeId: string
+  clientId: string
+  sessionId: string
+  startedAt: Millis
+  /** Index of the exercise currently shown. */
+  position: number
+  entries: WorkoutEntry[]
+}

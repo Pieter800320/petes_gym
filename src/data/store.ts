@@ -22,7 +22,7 @@ import {
 } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
-import type { Client, ClientDraft, Note } from './types'
+import type { Client, ClientDraft, Note, Programme, ProgrammeDraft, Workout } from './types'
 
 type WithoutId<T> = Omit<T, 'id'>
 
@@ -137,4 +137,75 @@ export function updateNote(uid: string, id: string, patch: Partial<Pick<Note, 't
 
 export function deleteNote(uid: string, id: string) {
   deleteDoc(doc(userCollection(uid, 'notes'), id)).catch(reportWriteError)
+}
+
+// ── Programmes ──────────────────────────────────────────────────────
+
+/** clientId: one client's programmes, or 'all'. Sorted newest first on the device. */
+export function useProgrammes(clientId: string | 'all') {
+  const live = useLiveCollection<Programme>('programmes', clientId === 'all' ? {} : { whereField: 'clientId', whereValue: clientId })
+  const data = useMemo(() => [...live.data].sort((a, b) => b.updatedAt - a.updatedAt), [live.data])
+  return { ...live, data }
+}
+
+/** Live single programme. data is null while loading or if it doesn't exist. */
+export function useProgramme(id: string | undefined) {
+  const { user } = useAuth()
+  const [state, setState] = useState<{ data: Programme | null; loading: boolean; forId?: string }>({ data: null, loading: true })
+
+  useEffect(() => {
+    if (!user || !id) return
+    return onSnapshot(
+      doc(userCollection(user.uid, 'programmes'), id),
+      (snap) => setState({ data: snap.exists() ? ({ ...(snap.data() as WithoutId<Programme>), id: snap.id }) : null, loading: false, forId: id }),
+      (err) => {
+        console.error(err)
+        setState({ data: null, loading: false, forId: id })
+      },
+    )
+  }, [user, id])
+
+  // Ignore a snapshot that belongs to the previously viewed programme.
+  return state.forId === id ? state : { data: null, loading: true }
+}
+
+export function createProgramme(uid: string, draft: ProgrammeDraft): string {
+  const ref = doc(userCollection(uid, 'programmes'))
+  const now = Date.now()
+  setDoc(ref, { ...draft, createdAt: now, updatedAt: now }).catch(reportWriteError)
+  return ref.id
+}
+
+/** Writes the whole programme (sessions are nested, so partial updates would clobber anyway). */
+export function saveProgramme(uid: string, programme: Programme) {
+  const { id, ...rest } = programme
+  setDoc(doc(userCollection(uid, 'programmes'), id), { ...rest, updatedAt: Date.now() }).catch(reportWriteError)
+}
+
+export function updateProgrammeFields(uid: string, id: string, patch: Partial<ProgrammeDraft>) {
+  updateDoc(doc(userCollection(uid, 'programmes'), id), { ...patch, updatedAt: Date.now() }).catch(reportWriteError)
+}
+
+export function deleteProgramme(uid: string, id: string) {
+  deleteDoc(doc(userCollection(uid, 'programmes'), id)).catch(reportWriteError)
+}
+
+// ── Workouts (completed sessions) ───────────────────────────────────
+
+/** Workouts for a programme or a client, newest first. */
+export function useWorkouts(by: { programmeId: string } | { clientId: string } | null) {
+  const spec: QuerySpec = !by ? { whereField: 'programmeId', whereValue: '__none__' } : 'programmeId' in by ? { whereField: 'programmeId', whereValue: by.programmeId } : { whereField: 'clientId', whereValue: by.clientId }
+  const live = useLiveCollection<Workout>('workouts', spec)
+  const data = useMemo(() => [...live.data].sort((a, b) => b.startedAt - a.startedAt), [live.data])
+  return { ...live, data }
+}
+
+export function saveWorkout(uid: string, workout: Omit<Workout, 'id'>): string {
+  const ref = doc(userCollection(uid, 'workouts'))
+  setDoc(ref, workout).catch(reportWriteError)
+  return ref.id
+}
+
+export function deleteWorkout(uid: string, id: string) {
+  deleteDoc(doc(userCollection(uid, 'workouts'), id)).catch(reportWriteError)
 }
