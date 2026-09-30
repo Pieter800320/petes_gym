@@ -176,7 +176,9 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   /** Edit waiting for the autosave timer; written immediately if the screen closes first. */
   const unsaved = useRef<Programme | null>(null)
-  const chatEnd = useRef<HTMLDivElement | null>(null)
+  const chatLog = useRef<HTMLDivElement | null>(null)
+  /** Whether the chat is scrolled to the latest message; reading further up stops the auto-scroll. */
+  const following = useRef(true)
 
   const history = useMemo(() => parseHistory(chat), [chat])
   const display = useMemo(() => toDisplay(history), [history])
@@ -192,7 +194,9 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   useEffect(() => setCreateProgrammeId(stored.id), [stored.id])
 
   useEffect(() => {
-    chatEnd.current?.scrollIntoView({ block: 'end' })
+    // Scroll only the chat, never the page (scrollIntoView would move the page too).
+    const log = chatLog.current
+    if (log && following.current) log.scrollTop = log.scrollHeight
   }, [display.length, pending?.replyText, pending?.tools.length])
 
   // Leaving the screen: write any edit still waiting for the autosave timer.
@@ -242,6 +246,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   }
 
   async function send(text: string) {
+    following.current = true
     const userText = text.trim()
     if ((!userText && !attachments.length) || busy) return
     const before = programme
@@ -321,7 +326,15 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
         <button type="button" className="icon-btn" aria-label="Quick note" onClick={() => openNote({ clientId: programme.clientId })}><IconPen /></button>
       </div>
 
-      <div className="chat-log" aria-live="polite">
+      <div
+        ref={chatLog}
+        className="chat-log"
+        aria-live="polite"
+        onScroll={(e) => {
+          const el = e.currentTarget
+          following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+        }}
+      >
         {display.map((m, i) => <Bubble key={i} item={m} />)}
         {pending && (
           <>
@@ -330,7 +343,6 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
             <Bubble item={{ role: 'assistant', text: pending.replyText || 'Thinking…' }} />
           </>
         )}
-        <div ref={chatEnd} />
       </div>
 
       <div className="chat-bottom">

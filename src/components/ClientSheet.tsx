@@ -71,7 +71,7 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
       )}
       <label className="field">
         <span className="label">Name</span>
-        <input id="client-name" className="input" value={draft.name} onChange={(e) => set('name', e.target.value)} autoFocus={!client} />
+        <input id="client-name" className="input" value={draft.name} onChange={(e) => set('name', e.target.value)} data-autofocus={client ? undefined : true} />
       </label>
       <div className="form-row">
         <label className="field">

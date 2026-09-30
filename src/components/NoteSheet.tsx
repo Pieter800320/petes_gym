@@ -70,7 +70,7 @@ function NoteForm({ note, defaultClientId, initialText, onDone }: { note?: Note;
         placeholder="What do you want to remember?"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        autoFocus
+        data-autofocus
         aria-label="Note"
       />
       {clientId && (

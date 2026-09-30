@@ -34,11 +34,21 @@ export function getTheme(): ThemeSetting {
 export function applyTheme(t: ThemeSetting) {
   if (t === 'system') document.documentElement.removeAttribute('data-theme')
   else document.documentElement.setAttribute('data-theme', t)
+  // The phone's status bar takes the page colour, so Paper doesn't sit under a black bar.
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim()
+  if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg)
 }
 
 export function useTheme(): [ThemeSetting, (t: ThemeSetting) => void] {
   const [theme, setThemeState] = useState<ThemeSetting>(getTheme)
-  useEffect(() => applyTheme(theme), [theme])
+  useEffect(() => {
+    applyTheme(theme)
+    // Follow the phone switching between light and dark (re-read: another screen may have changed it).
+    const media = window.matchMedia('(prefers-color-scheme: light)')
+    const onChange = () => applyTheme(getTheme())
+    media.addEventListener('change', onChange)
+    return () => media.removeEventListener('change', onChange)
+  }, [theme])
   return [
     theme,
     (t) => {

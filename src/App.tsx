@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { NavLink, Navigate, Route, Routes, useMatch } from 'react-router-dom'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { NavLink, Navigate, Route, Routes, useLocation, useMatch, useNavigationType } from 'react-router-dom'
 import { useAuth } from './auth/useAuth'
 import { isFirebaseConfigured } from './firebase'
 import { NoteSheet } from './components/NoteSheet'
@@ -36,6 +36,28 @@ export default function App() {
   return <Shell />
 }
 
+/** New pages open at the top; Back returns to where you were on the page you left. */
+function useScrollMemory() {
+  const location = useLocation()
+  const navType = useNavigationType()
+  const positions = useRef(new Map<string, number>())
+  useLayoutEffect(() => {
+    const key = location.key
+    const map = positions.current
+    const saved = navType === 'POP' ? map.get(key) : undefined
+    window.scrollTo(0, saved ?? 0)
+    // Lists fill from the offline cache a moment later; try once more when they have.
+    const frame = saved ? requestAnimationFrame(() => window.scrollTo(0, saved)) : 0
+    // Recorded while scrolling: by the time the next page renders, this one's offset is gone.
+    const onScroll = () => map.set(key, window.scrollY)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [location.key, navType])
+}
+
 function Shell() {
   const [note, setNote] = useState<NoteRequest | null>(null)
   // Quick notes default to the client whose page (or programme) is open.
@@ -46,6 +68,7 @@ function Shell() {
   const pageClient = clientMatch?.params.id ?? openProgramme?.clientId ?? null
 
   useEffect(() => onOpenNote(setNote), [])
+  useScrollMemory()
 
   return (
     <div className="shell">

@@ -24,7 +24,7 @@ function PickerBody({ onPick }: { onPick: (e: Exercise) => void }) {
     <div className="library">
       <div className="search-box">
         <span className="search-icon" aria-hidden="true"><IconSearch /></span>
-        <input id="picker-search" className="input search" style={{ paddingRight: 'var(--space-3)' }} placeholder="Search exercises" value={text} onChange={(e) => setText(e.target.value)} autoFocus aria-label="Search exercises" />
+        <input id="picker-search" className="input search" style={{ paddingRight: 'var(--space-3)' }} placeholder="Search exercises" value={text} onChange={(e) => setText(e.target.value)} data-autofocus aria-label="Search exercises" />
       </div>
       <div className="list">
         {results.map((e) => (

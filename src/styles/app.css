@@ -18,6 +18,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
+/* An app, not a web page: no pull-to-refresh or bounce revealing the browser behind. */
+html { overscroll-behavior-y: none; }
+/* Long-press on a button doesn't select its text or pop the link menu; no double-tap zoom delay. */
+button, a, .nav, .dial-dock, .day-picker { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+/* Quick press feedback on every tappable line. */
+.line-link, .leader-link, .note-line, .session-line, .text-link, .btn-outline, .btn-ghost, .chip, .paper-day { transition: opacity 0.12s var(--ease-standard); }
+.line-link:active, .leader-link:active, .note-line:active, .text-link:active, .btn-outline:active, .btn-ghost:active, .chip:active, .paper-day:active { opacity: 0.6; }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: default; }
@@ -78,7 +85,7 @@ svg { flex: none; }
   :root { --dial-bottom: var(--space-4); }
   .shell { flex-direction: row; }
   .nav {
-    position: sticky; top: 0; height: 100vh; width: var(--rail-width); flex: none;
+    position: sticky; top: 0; height: 100vh; height: 100dvh; width: var(--rail-width); flex: none;
     display: flex; flex-direction: column; gap: var(--space-1);
     padding: var(--space-5) var(--space-3);
     border-top: 0; border-right: 1px solid var(--color-border);
@@ -332,15 +339,15 @@ svg { flex: none; }
 /* ── Create: the chat ─────────────────────────────────────────────── */
 .chat-screen {
   display: flex; flex-direction: column; gap: var(--space-2);
-  height: calc(100dvh - var(--nav-height) - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px) - var(--space-3));
+  height: calc(100dvh - var(--nav-space, var(--nav-height)) - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px) - var(--space-3));
   min-height: 420px;
 }
-.shell-main:has(.chat-screen) { padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px)); }
+.shell-main:has(.chat-screen) { padding-bottom: calc(var(--nav-space, var(--nav-height)) + env(safe-area-inset-bottom, 0px)); }
 .chat-head { display: flex; align-items: center; gap: 4px; margin: 0 -10px; padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
 .chat-head-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .chat-head-title .display { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-head-title .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chat-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: var(--space-3) 2px; }
+.chat-log { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 18px; padding: var(--space-3) 2px; }
 .msg-user { align-self: flex-end; max-width: 82%; padding: 12px 16px; border-radius: 20px 20px 6px 20px; background: var(--color-text); color: var(--color-bg); font-size: 15px; line-height: 1.45; }
 .msg-claude { display: flex; flex-direction: column; gap: 8px; max-width: 94%; font-size: 15px; line-height: 1.55; }
 .msg-user p, .msg-claude p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -426,18 +433,21 @@ svg { flex: none; }
 /* ── Sheets (bottom on phone, centred dialog on desktop) ─────────── */
 .sheet-overlay { position: fixed; inset: 0; z-index: 99; background: var(--color-scrim); opacity: 0; transition: opacity 0.3s var(--ease-standard); }
 .sheet-overlay.visible { opacity: 1; }
+.sheet-overlay.dragging { transition: none; }
 .sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
-  max-height: 92vh; display: flex; flex-direction: column;
+  max-height: 92vh; max-height: 92dvh; display: flex; flex-direction: column;
   background: var(--color-bg); color: var(--color-text);
   border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-  transform: translateY(100%); transition: transform 0.3s var(--ease-standard);
+  transform: translateY(100%); transition: transform 0.3s var(--ease-sheet);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .sheet.open { transform: translateY(0); }
 .sheet.dragging { transition: none; }
-.sheet.tall { height: 94vh; }
-.sheet-handle { flex: none; height: 30px; display: grid; place-items: center; touch-action: none; cursor: grab; }
+.sheet.tall { height: 94vh; height: 94dvh; }
+/* Handle + title row: drag either down to close (Sheet.tsx). */
+.sheet-grip { flex: none; touch-action: none; cursor: grab; }
+.sheet-handle { height: 30px; display: grid; place-items: center; }
 .sheet-handle::before { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--color-border); }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: 0 var(--gutter) var(--space-2); }
 .sheet-head h2 { font-size: 24px; }
@@ -446,6 +456,12 @@ svg { flex: none; }
 .sheet-open body { overflow: hidden; }
 .sheet-open .nav, .sheet-open .dial-dock { visibility: hidden; }
 @media (min-width: 900px) { .sheet-open .nav { visibility: visible; } }
+/* Typing on a phone: the keyboard takes the bottom of the screen, so the nav and round button
+   step aside and the chat composer sits right on top of the keyboard. */
+@media (max-width: 899px) {
+  :root:has(:is(textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"])):focus) { --nav-space: 0px; }
+  :root:has(:is(textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"])):focus) :is(.nav, .dial-dock) { visibility: hidden; }
+}
 .sheet-footer {
   position: sticky; bottom: calc(-1 * var(--space-4));
   display: flex; flex-direction: column; gap: 2px;
@@ -454,6 +470,7 @@ svg { flex: none; }
   background: var(--color-bg); border-top: 1px solid var(--color-border);
 }
 @media (min-width: 900px) {
+  .sheet-grip { touch-action: auto; cursor: default; }
   .sheet { left: 50%; right: auto; bottom: auto; top: 50%; width: min(560px, 92vw); border-radius: var(--radius-sheet); transform: translate(-50%, -46%); opacity: 0; transition: transform 0.25s var(--ease-standard), opacity 0.25s var(--ease-standard); }
   .sheet.open { transform: translate(-50%, -50%); opacity: 1; }
   .sheet.tall { height: 90vh; width: min(720px, 94vw); }

@@ -75,7 +75,7 @@ function TrainProgramme({ stored }: { stored: Programme }) {
   const index = Math.min(selected ?? (runningIndex >= 0 ? runningIndex : upNext), programme.sessions.length - 1)
   const session = programme.sessions[index]
   const swipe = useRef<{ x: number; y: number } | null>(null)
-  const now = useNow(Boolean(running))
+  useWakeLock(Boolean(running))
 
   // During a session, exercises changed since Start show their new numbers in the accent colour.
   const changed = useMemo(() => {
@@ -173,7 +173,7 @@ function TrainProgramme({ stored }: { stored: Programme }) {
       )}
 
       {running ? (
-        <Dial label="FINISH" time={formatClock((now - running.startedAt) / 1000)} onClick={finish} ariaLabel="Finish session" />
+        <FinishDial startedAt={running.startedAt} onFinish={finish} />
       ) : (
         <Dial
           label="START"
@@ -189,14 +189,18 @@ function TrainProgramme({ stored }: { stored: Programme }) {
   )
 }
 
-/** Current time, ticking every second while `on` (the session clock). Keeps the screen awake too. */
-function useNow(on: boolean): number {
+/** The running session clock. Ticks on its own so the day list doesn't redraw every second. */
+function FinishDial({ startedAt, onFinish }: { startedAt: number; onFinish: () => void }) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    if (!on) return
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
-  }, [on])
+  }, [])
+  return <Dial label="FINISH" time={formatClock((now - startedAt) / 1000)} onClick={onFinish} ariaLabel="Finish session" />
+}
+
+/** Keeps the screen awake while a session runs. */
+function useWakeLock(on: boolean) {
   useEffect(() => {
     if (!on) return
     let lock: WakeLockSentinel | null = null
@@ -220,5 +224,4 @@ function useNow(on: boolean): number {
       lock?.release().catch(() => undefined)
     }
   }, [on])
-  return now
 }
