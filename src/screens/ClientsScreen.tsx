@@ -109,6 +109,8 @@ export function ClientsScreen() {
         </div>
       )}
 
+      <Link to="/import" className="btn-ghost" style={{ textDecoration: 'none' }}>Import old programmes</Link>
+
       {(archivedCount > 0 || showArchived) && (
         <button type="button" className="btn-ghost" onClick={() => setShowArchived(!showArchived)}>
           {showArchived ? 'Show active clients' : `Show archived (${archivedCount})`}

@@ -200,10 +200,11 @@ export function useProgramme(id: string | undefined) {
   return state.forId === id ? state : { data: null, loading: true }
 }
 
-export function createProgramme(uid: string, draft: ProgrammeDraft): string {
+/** createdAt can be set for imported programmes, so history sorts by the original file's date. */
+export function createProgramme(uid: string, draft: ProgrammeDraft, createdAt?: number): string {
   const ref = doc(userCollection(uid, 'programmes'))
   const now = Date.now()
-  setDoc(ref, { ...encodeProgramme(draft), createdAt: now, updatedAt: now }).catch(reportWriteError)
+  setDoc(ref, { ...encodeProgramme(draft), createdAt: createdAt ?? now, updatedAt: createdAt ?? now }).catch(reportWriteError)
   return ref.id
 }
 

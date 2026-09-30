@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PlaybookSheet } from './PlaybookSheet'
 import { Sheet } from './Sheet'
 import { toast } from './toast'
 import { useAuth } from '../auth/useAuth'
@@ -23,6 +24,7 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
   const [theme, setTheme] = useTheme()
   const [key, setKey] = useState(getApiKey)
   const [showKey, setShowKey] = useState(false)
+  const [playbookOpen, setPlaybookOpen] = useState(false)
   const savedKey = getApiKey()
 
   return (
@@ -69,6 +71,17 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
         >
           Save key
         </button>
+      </div>
+
+      <div className="field">
+        <span className="label">Claude</span>
+        <button type="button" className="row-link" onClick={() => setPlaybookOpen(true)}>
+          <div className="grow">
+            <div className="title">Coach Playbook</div>
+            <div className="meta">The standards Claude follows for every programme</div>
+          </div>
+        </button>
+        <PlaybookSheet open={playbookOpen} onClose={() => setPlaybookOpen(false)} />
       </div>
 
       <div className="field">

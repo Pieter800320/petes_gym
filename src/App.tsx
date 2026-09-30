@@ -9,6 +9,7 @@ import { ClientScreen } from './screens/ClientScreen'
 import { ClientsScreen } from './screens/ClientsScreen'
 import { CreateScreen } from './screens/CreateScreen'
 import { LoadingScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
+import { ImportScreen } from './screens/ImportScreen'
 import { LiveSessionScreen } from './screens/LiveSessionScreen'
 import { NotesScreen } from './screens/NotesScreen'
 import { ProgrammeScreen } from './screens/ProgrammeScreen'
@@ -61,6 +62,7 @@ function Shell() {
           <Route path="/clients" element={<ClientsScreen />} />
           <Route path="/clients/:id" element={<ClientScreen />} />
           <Route path="/notes" element={<NotesScreen />} />
+          <Route path="/import" element={<ImportScreen />} />
           <Route path="*" element={<Navigate to="/train" replace />} />
         </Routes>
       </main>
