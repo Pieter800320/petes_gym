@@ -14,8 +14,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // New builds install silently and take over on the next app launch.
-      registerType: 'autoUpdate',
+      // New builds wait until Pete taps Reload (UpdateBanner), so a running app never loses the
+      // lazily loaded files it was built with.
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: "Pete's Gym",

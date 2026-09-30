@@ -5,6 +5,7 @@ import { isFirebaseConfigured } from './firebase'
 import { IconClients, IconCreate, IconPlus, IconTrain } from './components/Icons'
 import { NoteSheet } from './components/NoteSheet'
 import { Snackbar } from './components/Snackbar'
+import { UpdateBanner } from './components/UpdateBanner'
 import { ClientScreen } from './screens/ClientScreen'
 import { ClientsScreen } from './screens/ClientsScreen'
 import { CreateScreen } from './screens/CreateScreen'
@@ -78,6 +79,7 @@ function Shell() {
       )}
       <NoteSheet open={noteOpen} onClose={() => setNoteOpen(false)} defaultClientId={clientMatch?.params.id ?? null} />
       <Snackbar />
+      <UpdateBanner />
     </div>
   )
 }

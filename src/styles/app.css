@@ -746,3 +746,15 @@ a { color: var(--color-accent-2); }
   font-size: var(--type-sm); font-weight: 600;
 }
 .filter-btn.on { background: var(--color-accent-wash); border-color: var(--color-accent); color: var(--color-text); }
+
+/* ── Update banner ────────────────────────────────────────────────── */
+.update-banner {
+  position: fixed; left: var(--space-3); right: var(--space-3); top: calc(env(safe-area-inset-top, 0px) + var(--space-2));
+  z-index: 150;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background: var(--color-surface); border: 1px solid var(--color-accent); border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  font-size: var(--type-sm); font-weight: 500;
+}
+@media (min-width: 900px) { .update-banner { left: auto; width: 420px; } }
