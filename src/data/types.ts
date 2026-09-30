@@ -64,8 +64,15 @@ export interface Programme {
   progression: ProgressionBlock | null
   /** Programme this one was progressed from (lineage). */
   parentId: string | null
+  /** Cached German translations of client-facing text (see claude/translate.ts). */
+  translationsDe?: TranslationPair[]
   createdAt: Millis
   updatedAt: Millis
+}
+
+export interface TranslationPair {
+  src: string
+  de: string
 }
 
 export interface ProgrammeSession {

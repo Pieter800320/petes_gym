@@ -22,7 +22,7 @@ import {
 } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
-import type { Client, ClientDraft, Note, Programme, ProgrammeDraft, Workout } from './types'
+import type { Client, ClientDraft, Note, Programme, ProgrammeDraft, ProgressionBlock, Workout } from './types'
 
 type WithoutId<T> = Omit<T, 'id'>
 
@@ -141,10 +141,41 @@ export function deleteNote(uid: string, id: string) {
 
 // ── Programmes ──────────────────────────────────────────────────────
 
+/*
+ * Firestore cannot store an array directly inside an array, so progression-table rows
+ * (string[][]) are stored as [{ cells: [...] }] and converted back when read.
+ */
+type StoredBlock = Omit<ProgressionBlock, 'rows'> & { rows: { cells: string[] }[] }
+
+function encodeBlock(b: ProgressionBlock): StoredBlock {
+  return { ...b, rows: b.rows.map((cells) => ({ cells })) }
+}
+
+function decodeBlock(b: StoredBlock | ProgressionBlock): ProgressionBlock {
+  return { ...b, rows: b.rows.map((r) => (Array.isArray(r) ? r : r.cells)) }
+}
+
+function encodeProgramme<T extends Partial<ProgrammeDraft>>(p: T) {
+  return {
+    ...p,
+    ...(p.progression !== undefined ? { progression: p.progression ? encodeBlock(p.progression) : null } : {}),
+    ...(p.sessions ? { sessions: p.sessions.map((s) => ({ ...s, progressionBlocks: s.progressionBlocks.map(encodeBlock) })) } : {}),
+  }
+}
+
+function decodeProgramme(raw: WithoutId<Programme>, id: string): Programme {
+  return {
+    ...raw,
+    id,
+    progression: raw.progression ? decodeBlock(raw.progression) : null,
+    sessions: raw.sessions.map((s) => ({ ...s, progressionBlocks: s.progressionBlocks.map(decodeBlock) })),
+  }
+}
+
 /** clientId: one client's programmes, or 'all'. Sorted newest first on the device. */
 export function useProgrammes(clientId: string | 'all') {
   const live = useLiveCollection<Programme>('programmes', clientId === 'all' ? {} : { whereField: 'clientId', whereValue: clientId })
-  const data = useMemo(() => [...live.data].sort((a, b) => b.updatedAt - a.updatedAt), [live.data])
+  const data = useMemo(() => live.data.map((p) => decodeProgramme(p, p.id)).sort((a, b) => b.updatedAt - a.updatedAt), [live.data])
   return { ...live, data }
 }
 
@@ -157,7 +188,7 @@ export function useProgramme(id: string | undefined) {
     if (!user || !id) return
     return onSnapshot(
       doc(userCollection(user.uid, 'programmes'), id),
-      (snap) => setState({ data: snap.exists() ? ({ ...(snap.data() as WithoutId<Programme>), id: snap.id }) : null, loading: false, forId: id }),
+      (snap) => setState({ data: snap.exists() ? decodeProgramme(snap.data() as WithoutId<Programme>, snap.id) : null, loading: false, forId: id }),
       (err) => {
         console.error(err)
         setState({ data: null, loading: false, forId: id })
@@ -172,18 +203,18 @@ export function useProgramme(id: string | undefined) {
 export function createProgramme(uid: string, draft: ProgrammeDraft): string {
   const ref = doc(userCollection(uid, 'programmes'))
   const now = Date.now()
-  setDoc(ref, { ...draft, createdAt: now, updatedAt: now }).catch(reportWriteError)
+  setDoc(ref, { ...encodeProgramme(draft), createdAt: now, updatedAt: now }).catch(reportWriteError)
   return ref.id
 }
 
 /** Writes the whole programme (sessions are nested, so partial updates would clobber anyway). */
 export function saveProgramme(uid: string, programme: Programme) {
   const { id, ...rest } = programme
-  setDoc(doc(userCollection(uid, 'programmes'), id), { ...rest, updatedAt: Date.now() }).catch(reportWriteError)
+  setDoc(doc(userCollection(uid, 'programmes'), id), { ...encodeProgramme(rest), updatedAt: Date.now() }).catch(reportWriteError)
 }
 
 export function updateProgrammeFields(uid: string, id: string, patch: Partial<ProgrammeDraft>) {
-  updateDoc(doc(userCollection(uid, 'programmes'), id), { ...patch, updatedAt: Date.now() }).catch(reportWriteError)
+  updateDoc(doc(userCollection(uid, 'programmes'), id), { ...encodeProgramme(patch), updatedAt: Date.now() }).catch(reportWriteError)
 }
 
 export function deleteProgramme(uid: string, id: string) {

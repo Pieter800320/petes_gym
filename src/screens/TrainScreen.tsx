@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { ExportSheet } from '../components/ExportSheet'
 import { SessionView } from '../components/ProgrammeView'
 import { Sheet } from '../components/Sheet'
 import { useAuth } from '../auth/useAuth'
@@ -83,6 +84,8 @@ export function TrainScreen() {
 
 function TrainProgramme({ programme }: { programme: Programme }) {
   const { user } = useAuth()
+  const { data: clients } = useClients()
+  const [exportOpen, setExportOpen] = useState(false)
   const navigate = useNavigate()
   const activeWorkout = useActiveWorkout()
   const { data: workouts, loading } = useWorkouts({ programmeId: programme.id })
@@ -136,8 +139,10 @@ function TrainProgramme({ programme }: { programme: Programme }) {
             Start session
           </button>
         )}
-        <Link to={`/programmes/${programme.id}`} className="btn-ghost" style={{ textDecoration: 'none' }}>Programme details & edit</Link>
+        <Link to={`/programmes/${programme.id}`} className="btn-ghost" style={{ textDecoration: 'none' }}>Details & edit</Link>
+        <button type="button" className="btn-ghost" onClick={() => setExportOpen(true)}>Export</button>
       </div>
+      <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} programme={programme} client={clients.find((c) => c.id === programme.clientId)} />
     </>
   )
 }

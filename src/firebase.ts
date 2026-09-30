@@ -23,6 +23,8 @@ if (isFirebaseConfigured) {
   // tab stay open at the same time without fighting over the cache.
   db = initializeFirestore(app, {
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    // Optional fields left undefined (e.g. from Claude output) are skipped instead of failing the write.
+    ignoreUndefinedProperties: true,
   })
 }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
+import { ExportSheet } from '../components/ExportSheet'
 import { IconBack } from '../components/Icons'
 import { MetaEditor, SessionEditor } from '../components/ProgrammeEditor'
 import { ProgressionBlockView, SessionView } from '../components/ProgrammeView'
@@ -46,6 +47,7 @@ function ProgrammeDetail({ programme }: { programme: Programme }) {
   const [sessionId, setSessionId] = useState(programme.sessions[0]?.id ?? '')
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
 
   const client = clients.find((c) => c.id === programme.clientId)
   const shown = draft ?? programme
@@ -98,6 +100,7 @@ function ProgrammeDetail({ programme }: { programme: Programme }) {
             Train
           </button>
           <button type="button" className="btn-acc" onClick={() => setDraft(structuredClone(programme))}>Edit</button>
+          <button type="button" className="btn-acc" onClick={() => setExportOpen(true)}>Export</button>
           <button type="button" className="btn-acc" onClick={() => navigate(`/create/${programme.id}`)}>Open in Create</button>
           <button type="button" className="btn-ghost" onClick={() => setMoreOpen(true)}>More</button>
         </div>
@@ -165,6 +168,8 @@ function ProgrammeDetail({ programme }: { programme: Programme }) {
           <button type="button" className="btn-cta btn-block" style={{ marginTop: 'var(--space-3)' }} onClick={() => setDetailsOpen(false)}>Done</button>
         </Sheet>
       )}
+
+      <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} programme={programme} client={client} />
 
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Programme">
         <div className="list">
