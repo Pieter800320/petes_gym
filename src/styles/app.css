@@ -758,3 +758,5 @@ a { color: var(--color-accent-2); }
   font-size: var(--type-sm); font-weight: 500;
 }
 @media (min-width: 900px) { .update-banner { left: auto; width: 420px; } }
+
+.profile-diff { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); font-size: var(--type-sm); }

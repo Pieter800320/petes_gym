@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ClientSheet } from '../components/ClientSheet'
 import { NoteSheet } from '../components/NoteSheet'
 import { IconBack, IconEdit } from '../components/Icons'
+import { ProfileLinkButton } from '../components/ProfileLinkButton'
 import { NoteCard } from '../components/NoteCard'
 import { Sheet } from '../components/Sheet'
 import { useAuth } from '../auth/useAuth'
@@ -81,7 +82,10 @@ export function ClientScreen() {
         <p className="muted" style={{ margin: 0 }}>No notes yet. Use the + button anywhere in the app to jot one down.</p>
       )}
 
-      <div className="section-title"><span className="label">Profile</span></div>
+      <div className="section-title">
+        <span className="label">Profile</span>
+        {!client.isSelf && <ProfileLinkButton firstName={client.name.split(/s+/)[0]} className="btn-ghost" />}
+      </div>
       {details.length ? (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {details.map((f) => (
@@ -95,6 +99,15 @@ export function ClientScreen() {
         <button type="button" className="empty" onClick={() => setEditing(true)} style={{ background: 'none' }}>
           <p>Add goals, injuries, equipment and background. Claude reads these when building programmes.</p>
         </button>
+      )}
+
+      {client.questionnaire && (
+        <details className="card">
+          <summary className="label" style={{ cursor: 'pointer' }}>
+            Questionnaire answers{client.questionnaireDate ? ` · ${client.questionnaireDate}` : ''}
+          </summary>
+          <p className="prose" style={{ marginTop: 'var(--space-2)', fontSize: 'var(--type-sm)' }}>{client.questionnaire}</p>
+        </details>
       )}
 
       <div className="section-title">

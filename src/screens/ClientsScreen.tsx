@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ClientSheet } from '../components/ClientSheet'
 import { SettingsSheet } from '../components/SettingsSheet'
 import { IconNote, IconSearch, IconSettings } from '../components/Icons'
+import { ProfileLinkButton } from '../components/ProfileLinkButton'
 import { useClients, useNotes } from '../data/store'
 import type { Client } from '../data/types'
 import { initials } from '../util/initials'
@@ -56,6 +57,11 @@ export function ClientsScreen() {
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search clients"
         />
+      </div>
+
+      <div className="toolbar">
+        <ProfileLinkButton />
+        <Link to="/import-profiles" className="btn-ghost" style={{ textDecoration: 'none' }}>Import client profiles</Link>
       </div>
 
       <div className="list">

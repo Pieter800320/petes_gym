@@ -127,6 +127,7 @@ function clientDossier(client: Client | undefined, notes: Note[]): string {
     client.sessionLength && `Session length: ${client.sessionLength}`,
     client.equipment && `Equipment & environment: ${client.equipment}`,
     client.background && `Background: ${client.background}`,
+    client.questionnaire && `Fitness Profile questionnaire (${client.questionnaireDate ?? 'undated'}):\n${client.questionnaire}`,
   ].filter(Boolean)
   const noteLines = notes.slice(0, 30).map((n) => `- ${new Date(n.createdAt).toISOString().slice(0, 10)}: ${n.text}`)
   return `${fields.join('\n')}${noteLines.length ? `\nPete's notes on this client (newest first):\n${noteLines.join('\n')}` : ''}`

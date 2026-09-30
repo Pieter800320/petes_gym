@@ -13,6 +13,7 @@ import { LoadingScreen, NotConfiguredScreen, SignInScreen } from './screens/Gate
 import { ImportScreen } from './screens/ImportScreen'
 import { LiveSessionScreen } from './screens/LiveSessionScreen'
 import { NotesScreen } from './screens/NotesScreen'
+import { ProfileImportScreen } from './screens/ProfileImportScreen'
 import { ProgrammeScreen } from './screens/ProgrammeScreen'
 import { TrainScreen } from './screens/TrainScreen'
 import { useTheme } from './settings'
@@ -68,6 +69,7 @@ function Shell() {
           <Route path="/clients/:id" element={<ClientScreen />} />
           <Route path="/notes" element={<NotesScreen />} />
           <Route path="/import" element={<ImportScreen />} />
+          <Route path="/import-profiles" element={<ProfileImportScreen />} />
           <Route path="*" element={<Navigate to="/train" replace />} />
         </Routes>
       </main>
