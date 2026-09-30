@@ -114,8 +114,6 @@ svg { flex: none; }
 .dial-dock {
   position: fixed; left: 0; right: 0; bottom: var(--dial-bottom); z-index: 20;
   display: flex; justify-content: center;
-  padding-top: 28px;
-  background: linear-gradient(to bottom, transparent, var(--color-bg) 45%);
   pointer-events: none;
 }
 .dial {
@@ -123,7 +121,8 @@ svg { flex: none; }
   width: var(--dial-size); height: var(--dial-size); border-radius: 50%; border: 0;
   background: var(--color-accent); color: var(--color-on-accent);
   font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 0.12em;
-  box-shadow: 0 10px 24px -10px var(--color-accent-shadow);
+  /* A small round shadow directly under the button, nothing sideways. */
+  box-shadow: 0 6px 14px -4px var(--color-accent-shadow);
   transition: transform 0.15s var(--ease-standard);
 }
 .dial:active { transform: scale(0.96); }
@@ -480,3 +479,10 @@ svg { flex: none; }
 }
 .update-banner .btn-cta { min-height: 40px; padding: 0 var(--space-3); }
 @media (min-width: 900px) { .update-banner { left: auto; width: 420px; } }
+
+/* ── Swipe a line left to reveal Delete ───────────────────────────── */
+.swipe-row { position: relative; overflow: hidden; }
+.swipe-actions { position: absolute; top: 0; right: 0; bottom: 1px; width: 96px; display: flex; }
+.swipe-delete { flex: 1; border: 0; background: var(--color-danger); color: #FFFFFF; font-weight: 600; font-size: 14px; }
+.swipe-front { position: relative; background: var(--color-bg); touch-action: pan-y; transition: transform 0.2s var(--ease-standard); }
+.swipe-front.dragging { transition: none; }

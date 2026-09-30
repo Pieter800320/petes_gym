@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 const ARM_MS = 3000
 
 /** Destructive button that needs a second tap within 3 s. Avoids a dialog for small deletes. */
-export function ConfirmButton({ onConfirm, children, className = 'btn-ghost danger', label }: { onConfirm: () => void; children: ReactNode; className?: string; label?: string }) {
+export function ConfirmButton({ onConfirm, children, className = 'btn-ghost danger', label, armedLabel = 'Tap again to delete' }: { onConfirm: () => void; children: ReactNode; className?: string; label?: string; armedLabel?: string }) {
   const [armed, setArmed] = useState(false)
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function ConfirmButton({ onConfirm, children, className = 'btn-ghost dang
         } else setArmed(true)
       }}
     >
-      {armed ? 'Tap again to delete' : children}
+      {armed ? armedLabel : children}
     </button>
   )
 }

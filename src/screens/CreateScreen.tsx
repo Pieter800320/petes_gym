@@ -5,6 +5,7 @@ import { openNote } from '../components/noteEvents'
 import { LibraryBrowser } from '../components/LibraryBrowser'
 import { ProgrammeSheet } from '../components/ProgrammeSheet'
 import { Sheet } from '../components/Sheet'
+import { SwipeRow } from '../components/SwipeRow'
 import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
@@ -56,6 +57,14 @@ function CreateHome() {
     if (!stay && last) navigate(`/create/${last}`, { replace: true })
   }, [stay, navigate])
 
+  function removeDraft(id: string) {
+    if (!user) return
+    // Drafts go to Recently deleted (bottom of the Clients tab) and keep their chat.
+    softDeleteProgramme(user.uid, id)
+    if (getCreateProgrammeId() === id) setCreateProgrammeId(null)
+    toast('Draft moved to Recently deleted')
+  }
+
   function start(client: Client) {
     if (!user) return
     const id = createProgramme(user.uid, blankProgramme(client.id, { frequency: client.frequency, sessionLength: client.sessionLength, goal: client.goals }))
@@ -73,16 +82,19 @@ function CreateHome() {
       <div className="section-label">In progress</div>
       <div className="lines">
         {drafts.map((p) => (
-          <Link key={p.id} to={`/create/${p.id}`} className="line-link">
-            <span className="grow">
-              <span className="line-title">{clientName(p.clientId)}</span>
-              <span className="line-meta">{p.title}</span>
-            </span>
-            <span className="mono muted small">{relativeDay(p.updatedAt)}</span>
-          </Link>
+          <SwipeRow key={p.id} onDelete={() => removeDraft(p.id)}>
+            <Link to={`/create/${p.id}`} className="line-link">
+              <span className="grow">
+                <span className="line-title">{clientName(p.clientId)}</span>
+                <span className="line-meta">{p.title}</span>
+              </span>
+              <span className="mono muted small">{relativeDay(p.updatedAt)}</span>
+            </Link>
+          </SwipeRow>
         ))}
         {!loading && !drafts.length && <p className="muted small">Nothing in progress. Tap NEW to start a programme.</p>}
       </div>
+      {drafts.length > 0 && <p className="muted small" style={{ margin: 0 }}>Swipe a draft to the left to delete it.</p>}
 
       <div className="section-label">Exercise library</div>
       <LibraryBrowser />

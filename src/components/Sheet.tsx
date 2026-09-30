@@ -51,7 +51,10 @@ export function Sheet({ open, onClose, title, action, tall = false, paper = fals
       }
     }
     const frame = requestAnimationFrame(() => setVisible(false))
-    const timer = setTimeout(() => setMounted(false), ANIMATION_MS)
+    const timer = setTimeout(() => {
+      setMounted(false)
+      setDragY(0)
+    }, ANIMATION_MS)
     return () => {
       cancelAnimationFrame(frame)
       clearTimeout(timer)
@@ -73,10 +76,12 @@ export function Sheet({ open, onClose, title, action, tall = false, paper = fals
 
   if (!mounted) return null
 
+  // Dismissing keeps the sheet where the finger let go and slides it down from there;
+  // snapping back to the top first is what made it jump.
   const endDrag = (dismiss: boolean) => {
     setDragStartY(null)
-    setDragY(0)
     if (dismiss) onClose()
+    else setDragY(0)
   }
 
   return createPortal(
@@ -87,7 +92,7 @@ export function Sheet({ open, onClose, title, action, tall = false, paper = fals
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        style={dragY > 0 ? { transform: `translateY(${dragY}px)` } : undefined}
+        style={dragY > 0 ? { transform: open ? `translateY(${dragY}px)` : 'translateY(100%)' } : undefined}
       >
         <div
           className="sheet-handle"
