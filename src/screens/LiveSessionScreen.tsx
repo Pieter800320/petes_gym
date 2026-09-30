@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
+import { PinnedNotes } from '../components/PinnedNotes'
 import { Sheet } from '../components/Sheet'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
@@ -103,6 +104,8 @@ function LiveSession({ active }: { active: ActiveWorkout }) {
         <div className="progress" aria-hidden="true"><i style={{ width: `${totalSets ? (doneSets / totalSets) * 100 : 0}%` }} /></div>
         <span className="muted">{doneSets} of {totalSets} sets done</span>
       </div>
+
+      <PinnedNotes clientId={active.clientId} />
 
       {entry ? (
         <div

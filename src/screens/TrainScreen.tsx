@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ExportSheet } from '../components/ExportSheet'
+import { PinnedNotes } from '../components/PinnedNotes'
 import { SessionView } from '../components/ProgrammeView'
 import { Sheet } from '../components/Sheet'
 import { useAuth } from '../auth/useAuth'
@@ -118,6 +119,8 @@ function TrainProgramme({ programme }: { programme: Programme }) {
           </button>
         ))}
       </div>
+
+      <PinnedNotes clientId={programme.clientId} />
 
       {index === upNext && <span className="tag accent" style={{ alignSelf: 'flex-start' }}>UP NEXT</span>}
 
