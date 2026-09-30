@@ -141,21 +141,23 @@ export interface Exercise {
 
 export type ProgrammeDraft = Omit<Programme, 'id' | 'createdAt' | 'updatedAt'>
 
-/** One logged set. load is free text so "BW", "20 kg", "red band" all work. */
+/** One logged set (older sessions only; sessions are now recorded from Start/Finish). */
 export interface SetLog {
   load: string
   reps: string
   done: boolean
 }
 
+/** One exercise as it was performed in a session. */
 export interface WorkoutEntry {
   rowId: string
   exerciseName: string
   prescription: string
+  /** Per-set logs from older versions of the app; empty for new sessions. */
   sets: SetLog[]
 }
 
-/** A completed training session, saved when "End session" is confirmed. */
+/** A completed training session, recorded when "Finish" is tapped. */
 export interface Workout {
   id: string
   programmeId: string
@@ -165,17 +167,26 @@ export interface Workout {
   startedAt: Millis
   endedAt: Millis
   durationSec: number
+  /** The session's exercises as they stood at Finish (including mid-session changes). */
   entries: WorkoutEntry[]
+  /** Mid-session changes, e.g. "Lat Pulldown: 3 × 10 → 4 × 10". */
+  changes?: string[]
   note: string
 }
 
-/** In-progress session, kept in localStorage so it survives reloads and app switches. */
+/** Snapshot of one exercise when the session started, to detect mid-session changes. */
+export interface RowSnapshot {
+  id: string
+  name: string
+  prescription: string
+  rest: string
+}
+
+/** Running session, kept in localStorage so the clock survives reloads and a locked phone. */
 export interface ActiveWorkout {
   programmeId: string
   clientId: string
   sessionId: string
   startedAt: Millis
-  /** Index of the exercise currently shown. */
-  position: number
-  entries: WorkoutEntry[]
+  baseline: RowSnapshot[]
 }

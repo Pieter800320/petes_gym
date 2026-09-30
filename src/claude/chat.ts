@@ -106,7 +106,8 @@ How to work:
 - Use exact library names (see the library index below). Search the library when unsure.
 - After editing, reply briefly: what you changed and why, one line per change. Ask a question only if you need an answer to continue.
 - The app highlights your edits and lets Pete undo them. Pete may edit the programme by hand between your replies; you'll be told what he changed.
-- Write chat replies in plain text with short paragraphs or "- " bullets. No markdown headings or tables.`
+- Write chat replies in plain text with short paragraphs or "- " bullets. No markdown headings or tables.
+- Everything the client sees (titles, focus, section names, cues, prescriptions, alternatives, goal, markers, progression tables) is plain language with no jargon or abbreviations; cues are 8 words or fewer. Coach terminology belongs in coach_notes and in your chat replies to Pete only.`
 
 export function buildSystem(playbook: string): Anthropic.Beta.BetaTextBlockParam[] {
   return [
@@ -150,12 +151,18 @@ export function clientHistoryText(current: Programme, programmes: Programme[], w
     ? workouts
         .slice(0, 25)
         .map((w) => {
-          const done = w.entries.filter((e) => e.sets.some((s) => s.done))
-          return `- ${new Date(w.startedAt).toISOString().slice(0, 10)} ${w.sessionTitle} (${Math.round(w.durationSec / 60)} min): ${done.map((e) => `${e.exerciseName} ${formatSets(e.sets.filter((s) => s.done))}`).join('; ')}${w.note ? ` — note: ${w.note}` : ''}`
+          const head = `- ${new Date(w.startedAt).toISOString().slice(0, 10)} ${w.sessionTitle} (${Math.round(w.durationSec / 60)} min)`
+          // Older sessions logged loads per set; newer ones record the session as performed plus changes.
+          const logged = w.entries.filter((e) => e.sets?.some((x) => x.done))
+          const body = logged.length
+            ? logged.map((e) => `${e.exerciseName} ${formatSets(e.sets.filter((x) => x.done))}`).join('; ')
+            : w.entries.map((e) => `${e.exerciseName} ${e.prescription}`).join('; ')
+          const changes = w.changes?.length ? ` | changed during session: ${w.changes.join('; ')}` : ''
+          return `${head}: ${body}${changes}${w.note ? ` | note: ${w.note}` : ''}`
         })
         .join('\n')
     : 'No logged sessions yet.'
-  return `Previous programmes:\n${progText}\n\nRecent training logs (newest first, load × reps):\n${logText}`
+  return `Previous programmes:\n${progText}\n\nCompleted sessions (newest first; recorded as performed, loads are not logged, changes made in the gym are listed):\n${logText}\nPete's client notes may mention loads.`
 }
 
 export interface TurnInput {

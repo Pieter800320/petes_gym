@@ -25,7 +25,10 @@ export interface ExportRow {
   /** False when the link is a YouTube search rather than a curated video. */
   hasVideo: boolean
   prescription: string
-  notes: string[]
+  /** Short cue shown in small grey text under the exercise name. */
+  cue: string
+  /** "Or: Box Step-Up", shown under the cue. */
+  alternative: string
   rest: string
 }
 
@@ -61,7 +64,7 @@ export interface ExportDoc {
   markersTitle: string
   markers: string[]
   blockProgression: ExportBlock | null
-  columnHeaders: [string, string, string, string]
+  columnHeaders: [string, string, string]
   alternativeLabel: string
   sessions: ExportSession[]
   fileBase: string
@@ -74,8 +77,8 @@ const LABELS = {
     frequency: 'Frequency',
     sessionLength: 'Session Length',
     markers: "How you'll know it's working",
-    headers: ['Exercise', 'Sets × Reps', 'Notes', 'Rest'] as [string, string, string, string],
-    alternative: 'Alternative',
+    headers: ['Exercise', 'Sets × Reps', 'Rest'] as [string, string, string],
+    alternative: 'Or',
     session: 'Session',
   },
   de: {
@@ -84,8 +87,8 @@ const LABELS = {
     frequency: 'Häufigkeit',
     sessionLength: 'Trainingsdauer',
     markers: 'Woran du merkst, dass es wirkt',
-    headers: ['Übung', 'Sätze × Wdh.', 'Hinweise', 'Pause'] as [string, string, string, string],
-    alternative: 'Alternative',
+    headers: ['Übung', 'Sätze × Wdh.', 'Pause'] as [string, string, string],
+    alternative: 'Oder',
     session: 'Einheit',
   },
 }
@@ -147,13 +150,13 @@ export function buildExportDoc(p: Programme, o: ExportOptions, t: (s: string) =>
             .map((r) => {
               const ex = findExercise(r.exerciseKey ?? r.name) ?? findExercise(r.name)
               const video = videoUrl(ex ?? { name: r.name })
-              const notes = [tr(r.notes), r.alternative.trim() ? `${L.alternative}: ${tr(r.alternative)}` : ''].filter(Boolean)
               return {
                 name: (r.superset.trim() ? `${r.superset.trim()} · ` : '') + r.name.trim(),
                 videoUrl: video.url,
                 hasVideo: !video.isSearch,
                 prescription: tr(r.prescription),
-                notes,
+                cue: tr(r.notes),
+                alternative: r.alternative.trim() ? `${L.alternative}: ${tr(r.alternative)}` : '',
                 rest: tr(r.rest) || '—',
               }
             }),

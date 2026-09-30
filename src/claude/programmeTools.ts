@@ -71,7 +71,7 @@ const rowSchema = {
     name: { type: 'string', description: 'Exact library name when the exercise is in the library.' },
     prescription: { type: 'string', description: 'e.g. "3–4 × 8–10", "3 × 8 /leg", "4 × 20s/40s", "30 min easy"' },
     rest: { type: 'string', description: 'e.g. "90s", "2 min", "—"' },
-    notes: { type: 'string', description: 'One client-facing cue, 15 words or fewer.' },
+    notes: { type: 'string', description: 'One plain-language cue for the client, 8 words or fewer.' },
     alternative: { type: 'string', description: 'Swap if equipment is busy or the lift is too technical; "" if none.' },
     superset: { type: 'string', description: 'Superset label like "A1"; "" if none.' },
   },

@@ -49,7 +49,7 @@ const STYLE = `
   thead th { text-align: left; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; padding: 0 10px 8px; border-bottom: 2px solid var(--ink); }
   tbody td { padding: 11px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
   tbody tr:nth-child(even) { background: var(--row-alt); }
-  tbody tr.group td { background: var(--paper); padding: 18px 10px 6px; border-bottom: 1px solid var(--rule-strong); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  tbody tr.group td { background: var(--paper); padding: 16px 10px 4px; border-bottom: 0; font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
   tbody tr.group td span { color: var(--ink-faint); margin-left: 8px; letter-spacing: 0.06em; }
   tbody tr.group-note td { background: var(--paper); padding-top: 4px; color: var(--ink-soft); font-size: 0.86rem; }
   td.ex { font-weight: 500; }
@@ -57,10 +57,9 @@ const STYLE = `
   td.ex a.search { color: var(--ink-faint); }
   td.sets, td.rest { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
   td.notes { color: var(--ink-soft); }
-  td.notes span { display: block; }
-  th:nth-child(1), td:nth-child(1) { width: 28%; }
-  th:nth-child(2), td:nth-child(2) { width: 16%; }
-  th:nth-child(4), td:nth-child(4) { width: 12%; }
+  td.ex .cue { display: block; margin-top: 2px; font-weight: 400; font-size: 0.84rem; color: var(--ink-soft); }
+  td.ex .alt { display: block; font-weight: 400; font-size: 0.78rem; color: var(--ink-faint); }
+  table.day-table td.sets, table.day-table td.rest, table.day-table th:nth-child(2), table.day-table th:nth-child(3) { width: 1%; white-space: nowrap; }
   .prog-block { margin-top: 22px; padding: 18px 20px; background: var(--teal-soft); border: 1px solid var(--teal); }
   .prog-block h3 { margin: 0 0 3px; font-size: 0.95rem; color: var(--teal); font-weight: 700; letter-spacing: 0.02em; }
   .prog-block p.lead { margin: 0 0 14px; font-size: 0.86rem; color: var(--ink-soft); }
@@ -86,7 +85,7 @@ function renderBlock(b: ExportBlock): string {
 }
 
 export function renderHtml(d: ExportDoc): string {
-  const [hEx, hSets, hNotes, hRest] = d.columnHeaders
+  const [hEx, hSets, hRest] = d.columnHeaders
   const sessions = d.sessions
     .map(
       (s) => `
@@ -97,20 +96,19 @@ export function renderHtml(d: ExportDoc): string {
     </div>
     ${s.focus ? `<p class="day-sub">${esc(s.focus)}</p>` : ''}
     <div class="table-wrap">
-      <table>
-        <thead><tr><th>${esc(hEx)}</th><th>${esc(hSets)}</th><th>${esc(hNotes)}</th><th>${esc(hRest)}</th></tr></thead>
+      <table class="day-table">
+        <thead><tr><th>${esc(hEx)}</th><th>${esc(hSets)}</th><th>${esc(hRest)}</th></tr></thead>
         <tbody>${s.groups
           .map(
             (g) =>
-              (g.title ? `<tr class="group"><td colspan="4">${esc(g.title)}${g.duration ? `<span>${esc(g.duration)}</span>` : ''}</td></tr>` : '') +
-              (g.note ? `<tr class="group-note"><td colspan="4">${esc(g.note)}</td></tr>` : '') +
+              (g.title ? `<tr class="group"><td colspan="3">${esc(g.title)}${g.duration ? `<span>${esc(g.duration)}</span>` : ''}</td></tr>` : '') +
+              (g.note ? `<tr class="group-note"><td colspan="3">${esc(g.note)}</td></tr>` : '') +
               g.rows
                 .map(
                   (r) => `
           <tr>
-            <td class="ex">${esc(r.name)}<a href="${esc(r.videoUrl)}" target="_blank" rel="noopener"${r.hasVideo ? '' : ' class="search"'}>▶</a></td>
+            <td class="ex">${esc(r.name)}<a href="${esc(r.videoUrl)}" target="_blank" rel="noopener"${r.hasVideo ? '' : ' class="search"'}>▶</a>${r.cue ? `<span class="cue">${esc(r.cue)}</span>` : ''}${r.alternative ? `<span class="alt">${esc(r.alternative)}</span>` : ''}</td>
             <td class="sets">${esc(r.prescription)}</td>
-            <td class="notes">${r.notes.map((n) => `<span>${esc(n)}</span>`).join('')}</td>
             <td class="rest">${esc(r.rest)}</td>
           </tr>`,
                 )

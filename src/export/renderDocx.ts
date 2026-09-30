@@ -36,7 +36,7 @@ const MONO_FONT = 'Consolas'
 const pt = (n: number) => n * 2
 
 /** Column widths in twentieths of a point for a 17 cm text block (≈ 9640 twips). */
-const DAY_COLUMNS = [2700, 1550, 4190, 1200]
+const DAY_COLUMNS = [6440, 1900, 1300]
 
 const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
 const line = (color: string, size = 4) => ({ style: BorderStyle.SINGLE, size, color })
@@ -133,11 +133,11 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
     )
     if (s.focus) children.push(para([text(s.focus, { color: SOFT, size: 10 })], 200))
 
-    const [hEx, hSets, hNotes, hRest] = d.columnHeaders
+    const [hEx, hSets, hRest] = d.columnHeaders
     const rows: TableRow[] = [
       new TableRow({
         tableHeader: true,
-        children: [hEx, hSets, hNotes, hRest].map((h, i) => cell([para([label(h)])], { borders: bottomOnly(INK, 12), width: DAY_COLUMNS[i] })),
+        children: [hEx, hSets, hRest].map((h, i) => cell([para([label(h)])], { borders: bottomOnly(INK, 12), width: DAY_COLUMNS[i] })),
       }),
     ]
     let stripe = false
@@ -146,15 +146,15 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
         rows.push(
           new TableRow({
             children: [
-              cell([para([label(g.title, ACCENT), ...(g.duration ? [new TextRun({ text: `   ${g.duration}`, font: BODY_FONT, size: pt(7.5), color: FAINT })] : [])])], {
-                span: 4,
-                borders: bottomOnly(FAINT),
+              cell([para([label(g.title), ...(g.duration ? [new TextRun({ text: `   ${g.duration}`, font: BODY_FONT, size: pt(7.5), color: FAINT })] : [])])], {
+                span: 3,
+                borders: noBorders,
               }),
             ],
           }),
         )
       }
-      if (g.note) rows.push(new TableRow({ children: [cell([para([text(g.note, { color: SOFT, size: 9.5 })])], { span: 4 })] }))
+      if (g.note) rows.push(new TableRow({ children: [cell([para([text(g.note, { color: SOFT, size: 9.5 })])], { span: 3 })] }))
       for (const r of g.rows) {
         const fill = stripe ? ROW_ALT : undefined
         stripe = !stripe
@@ -168,12 +168,13 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
                     text('  '),
                     new ExternalHyperlink({ link: r.videoUrl, children: [new TextRun({ text: '▶ Video', font: BODY_FONT, size: pt(8), color: r.hasVideo ? ACCENT : FAINT, underline: {} })] }),
                   ]),
+                  ...(r.cue ? [para([text(r.cue, { color: SOFT, size: 9 })])] : []),
+                  ...(r.alternative ? [para([text(r.alternative, { color: FAINT, size: 8.5 })])] : []),
                 ],
                 { fill, width: DAY_COLUMNS[0] },
               ),
               cell([para([text(r.prescription, { mono: true, size: 9.5 })])], { fill, width: DAY_COLUMNS[1] }),
-              cell(r.notes.length ? r.notes.map((n) => para([text(n, { color: SOFT, size: 9.5 })])) : [para([])], { fill, width: DAY_COLUMNS[2] }),
-              cell([para([text(r.rest, { mono: true, size: 9.5 })])], { fill, width: DAY_COLUMNS[3] }),
+              cell([para([text(r.rest, { mono: true, size: 9.5 })])], { fill, width: DAY_COLUMNS[2] }),
             ],
           }),
         )

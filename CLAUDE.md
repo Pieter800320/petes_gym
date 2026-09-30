@@ -9,10 +9,10 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.2.0. All five milestones built (2026-09-30):
+- **Version:** 0.3.0 (simple layout everywhere: `DayList` in Train, programme page, Create sheet). All five milestones built (2026-09-30):
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
-  - M2 Train: programmes (free-shaped), editor, Train tab with Up next, live session (stopwatch,
-    wake lock, per-set logging), client stats.
+  - M2 Train: one screen — day list (tap an exercise: sets/reps −/+, rest, swap, note), clock bar
+    (Start → clock, Finish → session recorded with mid-session changes; no per-set logging), stats.
   - M3 Export: HTML + Word in the Sophie house style, EN/DE (German via Claude, cached per programme).
   - M4 Create: Claude co-author (`src/claude/chat.ts`, tools in `programmeTools.ts`), highlights,
     undo, health strip, attachments, editable Coach Playbook (Settings).

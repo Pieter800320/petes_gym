@@ -1,28 +1,20 @@
 /*
- * The in-progress session lives in localStorage, not Firestore: it changes on every tap, must
- * survive reloads and a locked phone, and only becomes a Workout document when the session ends.
- * The stopwatch is derived from startedAt, so it keeps "running" even while the app is closed.
+ * The running session: Start sets the clock, Finish records the session. Nothing else is needed.
+ * It lives in localStorage (not Firestore) so the clock survives reloads and a locked phone;
+ * elapsed time is derived from startedAt, so it keeps "running" while the app is closed.
  */
 import { useSyncExternalStore } from 'react'
-import { defaultSetCount, sessionRows } from './programmeUtils'
+import { sessionRows } from './programmeUtils'
 import { saveWorkout } from './store'
-import type { ActiveWorkout, Programme, ProgrammeSession, SetLog, Workout, WorkoutEntry } from './types'
+import type { ActiveWorkout, ProgrammeSession, RowSnapshot, SetLog } from './types'
 
-const KEY = 'pg_active_workout_v1'
+const KEY = 'pg_active_workout_v2'
 const CHANGE_EVENT = 'pg:active-workout'
-
-function read(): ActiveWorkout | null {
-  try {
-    const raw = localStorage.getItem(KEY)
-    return raw ? (JSON.parse(raw) as ActiveWorkout) : null
-  } catch {
-    return null
-  }
-}
 
 // useSyncExternalStore needs a stable snapshot; cache the parsed value per raw string.
 let cachedRaw: string | null = null
 let cachedValue: ActiveWorkout | null = null
+
 function snapshot(): ActiveWorkout | null {
   let raw: string | null = null
   try {
@@ -32,7 +24,11 @@ function snapshot(): ActiveWorkout | null {
   }
   if (raw !== cachedRaw) {
     cachedRaw = raw
-    cachedValue = read()
+    try {
+      cachedValue = raw ? (JSON.parse(raw) as ActiveWorkout) : null
+    } catch {
+      cachedValue = null
+    }
   }
   return cachedValue
 }
@@ -60,26 +56,61 @@ export function useActiveWorkout(): ActiveWorkout | null {
   return useSyncExternalStore(subscribe, snapshot)
 }
 
-/**
- * Most recent logged sets for each row, looked up by row id first and exercise name second
- * (so history carries over when a row is recreated or the exercise appears in another programme).
- */
-export function lastSetsFinder(history: Workout[]) {
-  const byRow = new Map<string, SetLog[]>()
-  const byName = new Map<string, SetLog[]>()
-  // history is newest first; keep the first (newest) hit that has at least one completed set.
-  for (const w of history) {
-    for (const e of w.entries) {
-      const done = e.sets.filter((s) => s.done)
-      if (!done.length) continue
-      if (!byRow.has(e.rowId)) byRow.set(e.rowId, done)
-      const name = e.exerciseName.trim().toLowerCase()
-      if (!byName.has(name)) byName.set(name, done)
-    }
-  }
-  return (rowId: string, name: string): SetLog[] | null => byRow.get(rowId) ?? byName.get(name.trim().toLowerCase()) ?? null
+function snapshotRows(session: ProgrammeSession): RowSnapshot[] {
+  return sessionRows(session)
+    .filter((r) => r.name.trim())
+    .map((r) => ({ id: r.id, name: r.name, prescription: r.prescription, rest: r.rest }))
 }
 
+export function startWorkout(programmeId: string, clientId: string, session: ProgrammeSession) {
+  write({ programmeId, clientId, sessionId: session.id, startedAt: Date.now(), baseline: snapshotRows(session) })
+}
+
+export function cancelWorkout() {
+  write(null)
+}
+
+/** Human-readable changes between the start of the session and now. */
+export function describeSessionChanges(before: RowSnapshot[], after: RowSnapshot[]): string[] {
+  const lines: string[] = []
+  const old = new Map(before.map((r) => [r.id, r]))
+  for (const r of after) {
+    const prev = old.get(r.id)
+    if (!prev) {
+      lines.push(`Added ${r.name} (${r.prescription})`)
+      continue
+    }
+    if (prev.name !== r.name) lines.push(`Swapped ${prev.name} → ${r.name}`)
+    if (prev.prescription !== r.prescription) lines.push(`${r.name}: ${prev.prescription} → ${r.prescription}`)
+    if (prev.rest !== r.rest) lines.push(`${r.name}: rest ${prev.rest || '—'} → ${r.rest || '—'}`)
+  }
+  const now = new Set(after.map((r) => r.id))
+  for (const r of before) if (!now.has(r.id)) lines.push(`Removed ${r.name}`)
+  return lines
+}
+
+/** Records the session as it stands now (including mid-session changes) and stops the clock. */
+export function finishWorkout(uid: string, active: ActiveWorkout, session: ProgrammeSession | undefined): number {
+  const endedAt = Date.now()
+  const rows = session ? snapshotRows(session) : []
+  const durationSec = Math.round((endedAt - active.startedAt) / 1000)
+  saveWorkout(uid, {
+    programmeId: active.programmeId,
+    clientId: active.clientId,
+    sessionId: active.sessionId,
+    sessionTitle: session?.title ?? '',
+    startedAt: active.startedAt,
+    endedAt,
+    durationSec,
+    entries: rows.map((r) => ({ rowId: r.id, exerciseName: r.name, prescription: r.prescription, sets: [] })),
+    changes: describeSessionChanges(active.baseline ?? [], rows),
+    note: '',
+  })
+  write(null)
+  return durationSec
+}
+
+/** "20 kg × 10, 10, 8" for per-set logs recorded by older versions of the app. */
 export function formatSets(sets: SetLog[]): string {
   const loads = new Set(sets.map((s) => s.load.trim()))
   const reps = sets.map((s) => s.reps.trim() || '–').join(', ')
@@ -88,56 +119,4 @@ export function formatSets(sets: SetLog[]): string {
     return load ? `${load} × ${reps}` : reps
   }
   return sets.map((s) => `${s.load || '–'}×${s.reps || '–'}`).join(', ')
-}
-
-export function startWorkout(programme: Programme, session: ProgrammeSession, history: Workout[]): ActiveWorkout {
-  const lastSets = lastSetsFinder(history)
-  const entries: WorkoutEntry[] = sessionRows(session)
-    .filter((r) => r.name.trim())
-    .map((r) => {
-      const previous = lastSets(r.id, r.name)
-      const count = defaultSetCount(r)
-      // Pre-fill each set from last time, so logging an unchanged set is a single tap.
-      const sets: SetLog[] = Array.from({ length: count }, (_, i) => {
-        const p = previous?.[Math.min(i, previous.length - 1)]
-        return { load: p?.load ?? '', reps: p?.reps ?? '', done: false }
-      })
-      return { rowId: r.id, exerciseName: r.name, prescription: r.prescription, sets }
-    })
-  const w: ActiveWorkout = {
-    programmeId: programme.id,
-    clientId: programme.clientId,
-    sessionId: session.id,
-    startedAt: Date.now(),
-    position: 0,
-    entries,
-  }
-  write(w)
-  return w
-}
-
-export function updateActiveWorkout(update: (w: ActiveWorkout) => ActiveWorkout) {
-  const current = read()
-  if (current) write(update(current))
-}
-
-export function clearActiveWorkout() {
-  write(null)
-}
-
-/** Saves the running session as a Workout document and clears it from the device. */
-export function completeWorkout(uid: string, active: ActiveWorkout, sessionTitle: string, note: string) {
-  const endedAt = Date.now()
-  saveWorkout(uid, {
-    programmeId: active.programmeId,
-    clientId: active.clientId,
-    sessionId: active.sessionId,
-    sessionTitle,
-    startedAt: active.startedAt,
-    endedAt,
-    durationSec: Math.round((endedAt - active.startedAt) / 1000),
-    entries: active.entries,
-    note: note.trim(),
-  })
-  clearActiveWorkout()
 }

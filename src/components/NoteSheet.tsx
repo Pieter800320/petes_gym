@@ -12,22 +12,24 @@ interface NoteSheetProps {
   note?: Note
   /** Client to pre-select for a new note (e.g. the profile currently open). */
   defaultClientId?: string | null
+  /** Starting text for a new note, e.g. "Lat Pulldown: ". */
+  initialText?: string
 }
 
 /** Quick capture: reachable from every tab, works offline, file under General or a client. */
-export function NoteSheet({ open, onClose, note, defaultClientId = null }: NoteSheetProps) {
+export function NoteSheet({ open, onClose, note, defaultClientId = null, initialText = '' }: NoteSheetProps) {
   return (
     <Sheet open={open} onClose={onClose} title={note ? 'Edit note' : 'Quick note'}>
       {/* Keyed so each open starts from the note's current values, not stale form state. */}
-      <NoteForm key={note?.id ?? `new-${defaultClientId}`} note={note} defaultClientId={defaultClientId} onDone={onClose} />
+      <NoteForm key={note?.id ?? `new-${defaultClientId}-${initialText}`} note={note} defaultClientId={defaultClientId} initialText={initialText} onDone={onClose} />
     </Sheet>
   )
 }
 
-function NoteForm({ note, defaultClientId, onDone }: { note?: Note; defaultClientId: string | null; onDone: () => void }) {
+function NoteForm({ note, defaultClientId, initialText, onDone }: { note?: Note; defaultClientId: string | null; initialText: string; onDone: () => void }) {
   const { user } = useAuth()
   const { data: clients } = useClients()
-  const [text, setText] = useState(note?.text ?? '')
+  const [text, setText] = useState(note?.text ?? initialText)
   const [clientId, setClientId] = useState<string | null>(note ? note.clientId : defaultClientId)
   const [pinned, setPinned] = useState(note?.pinnedToNextSession ?? false)
   const [confirmDelete, setConfirmDelete] = useState(false)

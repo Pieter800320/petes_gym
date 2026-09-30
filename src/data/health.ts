@@ -15,7 +15,9 @@ export interface HealthIssue {
 const INJURY_KEYWORDS: [RegExp, string][] = [
   [/knie|knee|patell|acl|menisc/i, 'knee_pain'],
   [/schulter|shoulder|rotator|impinge/i, 'shoulder_pain'],
-  [/rücken|ruecken|back|lumbar|spine|disc|bandscheibe|scoliosis|skoliose/i, 'low_back_pain'],
+  // Scoliosis is deliberately not mapped to low back pain: single-arm carries and rows are often
+  // exactly what a scoliosis client needs, so flagging them would be a false alarm.
+  [/rücken|ruecken|back pain|lower back|low back|lumbar|disc|bandscheibe|ischias|sciatica/i, 'low_back_pain'],
   [/handgelenk|wrist/i, 'wrist_pain'],
   [/ellbogen|elbow|tennis|golfer/i, 'elbow_pain'],
   [/gleichgewicht|balance|vertigo|dizz/i, 'balance_deficit'],

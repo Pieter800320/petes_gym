@@ -53,9 +53,13 @@ export const DEFAULT_PLAYBOOK = `# Coach Playbook — Pete's Gym
 - Blocks run 4–8 weeks with a lighter or test week built in.
 - For a follow-up programme, read the logs and previous programme; keep what worked, change what stalled, and say which is which.
 
-## 7. What the client reads
-- Client-facing text is short and in the second person. Exercise notes are one cue of 15 words or fewer.
-- Each session gets a title and a one-line focus. The programme gets a goal line and, where it helps, "how you'll know it's working" markers.
+## 7. What the client reads (plain language)
+- Write for a client with no gym background. No jargon or abbreviations in client-facing text: no RIR, RPE, KPI, tempo codes, "primer", "activation", "posterior chain", "anti-rotation". Say what to do instead ("stop with 2 reps left", "slow on the way down").
+- Exercise cues: 8 words or fewer, in the second person ("Chest up, drive through your heels").
+- Section names are short and plain: "Warm-up", "Main", "Extras", "Finish". One or two sections per day is usually enough.
+- Keep the programme compact: prescriptions like "3 × 10" and rest like "90s". Add an alternative only where equipment or skill really needs one.
+- Each session gets a short title and a one-line focus. The programme gets a one-sentence goal and, where it helps, up to three "how you'll know it's working" markers.
+- Technical reasoning, effort targets in coach terms and injury rules go in the coach notes.
 - Coaching reasoning, injury rules and anything Pete wants to hold back go in coach notes, never in client-facing fields.
 - Pete writes the personal note himself. Draft one only when he asks.
 

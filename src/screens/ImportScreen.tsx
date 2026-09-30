@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconBack } from '../components/Icons'
-import { SessionView } from '../components/ProgrammeView'
+import { DayList } from '../components/DayList'
 import { Sheet } from '../components/Sheet'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
@@ -189,7 +189,7 @@ function ImportPreview({ draft: { draft } }: { draft: ImportedProgramme }) {
     <div className="screen">
       {p.goal && <p className="prose"><b>Goal:</b> {p.goal}</p>}
       {p.coachNotes && <p className="prose muted">{p.coachNotes}</p>}
-      {p.sessions.map((s, i) => <SessionView key={s.id} session={s} index={i} />)}
+      {p.sessions.map((s, i) => <DayList key={s.id} session={s} index={i} mode="read" />)}
     </div>
   )
 }

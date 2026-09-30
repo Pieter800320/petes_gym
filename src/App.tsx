@@ -11,11 +11,11 @@ import { ClientsScreen } from './screens/ClientsScreen'
 import { CreateScreen } from './screens/CreateScreen'
 import { LoadingScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
 import { ImportScreen } from './screens/ImportScreen'
-import { LiveSessionScreen } from './screens/LiveSessionScreen'
 import { NotesScreen } from './screens/NotesScreen'
 import { ProfileImportScreen } from './screens/ProfileImportScreen'
 import { ProgrammeScreen } from './screens/ProgrammeScreen'
 import { TrainScreen } from './screens/TrainScreen'
+import { EXERCISES } from './data/exercises'
 import { useTheme } from './settings'
 
 const TABS = [
@@ -38,10 +38,13 @@ function Shell() {
   const [noteOpen, setNoteOpen] = useState(false)
   // Quick notes started on a client's profile are pre-filed under that client.
   const clientMatch = useMatch('/clients/:id')
-  // The quick-note button would cover the chat's Send button and the live-session controls.
+  // The quick-note button would cover the chat's Send button; on Train and programme pages it
+  // floats above the bottom bar instead.
   const createMatch = useMatch('/create/:id')
-  const liveMatch = useMatch('/train/live')
-  const hideFab = Boolean(createMatch || liveMatch)
+  const trainMatch = useMatch('/train')
+  const programmeMatch = useMatch('/programmes/:id')
+  const hideFab = Boolean(createMatch)
+  const raiseFab = Boolean(trainMatch || programmeMatch)
 
   return (
     <div className="shell">
@@ -63,7 +66,7 @@ function Shell() {
           <Route path="/create" element={<CreateScreen />} />
           <Route path="/create/:id" element={<CreateScreen />} />
           <Route path="/train" element={<TrainScreen />} />
-          <Route path="/train/live" element={<LiveSessionScreen />} />
+          <Route path="/train/live" element={<Navigate to="/train" replace />} />
           <Route path="/programmes/:id" element={<ProgrammeScreen />} />
           <Route path="/clients" element={<ClientsScreen />} />
           <Route path="/clients/:id" element={<ClientScreen />} />
@@ -75,13 +78,15 @@ function Shell() {
       </main>
 
       {!hideFab && (
-        <button type="button" className="fab" aria-label="Quick note" onClick={() => setNoteOpen(true)}>
+        <button type="button" className={`fab${raiseFab ? ' raised' : ''}`} aria-label="Quick note" onClick={() => setNoteOpen(true)}>
           <IconPlus />
         </button>
       )}
       <NoteSheet open={noteOpen} onClose={() => setNoteOpen(false)} defaultClientId={clientMatch?.params.id ?? null} />
       <Snackbar />
       <UpdateBanner />
+      {/* Library names for every exercise-name field (autocomplete). */}
+      <datalist id="exercise-names">{EXERCISES.map((e) => <option key={e.key} value={e.name} />)}</datalist>
     </div>
   )
 }

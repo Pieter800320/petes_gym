@@ -125,3 +125,55 @@ export function formatClock(totalSec: number): string {
   const sec = String(s % 60).padStart(2, '0')
   return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
 }
+
+// ── − / + steppers for sets and reps ─────────────────────────────────
+
+/** "3–4 × 8–10 /side" → sets 3–4, reps 8–10, suffix " /side". Null when not a sets × reps shape. */
+function splitRx(rx: string) {
+  const m = rx.match(/^\s*(\d+)(?:\s*[–—-]\s*(\d+))?\s*[×x✕*]\s*(\d+)(?:\s*[–—-]\s*(\d+))?(.*)$/i)
+  if (!m) return null
+  return { setsLo: Number(m[1]), setsHi: m[2] ? Number(m[2]) : null, repsLo: Number(m[3]), repsHi: m[4] ? Number(m[4]) : null, suffix: m[5] }
+}
+
+function range(lo: number, hi: number | null): string {
+  return hi !== null ? `${lo}–${hi}` : String(lo)
+}
+
+/** True when the prescription can be adjusted with − / + buttons. */
+export function isSteppable(rx: string): boolean {
+  return splitRx(rx) !== null
+}
+
+/** Rep steps: seconds and metres move in 5s, everything else in 1s. */
+function repStep(suffix: string): number {
+  return /^\s*(s|sec|m\b)/i.test(suffix) ? 5 : 1
+}
+
+/** Adds delta to the sets (both ends of a range). Never goes below 1. */
+export function stepSets(rx: string, delta: number): string {
+  const p = splitRx(rx)
+  if (!p) return rx
+  const lo = Math.max(1, p.setsLo + delta)
+  const hi = p.setsHi !== null ? Math.max(lo, p.setsHi + delta) : null
+  return `${range(lo, hi)} × ${range(p.repsLo, p.repsHi)}${p.suffix}`
+}
+
+/** Adds delta steps to the reps (both ends of a range). Never goes below one step. */
+export function stepReps(rx: string, delta: number): string {
+  const p = splitRx(rx)
+  if (!p) return rx
+  const step = repStep(p.suffix)
+  const lo = Math.max(step, p.repsLo + delta * step)
+  const hi = p.repsHi !== null ? Math.max(lo, p.repsHi + delta * step) : null
+  return `${range(p.setsLo, p.setsHi)} × ${range(lo, hi)}${p.suffix}`
+}
+
+export function setsLabel(rx: string): string | null {
+  const p = splitRx(rx)
+  return p ? range(p.setsLo, p.setsHi) : null
+}
+
+export function repsLabel(rx: string): string | null {
+  const p = splitRx(rx)
+  return p ? `${range(p.repsLo, p.repsHi)}${p.suffix}`.trim() : null
+}
