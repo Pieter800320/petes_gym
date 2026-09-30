@@ -18,7 +18,7 @@ export function activateProgramme(uid: string, programme: Programme, siblings: P
 
 /** New draft that starts from this programme, linked to it as its parent (programme lineage). */
 export function createNextBlock(uid: string, p: Programme): string {
-  const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = p
+  const { id: _id, createdAt: _c, updatedAt: _u, deletedAt: _d, deletedWithClient: _w, ...rest } = p
   return createProgramme(uid, {
     ...rest,
     title: nextTitle(p.title),
@@ -53,7 +53,7 @@ export function copyToSelf(uid: string, p: Programme, selfId: string, selfProgra
 }
 
 export function duplicateProgramme(uid: string, p: Programme): string {
-  const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = p
+  const { id: _id, createdAt: _c, updatedAt: _u, deletedAt: _d, deletedWithClient: _w, ...rest } = p
   return createProgramme(uid, { ...rest, title: `${p.title} (copy)`, status: 'draft', sessions: p.sessions.map(cloneSession), parentId: null })
 }
 

@@ -27,8 +27,21 @@ export function download(file: File) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
-export function openInNewTab(file: File) {
-  const url = URL.createObjectURL(file)
-  window.open(url, '_blank', 'noopener')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+/**
+ * Opens a blank tab right away, while the tap still counts as the user's action (browsers block
+ * tabs opened after an await), and returns a function that shows the file in it once built.
+ */
+export function reserveTab(): { show: (file: File) => void; close: () => void } {
+  const tab = window.open('', '_blank')
+  return {
+    show(file) {
+      const url = URL.createObjectURL(file)
+      if (tab && !tab.closed) tab.location.href = url
+      else window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    },
+    close() {
+      tab?.close()
+    },
+  }
 }

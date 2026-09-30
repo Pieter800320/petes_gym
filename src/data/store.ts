@@ -220,10 +220,15 @@ export function createProgramme(uid: string, draft: ProgrammeDraft, createdAt?: 
   return ref.id
 }
 
-/** Writes the whole programme (sessions are nested, so partial updates would clobber anyway). */
+/**
+ * Writes the programme's content: title, details, sessions, tables. Sessions are nested, so they
+ * are always written whole. Lifecycle fields (current/archived, Recently deleted, owner,
+ * translation cache) are changed only by their own actions: an editor holding an older copy
+ * must never undo "Make current" or a delete made meanwhile.
+ */
 export function saveProgramme(uid: string, programme: Programme) {
-  const { id, ...rest } = programme
-  setDoc(doc(userCollection(uid, 'programmes'), id), { ...encodeProgramme(rest), updatedAt: Date.now() }).catch(reportWriteError)
+  const { id, status: _s, deletedAt: _d, deletedWithClient: _w, clientId: _c, createdAt: _ca, updatedAt: _u, translationsDe: _t, ...content } = programme
+  setDoc(doc(userCollection(uid, 'programmes'), id), { ...encodeProgramme(content), updatedAt: Date.now() }, { merge: true }).catch(reportWriteError)
 }
 
 export function updateProgrammeFields(uid: string, id: string, patch: Partial<ProgrammeDraft>) {
@@ -261,7 +266,24 @@ async function clientProgrammeIds(uid: string, clientId: string): Promise<{ id: 
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as { deletedAt?: number | null; deletedWithClient?: boolean }) }))
 }
 
-export async function deleteClient(uid: string, clientId: string) {
+/** Runs a delete/restore that has to read first; failures show the usual "Could not save". */
+function reportAsync(task: Promise<void>) {
+  task.catch(reportWriteError)
+}
+
+export function deleteClient(uid: string, clientId: string) {
+  reportAsync(deleteClientNow(uid, clientId))
+}
+
+export function restoreClient(uid: string, clientId: string) {
+  reportAsync(restoreClientNow(uid, clientId))
+}
+
+export function purgeClient(uid: string, clientId: string) {
+  reportAsync(purgeClientNow(uid, clientId))
+}
+
+async function deleteClientNow(uid: string, clientId: string) {
   const now = Date.now()
   const batch = writeBatch(requireDb())
   batch.update(doc(userCollection(uid, 'clients'), clientId), { deletedAt: now })
@@ -271,7 +293,7 @@ export async function deleteClient(uid: string, clientId: string) {
   batch.commit().catch(reportWriteError)
 }
 
-export async function restoreClient(uid: string, clientId: string) {
+async function restoreClientNow(uid: string, clientId: string) {
   const batch = writeBatch(requireDb())
   batch.update(doc(userCollection(uid, 'clients'), clientId), { deletedAt: null })
   for (const p of await clientProgrammeIds(uid, clientId)) {
@@ -281,7 +303,7 @@ export async function restoreClient(uid: string, clientId: string) {
 }
 
 /** Erases a client and everything that belongs to it: programmes, their chats, notes and sessions. */
-export async function purgeClient(uid: string, clientId: string) {
+async function purgeClientNow(uid: string, clientId: string) {
   const batch = writeBatch(requireDb())
   batch.delete(doc(userCollection(uid, 'clients'), clientId))
   for (const p of await clientProgrammeIds(uid, clientId)) {

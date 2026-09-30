@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { IconBack, IconPen } from './Icons'
 import { openNote } from './noteEvents'
+import { previousIs } from '../util/navHistory'
 
 interface TopBarProps {
   /** Small mono line on the left (e.g. "TUE 30 SEP"); ignored when `back` is set. */
@@ -15,10 +16,23 @@ interface TopBarProps {
 
 /** Every screen's top line: context on the left, the note pen always in the same top-right spot. */
 export function TopBar({ overline, back, actions, noteClientId }: TopBarProps) {
+  const navigate = useNavigate()
   return (
     <div className="topbar">
       {back ? (
-        <Link to={back.to} state={back.state} className="topbar-back" aria-label={back.label ? `Back to ${back.label}` : 'Back'}>
+        <Link
+          to={back.to}
+          state={back.state}
+          className="topbar-back"
+          aria-label={back.label ? `Back to ${back.label}` : 'Back'}
+          onClick={(e) => {
+            // Came from there: step back instead of stacking another copy of that page.
+            if (!back.state && previousIs(back.to)) {
+              e.preventDefault()
+              navigate(-1)
+            }
+          }}
+        >
           <IconBack />
           {back.label && <span>{back.label}</span>}
         </Link>

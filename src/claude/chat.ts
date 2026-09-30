@@ -10,7 +10,7 @@
  */
 import type Anthropic from '@anthropic-ai/sdk'
 import { useEffect, useState } from 'react'
-import { deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
 import { FALLBACK_BETA, MODEL_DESIGN, getClaude } from './client'
@@ -49,8 +49,14 @@ export function useChat(programmeId: string | undefined): { chat: ChatDoc | null
   const [state, setState] = useState<{ chat: ChatDoc | null; loading: boolean; forId?: string }>({ chat: null, loading: true })
   useEffect(() => {
     if (!user || !programmeId) return
-    return onSnapshot(chatRef(user.uid, programmeId), (snap) =>
-      setState({ chat: snap.exists() ? (snap.data() as ChatDoc) : null, loading: false, forId: programmeId }),
+    return onSnapshot(
+      chatRef(user.uid, programmeId),
+      (snap) => setState({ chat: snap.exists() ? (snap.data() as ChatDoc) : null, loading: false, forId: programmeId }),
+      (err) => {
+        // Show the programme with an empty chat rather than "Loading…" forever.
+        console.error(err)
+        setState({ chat: null, loading: false, forId: programmeId })
+      },
     )
   }, [user, programmeId])
   return state.forId === programmeId ? state : { chat: null, loading: true }
@@ -79,11 +85,6 @@ export function recordTurn(uid: string, before: Programme, result: TurnResult) {
 /** After Undo: keep the baseline (Claude's view) so the next message tells Claude what was reverted. */
 export function clearUndo(uid: string, programmeId: string, chat: ChatDoc) {
   saveChat(uid, programmeId, { ...chat, undo: null, lastChanged: [], updatedAt: Date.now() })
-}
-
-/** Removes a programme's chat (used when a draft is deleted). */
-export function deleteChat(uid: string, programmeId: string) {
-  deleteDoc(chatRef(uid, programmeId)).catch((err) => console.error(err))
 }
 
 export function parseHistory(chat: ChatDoc | null): MessageParam[] {

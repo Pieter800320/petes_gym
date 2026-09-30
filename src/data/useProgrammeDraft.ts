@@ -38,6 +38,12 @@ export function useProgrammeDraft(stored: Programme) {
     [uid],
   )
 
+  // Once our edits are written (or another device changed it), show the stored programme again,
+  // so later edits start from the latest version instead of an old copy.
+  useEffect(() => {
+    if (!unsaved.current) setLocal(null)
+  }, [stored])
+
   // Leaving the screen: write any edit still waiting for the timer.
   useEffect(
     () => () => {

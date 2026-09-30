@@ -7,7 +7,7 @@ import { clientFacingStrings, translateToGerman } from '../claude/translate'
 import { updateProgrammeFields } from '../data/store'
 import type { Client, Programme } from '../data/types'
 import { buildExportDoc, type ExportFormat, type ExportLang, type ExportOptions } from '../export/exportModel'
-import { openInNewTab, shareOrDownload } from '../export/share'
+import { reserveTab, shareOrDownload } from '../export/share'
 
 const MIME: Record<ExportFormat, string> = {
   html: 'text/html',
@@ -69,10 +69,11 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
     setError(null)
     // The personal note belongs to the programme, so keep what was written here.
     if (user && opts.personalNote !== p.personalNote) updateProgrammeFields(user.uid, p.id, { personalNote: opts.personalNote })
+    const tab = action === 'preview' ? reserveTab() : null
     try {
       const file = await buildFile()
-      if (action === 'preview') {
-        openInNewTab(file)
+      if (tab) {
+        tab.show(file)
       } else {
         const result = await shareOrDownload(file)
         if (result !== 'cancelled') {
@@ -82,6 +83,7 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
       }
     } catch (err) {
       console.error(err)
+      tab?.close()
       setError(describeClaudeError(err))
     } finally {
       setBusy(null)

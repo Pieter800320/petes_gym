@@ -18,6 +18,7 @@ import { ProgrammeScreen } from './screens/ProgrammeScreen'
 import { TrainScreen } from './screens/TrainScreen'
 import { EXERCISES } from './data/exercises'
 import { useProgramme } from './data/store'
+import { recordPath } from './util/navHistory'
 import { useTheme } from './settings'
 
 const TABS = [
@@ -42,6 +43,7 @@ function useScrollMemory() {
   const navType = useNavigationType()
   const positions = useRef(new Map<string, number>())
   useLayoutEffect(() => {
+    recordPath(location.pathname)
     const key = location.key
     const map = positions.current
     const saved = navType === 'POP' ? map.get(key) : undefined
@@ -55,7 +57,7 @@ function useScrollMemory() {
       cancelAnimationFrame(frame)
       window.removeEventListener('scroll', onScroll)
     }
-  }, [location.key, navType])
+  }, [location.key, location.pathname, navType])
 }
 
 function Shell() {

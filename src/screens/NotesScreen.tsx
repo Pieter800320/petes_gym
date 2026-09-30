@@ -14,21 +14,13 @@ export function NotesScreen() {
     <div className="screen">
       <TopBar back={{ to: '/clients', label: 'Clients' }} noteClientId={null} />
       <BigTitle text="General notes" />
-      <p className="lead">Notes not tied to a client. The pen at the top adds one.</p>
-      {notes.length ? (
-        <div className="list">
-          {notes.map((n) => (
-            <NoteCard key={n.id} note={n} onClick={() => setNoteSheet({ note: n })} />
-          ))}
-        </div>
-      ) : (
-        !loading && (
-          <div className="empty">
-            <h3 className="display">No general notes</h3>
-            <p>Ideas, reminders, anything that doesn't belong to one client. Tap + from any tab to jot one down.</p>
-          </div>
-        )
-      )}
+      <p className="lead">Ideas and reminders that don't belong to one client. The pen at the top adds one.</p>
+      <div className="list">
+        {notes.map((n) => (
+          <NoteCard key={n.id} note={n} onClick={() => setNoteSheet({ note: n })} />
+        ))}
+      </div>
+      {!loading && !notes.length && <p className="muted small">No general notes yet.</p>}
       <NoteSheet open={noteSheet !== null} onClose={() => setNoteSheet(null)} note={noteSheet?.note} defaultClientId={null} />
     </div>
   )

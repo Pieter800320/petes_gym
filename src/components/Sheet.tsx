@@ -15,6 +15,8 @@ const ANIMATION_MS = 300
  * .sheet-open: page scroll is locked and the nav and round button step aside.
  */
 let mountedSheets = 0
+/** Open sheets, newest last: Escape closes only the top one. */
+const openStack: symbol[] = []
 
 interface SheetProps {
   open: boolean
@@ -54,6 +56,11 @@ export function Sheet({ open, onClose, title, action, tall = false, paper = fals
   const sheetRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
+  // Latest onClose without re-running the Escape effect (that would reorder the sheet stack).
+  const closeRef = useRef(onClose)
+  useEffect(() => {
+    closeRef.current = onClose
+  })
 
   // Mount synchronously when opened (React's "adjust state on prop change" pattern).
   if (open && !mounted) setMounted(true)
@@ -103,10 +110,17 @@ export function Sheet({ open, onClose, title, action, tall = false, paper = fals
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const me = Symbol('sheet')
+    openStack.push(me)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && openStack[openStack.length - 1] === me) closeRef.current()
+    }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      openStack.splice(openStack.indexOf(me), 1)
+    }
+  }, [open])
 
   if (!mounted) return null
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { IconAttach, IconBack, IconPen, IconSend } from '../components/Icons'
 import { openNote } from '../components/noteEvents'
 import { LibraryBrowser } from '../components/LibraryBrowser'
@@ -52,10 +52,7 @@ function CreateHome() {
   // Tapping the Create tab reopens the programme Pete was working on; the back arrow in the
   // chat sets `stay` to show this page instead.
   const stay = (location.state as { stay?: boolean } | null)?.stay
-  useEffect(() => {
-    const last = getCreateProgrammeId()
-    if (!stay && last) navigate(`/create/${last}`, { replace: true })
-  }, [stay, navigate])
+  const last = getCreateProgrammeId()
 
   function removeDraft(id: string) {
     if (!user) return
@@ -71,6 +68,8 @@ function CreateHome() {
     setPickOpen(false)
     navigate(`/create/${id}`)
   }
+
+  if (!stay && last) return <Navigate to={`/create/${last}`} replace />
 
   return (
     <div className="screen has-dial">
@@ -379,7 +378,6 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
             className="composer-input"
             placeholder={busy ? 'Claude is working…' : 'Message Claude'}
             value={input}
-            disabled={busy}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send(input)

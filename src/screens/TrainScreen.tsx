@@ -168,6 +168,12 @@ function TrainProgramme({ stored }: { stored: Programme }) {
         </div>
       ) : (
         <div className="quiet-links">
+          {active && (
+            <>
+              <span className="muted small">A session on an earlier programme is still running, so START is paused.</span>
+              <ConfirmButton className="btn-ghost small" armedLabel="Tap again to end it" onConfirm={() => { cancelWorkout(); toast('Earlier session ended, nothing saved') }}>End that session</ConfirmButton>
+            </>
+          )}
           <Link to={`/create/${programme.id}`} className="text-link" onClick={flush}>Rework with Claude ›</Link>
         </div>
       )}
