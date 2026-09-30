@@ -80,9 +80,8 @@ function ProgrammeDetail({ programme }: { programme: Programme }) {
       </header>
 
       {draft ? (
-        <div className="toolbar sticky-actions">
-          <button type="button" className="btn-cta" onClick={save}>Save</button>
-          <button type="button" className="btn-ghost" onClick={() => setDraft(null)}>Cancel</button>
+        <div className="banner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <span>Editing. Tap an exercise to change it.</span>
           <button type="button" className="btn-acc" onClick={() => setDetailsOpen(true)}>Details & note</button>
         </div>
       ) : (
@@ -152,6 +151,13 @@ function ProgrammeDetail({ programme }: { programme: Programme }) {
         ) : (
           <SessionView session={session} index={shown.sessions.indexOf(session)} lastSets={lastSets} />
         ))}
+
+      {draft && (
+        <div className="sticky-actions">
+          <button type="button" className="btn-cta btn-block" onClick={save}>Save changes</button>
+          <button type="button" className="btn-ghost" onClick={() => setDraft(null)}>Cancel</button>
+        </div>
+      )}
 
       {draft && (
         <Sheet open={detailsOpen} onClose={() => setDetailsOpen(false)} title="Programme details">

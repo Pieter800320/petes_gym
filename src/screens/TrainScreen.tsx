@@ -41,6 +41,7 @@ export function TrainScreen() {
         )}
       </header>
 
+      {loading && !programme && <span className="label">Loading…</span>}
       {programme ? (
         // Keyed so the selected session resets when switching programme.
         <TrainProgramme key={programme.id} programme={programme} />
