@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { IconAttach, IconBack, IconChevronUp, IconSend } from '../components/Icons'
+import { ConfirmButton } from '../components/ConfirmButton'
+import { IconAttach, IconBack, IconChevronUp, IconSend, IconTrash } from '../components/Icons'
 import { LibraryBrowser } from '../components/LibraryBrowser'
 import { ProgrammeSheet } from '../components/ProgrammeSheet'
 import { Sheet } from '../components/Sheet'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { describeClaudeError } from '../claude/client'
-import { clearUndo, clientHistoryText, historyTooLarge, parseHistory, recordTurn, runTurn, toDisplay, useChat, type ChatDoc, type DisplayItem } from '../claude/chat'
+import { clearUndo, clientHistoryText, deleteChat, historyTooLarge, parseHistory, recordTurn, runTurn, toDisplay, useChat, type ChatDoc, type DisplayItem } from '../claude/chat'
 import { ACCEPTED_FILES, extractText } from '../claude/extract'
 import { usePlaybook } from '../claude/playbook'
 import { changedRowIds } from '../claude/programmeTools'
 import { checkProgramme } from '../data/health'
 import { activateProgramme } from '../data/programmeActions'
 import { blankProgramme } from '../data/programmeUtils'
-import { createProgramme, saveProgramme, useClients, useNotes, useProgramme, useProgrammes, useWorkouts } from '../data/store'
+import { createProgramme, deleteProgramme, saveProgramme, useClients, useNotes, useProgramme, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Programme } from '../data/types'
 import { getApiKey, getCreateProgrammeId, setCreateProgrammeId } from '../settings'
 
@@ -48,6 +49,14 @@ function CreateHome() {
     if (!stay && last) navigate(`/create/${last}`, { replace: true })
   }, [stay, navigate])
 
+  function removeDraft(id: string) {
+    if (!user) return
+    deleteProgramme(user.uid, id)
+    deleteChat(user.uid, id)
+    if (getCreateProgrammeId() === id) setCreateProgrammeId(null)
+    toast('Draft deleted')
+  }
+
   function start(client: Client) {
     if (!user) return
     const id = createProgramme(user.uid, blankProgramme(client.id, { frequency: client.frequency, sessionLength: client.sessionLength, goal: client.goals }))
@@ -62,33 +71,41 @@ function CreateHome() {
           <h1 className="display">Create</h1>
           <p className="sub">Build programmes with Claude</p>
         </div>
-        <button type="button" className="btn-cta" onClick={() => setPickOpen(true)}>New programme</button>
       </header>
 
       {!getApiKey() && (
         <div className="banner">Add your Anthropic API key in Settings (Clients → gear icon) to chat with Claude on this device.</div>
       )}
 
-      <div className="section-title" style={{ marginTop: 0 }}><span className="label">Drafts</span></div>
-      {drafts.length ? (
-        <div className="list">
-          {drafts.map((p) => (
-            <Link key={p.id} to={`/create/${p.id}`} className="row-link">
-              <div className="grow">
-                <div className="title">{p.title}</div>
-                <div className="meta">{clientName(p.clientId)} · edited {new Date(p.updatedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        !loading && (
-          <div className="empty">
-            <p>No drafts. Start a new programme, or open an existing one and tap “Open in Create” to rework it with Claude.</p>
-          </div>
-        )
-      )}
+      <div className="list">
+        <button type="button" className="new-slot" onClick={() => setPickOpen(true)}>
+          <span className="new-slot-plus" aria-hidden="true">+</span> New programme
+        </button>
+      </div>
 
+      {drafts.length > 0 && (
+        <>
+          <div className="section-title"><span className="label">Drafts</span></div>
+          <div className="list">
+            {drafts.map((p) => (
+              <div key={p.id} className="draft-row">
+                <Link to={`/create/${p.id}`} className="row-link">
+                  <div className="grow">
+                    <div className="title">{p.title}</div>
+                    <div className="meta">{clientName(p.clientId)} · edited {new Date(p.updatedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</div>
+                  </div>
+                </Link>
+                <ConfirmButton className="icon-btn draft-delete" label={`Delete draft ${p.title}`} onConfirm={() => removeDraft(p.id)}>
+                  <IconTrash />
+                </ConfirmButton>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {!loading && !drafts.length && <p className="muted" style={{ margin: 0 }}>No drafts. Unfinished programmes appear here.</p>}
+
+      <div className="section-title"><span className="label">Exercise library</span></div>
       <LibraryBrowser />
 
       <Sheet open={pickOpen} onClose={() => setPickOpen(false)} title="Programme for…">

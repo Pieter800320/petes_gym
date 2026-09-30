@@ -10,7 +10,7 @@
  */
 import type Anthropic from '@anthropic-ai/sdk'
 import { useEffect, useState } from 'react'
-import { doc, onSnapshot, setDoc } from 'firebase/firestore'
+import { deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
 import { FALLBACK_BETA, MODEL_DESIGN, getClaude } from './client'
@@ -77,6 +77,11 @@ export function recordTurn(uid: string, before: Programme, result: TurnResult) {
 /** After Undo: keep the baseline (Claude's view) so the next message tells Claude what was reverted. */
 export function clearUndo(uid: string, programmeId: string, chat: ChatDoc) {
   saveChat(uid, programmeId, { ...chat, undo: null, lastChanged: [], updatedAt: Date.now() })
+}
+
+/** Removes a programme's chat (used when a draft is deleted). */
+export function deleteChat(uid: string, programmeId: string) {
+  deleteDoc(chatRef(uid, programmeId)).catch((err) => console.error(err))
 }
 
 export function parseHistory(chat: ChatDoc | null): MessageParam[] {

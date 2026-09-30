@@ -50,3 +50,6 @@ export const IconAttach = () => (
 export const IconChevronUp = () => (
   <svg {...base}><path d="M6 15l6-6 6 6" /></svg>
 )
+export const IconTrash = () => (
+  <svg {...base}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+)
