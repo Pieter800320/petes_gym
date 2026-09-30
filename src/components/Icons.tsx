@@ -41,3 +41,12 @@ export const IconPin = () => (
 export const IconSearch = () => (
   <svg {...base}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
 )
+export const IconSend = () => (
+  <svg {...base}><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5" /></svg>
+)
+export const IconAttach = () => (
+  <svg {...base}><path d="M20.5 11.5l-8.2 8.2a5 5 0 01-7.1-7.1l8.5-8.5a3.3 3.3 0 014.7 4.7l-8.5 8.5a1.7 1.7 0 01-2.4-2.4l7.8-7.8" /></svg>
+)
+export const IconChevronUp = () => (
+  <svg {...base}><path d="M6 15l6-6 6 6" /></svg>
+)

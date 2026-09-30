@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { IconBack } from '../components/Icons'
+import { IconAttach, IconBack, IconChevronUp, IconSend } from '../components/Icons'
 import { LibraryBrowser } from '../components/LibraryBrowser'
 import { ProgrammeSheet } from '../components/ProgrammeSheet'
 import { Sheet } from '../components/Sheet'
@@ -20,6 +20,8 @@ import { getApiKey, getCreateProgrammeId, setCreateProgrammeId } from '../settin
 
 /** Delay before a manual edit is written to Firestore, so typing doesn't write on every key. */
 const AUTOSAVE_MS = 700
+/** Upward finger travel on the programme bar that opens the sheet. */
+const SWIPE_OPEN_PX = 30
 
 export function CreateScreen() {
   const { id } = useParams()
@@ -165,6 +167,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   /** Edit waiting for the autosave timer; written immediately if the screen closes first. */
   const unsaved = useRef<Programme | null>(null)
   const chatEnd = useRef<HTMLDivElement | null>(null)
+  const peekStart = useRef<number | null>(null)
 
   const history = useMemo(() => parseHistory(chat), [chat])
   const display = useMemo(() => toDisplay(history), [history])
@@ -173,7 +176,6 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   const mineMarks = useMemo(() => (baseline ? changedRowIds(baseline, programme) : new Set<string>()), [baseline, programme])
   const issues = useMemo(() => checkProgramme(programme, client), [programme, client])
   const busy = pending !== null
-  const parent = clientProgrammes.find((p) => p.id === stored.parentId)
   const exerciseCount = programme.sessions.reduce((n, s) => n + s.sections.reduce((m, sec) => m + sec.rows.length, 0), 0)
 
   // The Create tab reopens this programme next time.
@@ -290,12 +292,6 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
     navigate(`/programmes/${programme.id}`)
   }
 
-  const starters = [
-    parent && `Build the next block from “${parent.title}” and ${client?.name ?? 'the client'}'s training logs.`,
-    `Draft a programme for ${client?.name ?? 'this client'} from their profile.`,
-    'Ask me what you need to know first.',
-  ].filter(Boolean) as string[]
-
   const changedCount = chat?.lastChanged.length ?? 0
 
   return (
@@ -306,22 +302,9 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
           <span className="display">{programme.title}</span>
           <span className="muted">{client?.name}</span>
         </div>
-        <button type="button" className="btn-cta see-programme" onClick={() => setSheetOpen(true)}>
-          See programme
-          {changedCount > 0 && <span className="badge">{changedCount}</span>}
-        </button>
       </header>
 
       <div className="chat-log" aria-live="polite">
-        {display.length === 0 && !pending && (
-          <div className="chat-empty">
-            <h2 className="display">What are we building?</h2>
-            <p className="muted">Describe what you want, attach a client profile with 📎, or start with one of these:</p>
-            {starters.map((st) => (
-              <button type="button" key={st} className="chip" onClick={() => send(st)}>{st}</button>
-            ))}
-          </div>
-        )}
         {display.map((m, i) => <Bubble key={i} item={m} />)}
         {pending && (
           <>
@@ -336,9 +319,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
       <div className="chat-bottom">
         {chat?.undo && !busy && (
           <div className="undo-bar">
-            <button type="button" className="btn-ghost" onClick={() => setSheetOpen(true)}>
-              Claude changed {changedCount || 'some'} exercise{changedCount === 1 ? '' : 's'} · see them
-            </button>
+            <span>Claude changed {changedCount || 'some'} exercise{changedCount === 1 ? '' : 's'}</span>
             <button type="button" className="btn-ghost" onClick={undo}>Undo</button>
           </div>
         )}
@@ -352,10 +333,31 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
             ))}
           </div>
         )}
+        <button
+          type="button"
+          className="programme-peek"
+          onClick={() => setSheetOpen(true)}
+          onTouchStart={(e) => { peekStart.current = e.touches[0].clientY }}
+          onTouchEnd={(e) => {
+            // A swipe up opens the sheet, like pulling up a bottom sheet.
+            if (peekStart.current !== null && peekStart.current - e.changedTouches[0].clientY > SWIPE_OPEN_PX) setSheetOpen(true)
+            peekStart.current = null
+          }}
+        >
+          <span className="peek-text">
+            <b className="display">Programme</b>
+            <span className="muted">
+              {programme.sessions.length} session{programme.sessions.length === 1 ? '' : 's'} · {exerciseCount} exercises
+              {issues.some((i) => i.level === 'warn') ? ' · ⚠ check' : ''}
+            </span>
+          </span>
+          {changedCount > 0 && <span className="tag accent">{changedCount} changed</span>}
+          <span className="peek-chevron"><IconChevronUp /></span>
+        </button>
         <div className="composer-row">
           <label className="icon-btn attach" aria-label="Attach a file" title="Attach a client profile or old programme">
             <input type="file" accept={ACCEPTED_FILES} multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
-            {attaching ? '…' : '📎'}
+            {attaching ? '…' : <IconAttach />}
           </label>
           <textarea
             id="chat-input"
@@ -372,13 +374,9 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
           {busy ? (
             <button type="button" className="btn-acc" onClick={() => abortRef.current?.abort()}>Stop</button>
           ) : (
-            <button type="button" className="btn-cta send-btn" disabled={!input.trim() && !attachments.length} onClick={() => send(input)} aria-label="Send">↑</button>
+            <button type="button" className="btn-cta send-btn" disabled={!input.trim() && !attachments.length} onClick={() => send(input)} aria-label="Send"><IconSend /></button>
           )}
         </div>
-        <p className="chat-foot muted">
-          {programme.sessions.length} session{programme.sessions.length === 1 ? '' : 's'} · {exerciseCount} exercises
-          {issues.some((i) => i.level === 'warn') ? ' · ⚠ checks need attention' : ''}
-        </p>
       </div>
 
       <ProgrammeSheet
