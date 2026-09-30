@@ -246,10 +246,6 @@ export function saveWorkout(uid: string, workout: Omit<Workout, 'id'>): string {
   return ref.id
 }
 
-export function deleteWorkout(uid: string, id: string) {
-  deleteDoc(doc(userCollection(uid, 'workouts'), id)).catch(reportWriteError)
-}
-
 // ── Recently deleted ─────────────────────────────────────────────────
 //
 // Deleting moves things to Recently deleted (deletedAt set) so they can be restored.

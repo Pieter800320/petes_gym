@@ -22,7 +22,6 @@ export function NotesScreen() {
           <h1 className="display">General notes</h1>
           <p className="sub">Notes not tied to a client</p>
         </div>
-        <button type="button" className="btn-acc" onClick={() => setNoteSheet({})}>+ Note</button>
       </header>
       {notes.length ? (
         <div className="list">

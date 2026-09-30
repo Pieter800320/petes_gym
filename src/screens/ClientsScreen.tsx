@@ -43,13 +43,8 @@ export function ClientsScreen() {
 
       {error && <div className="banner error">{error}</div>}
 
-      <div className="search-box">
-        <span className="search-icon" aria-hidden="true"><IconSearch /></span>
-        <input id="client-search" className="input search" style={{ paddingRight: 'var(--space-3)' }} placeholder="Search clients" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search clients" />
-      </div>
-
       {/* Pete's own space */}
-      {!search && (
+      {(
         <div className="list">
           {self ? (
             <ClientRow client={self} />
@@ -74,6 +69,11 @@ export function ClientsScreen() {
 
       {/* Clients */}
       <div className="group-title"><span className="label">Clients</span></div>
+      <div className="search-box">
+        <span className="search-icon" aria-hidden="true"><IconSearch /></span>
+        <input id="client-search" className="input search" style={{ paddingRight: 'var(--space-3)' }} placeholder="Search clients" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search clients" />
+      </div>
+
       <div className="list">
         {!search && (
           <button type="button" className="new-slot" onClick={() => setNewClient('client')}>

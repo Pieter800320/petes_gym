@@ -730,3 +730,8 @@ a { color: var(--color-accent-2); }
 .deleted-item { display: flex; flex-direction: column; gap: var(--space-2); }
 
 .group-title { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-border); }
+
+.session-lines { list-style: none; margin: 0; padding: 0 var(--space-3); display: flex; flex-direction: column; font-size: var(--type-sm); }
+.session-lines li { display: flex; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
+.session-lines li:last-child { border-bottom: 0; }
+.session-lines .grow { flex: 1; min-width: 0; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
