@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PlaybookSheet } from './PlaybookSheet'
 import { Sheet } from './Sheet'
 import { toast } from './toast'
@@ -21,6 +22,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
 
 function SettingsForm({ onDone }: { onDone: () => void }) {
   const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [theme, setTheme] = useTheme()
   const [key, setKey] = useState(getApiKey)
   const [showKey, setShowKey] = useState(false)
@@ -82,6 +84,24 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
           </div>
         </button>
         <PlaybookSheet open={playbookOpen} onClose={() => setPlaybookOpen(false)} />
+      </div>
+
+      <div className="field">
+        <span className="label">Import</span>
+        <div className="list">
+          <button type="button" className="row-link" onClick={() => { onDone(); navigate('/import-profiles') }}>
+            <div className="grow">
+              <div className="title">Questionnaire answers</div>
+              <div className="meta">Fitness Profile responses from Google Forms</div>
+            </div>
+          </button>
+          <button type="button" className="row-link" onClick={() => { onDone(); navigate('/import') }}>
+            <div className="grow">
+              <div className="title">Old programmes</div>
+              <div className="meta">Word, PDF, HTML or photos</div>
+            </div>
+          </button>
+        </div>
       </div>
 
       <div className="field">

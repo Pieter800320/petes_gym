@@ -55,7 +55,7 @@ export function TrainScreen() {
         ) : (
           <div className="empty">
             <h3 className="display">No current programme</h3>
-            <p>Build one for yourself in Create, or open a client's programme and tap “Use for my own training”.</p>
+            <p>Build one for yourself in Create, or open a client's programme and tap “Load in Train”.</p>
             <Link to="/create" className="btn-acc" style={{ textDecoration: 'none' }}>Go to Create</Link>
           </div>
         )}

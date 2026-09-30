@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sheet } from './Sheet'
+import { shareProfileLink } from './shareProfileLink'
 import { toast } from './toast'
 import { useAuth } from '../auth/useAuth'
 import { EMPTY_CLIENT, createClient, updateClient } from '../data/store'
@@ -60,6 +61,14 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
 
   return (
     <div className="form">
+      {!client && !draft.isSelf && (
+        <button type="button" className="row-link" onClick={() => shareProfileLink(draft.name.trim().split(/\s+/)[0] || undefined)}>
+          <div className="grow">
+            <div className="title">Or send them the fitness profile link</div>
+            <div className="meta">They fill in your questionnaire; import the answers later (Settings → Import)</div>
+          </div>
+        </button>
+      )}
       <label className="field">
         <span className="label">Name</span>
         <input id="client-name" className="input" value={draft.name} onChange={(e) => set('name', e.target.value)} autoFocus={!client} />

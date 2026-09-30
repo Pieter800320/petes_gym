@@ -110,7 +110,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
         ) : (
           <button
             type="button"
-            className="btn-acc btn-block"
+            className="btn-cta btn-block"
             onClick={() => {
               if (!self) {
                 toast('Add your own profile first: Clients → + Add → Your own profile')
@@ -118,11 +118,11 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
               }
               flush()
               copyToSelf(uid, programme, self.id, selfProgrammes)
-              toast('Copied to your own training')
+              toast('Loaded in Train as your current programme')
               navigate('/train')
             }}
           >
-            Use for my own training
+            Load in Train
           </button>
         )}
       </div>
