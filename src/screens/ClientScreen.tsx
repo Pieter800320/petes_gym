@@ -2,16 +2,20 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ClientSheet } from '../components/ClientSheet'
 import { ConfirmButton } from '../components/ConfirmButton'
-import { IconBack } from '../components/Icons'
-import { NoteCard } from '../components/NoteCard'
+import { ExportSheet } from '../components/ExportSheet'
+import { IconChevronRight, IconMore } from '../components/Icons'
 import { NoteSheet } from '../components/NoteSheet'
+import { PinnedNotes } from '../components/PinnedNotes'
+import { SettingsSheet } from '../components/SettingsSheet'
 import { Sheet } from '../components/Sheet'
+import { BigTitle, TopBar } from '../components/TopBar'
 import { shareProfileLink } from '../components/shareProfileLink'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
-import { blankProgramme } from '../data/programmeUtils'
+import { blankProgramme, sessionRows } from '../data/programmeUtils'
 import { createProgramme, deleteClient, useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Note, Programme } from '../data/types'
+import { splitDayTitle } from '../util/dayTitle'
 
 const DETAIL_FIELDS = [
   { key: 'goals', label: 'Goals' },
@@ -20,7 +24,8 @@ const DETAIL_FIELDS = [
   { key: 'background', label: 'Background' },
 ] as const
 
-const STATUS_TAG = { active: 'Current', draft: 'Draft', archived: '' } as const
+const monthYear = (ms: number) => new Date(ms).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+const dayMonth = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 
 export function ClientScreen() {
   const { id } = useParams()
@@ -33,58 +38,77 @@ export function ClientScreen() {
   const [editing, setEditing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [newOpen, setNewOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [noteSheet, setNoteSheet] = useState<Note | null>(null)
   const [showSessions, setShowSessions] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
 
   const client = clients.find((c) => c.id === id)
 
   if (!client || !user) {
     return (
       <div className="screen">
-        <BackLink />
-        {!loading && (
-          <div className="empty">
-            <h3 className="display">Client not found</h3>
-            <p>This profile may have been deleted. Check Recently deleted at the bottom of the Clients tab.</p>
-          </div>
-        )}
+        <TopBar back={{ to: '/clients', label: 'Clients' }} />
+        {!loading && <p className="lead">This profile isn't here. It may be in Recently deleted, at the bottom of the Clients tab.</p>}
       </div>
     )
   }
 
-  const since = new Date(client.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-  const details = DETAIL_FIELDS.filter((f) => client[f.key].trim())
+  const self = client.isSelf
   const firstName = client.name.trim().split(/\s+/)[0]
+  const current = programmes.find((p) => p.status === 'active')
+  const earlier = programmes.filter((p) => p !== current)
+  const details = DETAIL_FIELDS.filter((f) => client[f.key].trim())
+  const hours = workouts.reduce((n, w) => n + w.durationSec, 0) / 3600
+  const meta = self ? 'Your own training' : [firstLine(client.goals), client.frequency, firstLine(client.injuries)].filter(Boolean).join(' · ')
 
   return (
     <div className="screen">
-      <BackLink />
-      <header className="screen-head" style={{ paddingTop: 0 }}>
-        <div style={{ minWidth: 0 }}>
-          <h1 className="display">{client.name}</h1>
-          <p className="sub">{[`Since ${since}`, client.frequency, client.sessionLength].filter(Boolean).join(' · ')}</p>
-        </div>
-        <button type="button" className="icon-btn menu-btn" aria-label="Client menu" onClick={() => setMenuOpen(true)}>⋯</button>
-      </header>
+      <TopBar
+        back={{ to: '/clients', label: 'Clients' }}
+        noteClientId={client.id}
+        actions={<button type="button" className="icon-btn" aria-label={`More for ${client.name}`} onClick={() => setMenuOpen(true)}><IconMore /></button>}
+      />
+      <BigTitle text={self ? 'You' : client.name} />
+      {meta && <p className="lead">{meta}</p>}
 
-      {client.isSelf && (
-        <>
-          <div className="stats">
-            <div className="stat"><b>{workouts.length}</b><span>sessions</span></div>
-            <div className="stat"><b>{hoursTrained(workouts.reduce((n, w) => n + w.durationSec, 0))}</b><span>hours trained</span></div>
-            <div className="stat"><b>{new Set(workouts.map((w) => new Date(w.startedAt).toDateString())).size}</b><span>days trained</span></div>
-          </div>
-          {workouts.length > 0 && (
-            <button type="button" className="row-link sessions-toggle" onClick={() => setShowSessions(!showSessions)} aria-expanded={showSessions}>
-              <div className="grow"><div className="title">Sessions</div></div>
-              <span className="mono muted">{workouts.length} {showSessions ? '−' : '›'}</span>
-            </button>
+      <PinnedNotes clientId={client.id} />
+
+      {current ? (
+        <CurrentCard programme={current} onOpen={() => navigate(`/programmes/${current.id}`)} />
+      ) : (
+        <button type="button" className="empty-card" onClick={() => setNewOpen(true)}>
+          <span className="line-title">No current programme</span>
+          <span className="text-link">+ New programme</span>
+        </button>
+      )}
+
+      {current && (
+        <div className="button-pair">
+          {self ? (
+            <Link to="/train" className="btn-cta">Open in Train</Link>
+          ) : (
+            <button type="button" className="btn-cta" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
           )}
+          <Link to={`/create/${current.id}`} className="btn-outline">Rework with Claude</Link>
+        </div>
+      )}
+
+      {self && workouts.length > 0 && (
+        <>
+          <button type="button" className="line-link" onClick={() => setShowSessions(!showSessions)} aria-expanded={showSessions}>
+            <span className="grow">
+              <span className="line-title">Sessions</span>
+              <span className="line-meta">{workouts.length} sessions · {hours.toFixed(hours < 10 ? 1 : 0)} h trained</span>
+            </span>
+            <span className="mono muted">{showSessions ? '−' : '›'}</span>
+          </button>
           {showSessions && (
             <ul className="session-lines">
               {workouts.map((w) => (
                 <li key={w.id}>
-                  <span>{formatDate(w.startedAt)}</span>
+                  <span>{new Date(w.startedAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
                   <span className="grow">{w.sessionTitle || 'Session'}</span>
                   <span className="mono">{Math.max(1, Math.round(w.durationSec / 60))} min</span>
                 </li>
@@ -94,57 +118,79 @@ export function ClientScreen() {
         </>
       )}
 
-      <div className="section-title"><span className="label">Notes</span></div>
-      {notes.length ? (
-        <div className="list">
-          {notes.map((n) => <NoteCard key={n.id} note={n} onClick={() => setNoteSheet(n)} />)}
-        </div>
-      ) : (
-        <p className="muted" style={{ margin: 0, fontSize: 'var(--type-sm)' }}>No notes yet. The + button files a note under {firstName} while you're on this page.</p>
+      {earlier.length > 0 && (
+        <>
+          <div className="section-label">Earlier</div>
+          <div className="lines">
+            {earlier.map((p) => (
+              <Link key={p.id} to={p.status === 'draft' ? `/create/${p.id}` : `/programmes/${p.id}`} className="leader-link">
+                <span>{p.title}{p.status === 'draft' && <span className="tag accent">Draft</span>}</span>
+                <span className="ex-dots" aria-hidden="true" />
+                <span className="mono muted small">{monthYear(p.startDate ? Date.parse(p.startDate) : p.createdAt)}</span>
+              </Link>
+            ))}
+          </div>
+        </>
       )}
 
-      <div className="section-title"><span className="label">Programmes</span></div>
-      <div className="list">
-        <button type="button" className="new-slot" onClick={() => setNewOpen(true)}>
-          <span className="new-slot-plus" aria-hidden="true">+</span> New programme
+      {notes.length > 0 && (
+        <>
+          <div className="section-label">Notes</div>
+          <div className="stack">
+            {notes.map((n) => (
+              <button type="button" key={n.id} className="note-line" onClick={() => setNoteSheet(n)}>
+                {n.text} <span className="muted">· {dayMonth(n.createdAt)}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <button type="button" className="text-link about-link" onClick={() => setShowAbout(!showAbout)} aria-expanded={showAbout}>
+        {self ? 'About you' : `About ${firstName}`} {showAbout ? '−' : '›'}
+      </button>
+      {showAbout && (
+        <div className="about">
+          {details.length ? (
+            details.map((f) => (
+              <div key={f.key}>
+                <div className="label">{f.label}</div>
+                <p className="prose">{client[f.key]}</p>
+              </div>
+            ))
+          ) : (
+            <p className="muted small">No details yet. Use ⋯ → Edit profile{self ? '' : `, or send ${firstName} your fitness profile link`}.</p>
+          )}
+          {client.questionnaire && (
+            <details>
+              <summary className="label">Questionnaire answers{client.questionnaireDate ? ` · ${client.questionnaireDate}` : ''}</summary>
+              <p className="prose small">{client.questionnaire}</p>
+            </details>
+          )}
+        </div>
+      )}
+
+      {self && (
+        <button type="button" className="line-link" onClick={() => setSettingsOpen(true)}>
+          <span className="grow"><span className="line-title">Settings</span><span className="line-meta">Theme, Claude key, Coach Playbook, imports</span></span>
+          <IconChevronRight />
         </button>
-        {programmes.map((p) => <ProgrammeRow key={p.id} programme={p} sessions={workouts.filter((w) => w.programmeId === p.id).length} />)}
-      </div>
-
-      <div className="section-title"><span className="label">Profile</span></div>
-      {details.length ? (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          {details.map((f) => (
-            <div key={f.key}>
-              <div className="label">{f.label}</div>
-              <p className="prose">{client[f.key]}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="muted" style={{ margin: 0, fontSize: 'var(--type-sm)' }}>No details yet. Use ⋯ → Edit profile, or send {firstName} the fitness profile link.</p>
-      )}
-      {client.questionnaire && (
-        <details className="card">
-          <summary className="label" style={{ cursor: 'pointer' }}>
-            Questionnaire answers{client.questionnaireDate ? ` · ${client.questionnaireDate}` : ''}
-          </summary>
-          <p className="prose" style={{ marginTop: 'var(--space-2)', fontSize: 'var(--type-sm)' }}>{client.questionnaire}</p>
-        </details>
       )}
 
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={client.name}>
-        <div className="list">
-          <MenuItem title="Edit profile" meta="Goals, injuries, equipment, background" onClick={() => { setMenuOpen(false); setEditing(true) }} />
-          {!client.isSelf && <MenuItem title="Send fitness profile link" meta={`WhatsApp ${firstName} your questionnaire`} onClick={() => shareProfileLink(firstName)} />}
+      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={self ? 'You' : client.name}>
+        <div className="lines">
+          <MenuLine title="Edit profile" meta="Goals, injuries, equipment, background" onClick={() => { setMenuOpen(false); setEditing(true) }} />
+          <MenuLine title="New programme" meta="With Claude, or blank" onClick={() => { setMenuOpen(false); setNewOpen(true) }} />
+          {!self && <MenuLine title="Send fitness profile link" meta={`WhatsApp ${firstName} your questionnaire`} onClick={() => shareProfileLink(firstName)} />}
           <ConfirmButton
+            className="danger-link"
             onConfirm={() => {
               deleteClient(user.uid, client.id)
               toast(`${client.name} moved to Recently deleted`)
               navigate('/clients')
             }}
           >
-            Delete {client.isSelf ? 'my profile' : 'client'}
+            Delete {self ? 'my profile' : client.name}
           </ConfirmButton>
         </div>
       </Sheet>
@@ -152,48 +198,48 @@ export function ClientScreen() {
       <NewProgrammeSheet open={newOpen} onClose={() => setNewOpen(false)} client={client} />
       <ClientSheet open={editing} onClose={() => setEditing(false)} client={client} />
       <NoteSheet open={noteSheet !== null} onClose={() => setNoteSheet(null)} note={noteSheet ?? undefined} defaultClientId={client.id} />
+      {current && <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} programme={current} client={client} />}
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
 
-function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: new Date(ms).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
+/** First sentence or clause of a free-text field, for the one-line summary under the name. */
+function firstLine(text: string): string {
+  const t = text.trim().split(/\n|[.;]\s/)[0]
+  return t.length > 40 ? `${t.slice(0, 38)}…` : t
 }
 
-function MenuItem({ title, meta, onClick }: { title: string; meta: string; onClick: () => void }) {
+/** The current programme as a small paper card — the document the client has. */
+function CurrentCard({ programme: p, onOpen }: { programme: Programme; onOpen: () => void }) {
   return (
-    <button type="button" className="row-link" onClick={onClick}>
-      <div className="grow">
-        <div className="title">{title}</div>
-        <div className="meta">{meta}</div>
+    <div className="paper-card">
+      <span className="paper-eyebrow">Current · since {dayMonth(p.startDate ? Date.parse(p.startDate) : p.updatedAt)}</span>
+      <button type="button" className="paper-title display" onClick={onOpen}>{p.title}</button>
+      <div className="paper-days">
+        {p.sessions.map((s, i) => {
+          const { main, extra } = splitDayTitle(s.title, i)
+          return (
+            <button type="button" key={s.id} className="paper-day" onClick={onOpen}>
+              <span className="paper-num display">{String(i + 1).padStart(2, '0')}</span>
+              <span className="grow">{main}{extra ? ` ${extra}` : ''}</span>
+              <span className="mono small">{sessionRows(s).length}</span>
+            </button>
+          )
+        })}
       </div>
+    </div>
+  )
+}
+
+function MenuLine({ title, meta, onClick }: { title: string; meta: string; onClick: () => void }) {
+  return (
+    <button type="button" className="line-link" onClick={onClick}>
+      <span className="grow">
+        <span className="line-title">{title}</span>
+        <span className="line-meta">{meta}</span>
+      </span>
     </button>
-  )
-}
-
-function BackLink() {
-  return (
-    <Link to="/clients" className="btn-ghost" style={{ alignSelf: 'flex-start', paddingLeft: 0, textDecoration: 'none' }}>
-      <span style={{ width: 20, height: 20, display: 'inline-flex' }}><IconBack /></span>
-      Clients
-    </Link>
-  )
-}
-
-function hoursTrained(sec: number): string {
-  return sec ? (sec / 3600).toFixed(sec < 36000 ? 1 : 0) : '0'
-}
-
-function ProgrammeRow({ programme: p, sessions }: { programme: Programme; sessions: number }) {
-  const date = new Date(p.startDate ?? p.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-  return (
-    <Link to={`/programmes/${p.id}`} className="row-link">
-      <div className="grow">
-        <div className="title">{p.title}</div>
-        <div className="meta">{[date, `${p.sessions.length} days`, sessions ? `${sessions} sessions` : ''].filter(Boolean).join(' · ')}</div>
-      </div>
-      {STATUS_TAG[p.status] && <span className={`tag${p.status === 'active' ? ' accent' : ''}`}>{STATUS_TAG[p.status]}</span>}
-    </Link>
   )
 }
 
@@ -208,13 +254,9 @@ function NewProgrammeSheet({ open, onClose, client }: { open: boolean; onClose: 
   }
   return (
     <Sheet open={open} onClose={onClose} title="New programme">
-      <div className="list">
-        <button type="button" className="row-link" onClick={() => create(true)}>
-          <div className="grow"><div className="title">Build with Claude</div><div className="meta">Chat it through; Claude drafts and edits the programme</div></div>
-        </button>
-        <button type="button" className="row-link" onClick={() => create(false)}>
-          <div className="grow"><div className="title">Blank programme</div><div className="meta">Enter it yourself via ⋯ → Edit programme</div></div>
-        </button>
+      <div className="lines">
+        <MenuLine title="Build with Claude" meta="Chat it through; Claude drafts and edits it" onClick={() => create(true)} />
+        <MenuLine title="Blank programme" meta="Type it in yourself" onClick={() => create(false)} />
       </div>
     </Sheet>
   )

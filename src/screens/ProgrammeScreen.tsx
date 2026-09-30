@@ -1,15 +1,19 @@
+/*
+ * A programme on its own page: the paper document, the same one the client receives.
+ * Reached from a client's page (current or earlier programmes). Two plain actions, the rest in ⋯.
+ */
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { DayList } from '../components/DayList'
 import { ExportSheet } from '../components/ExportSheet'
-import { IconBack } from '../components/Icons'
+import { IconMore } from '../components/Icons'
 import { ProgrammeSheet } from '../components/ProgrammeSheet'
 import { Sheet } from '../components/Sheet'
+import { TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { activateProgramme, copyToSelf, createNextBlock, duplicateProgramme } from '../data/programmeActions'
-import { mapSession } from '../data/programmeEdits'
 import { restoreProgramme, softDeleteProgramme, updateProgrammeFields, useClients, useProgramme, useProgrammes } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { Programme, ProgrammeStatus } from '../data/types'
@@ -23,17 +27,11 @@ export function ProgrammeScreen() {
   if (!programme) {
     return (
       <div className="screen">
-        {!loading && (
-          <div className="empty">
-            <h3 className="display">Programme not found</h3>
-            <p>It may have been deleted on another device.</p>
-            <Link to="/clients" className="btn-acc" style={{ textDecoration: 'none' }}>Back to clients</Link>
-          </div>
-        )}
+        <TopBar back={{ to: '/clients', label: 'Clients' }} />
+        {!loading && <p className="lead">This programme isn't here any more.</p>}
       </div>
     )
   }
-  // Keyed so switching programmes resets the selected day.
   return <ProgrammeDetail key={programme.id} stored={programme} />
 }
 
@@ -43,7 +41,6 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
   const { data: clients } = useClients()
   const { data: siblings } = useProgrammes(stored.clientId)
   const { programme, change, flush } = useProgrammeDraft(stored)
-  const [sessionIndex, setSessionIndex] = useState(0)
   const [editOpen, setEditOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -52,95 +49,83 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
   const self = clients.find((c) => c.isSelf)
   const isMine = Boolean(client?.isSelf)
   const { data: selfProgrammes } = useProgrammes(self?.id ?? '__none__')
-  const index = Math.min(sessionIndex, programme.sessions.length - 1)
-  const session = programme.sessions[index]
+  const firstName = client?.name.trim().split(/\s+/)[0] ?? 'client'
 
   if (!user) return null
   const uid = user.uid
 
+  function loadInTrain() {
+    if (!self) {
+      toast('Add your own profile first: Clients → You')
+      return
+    }
+    flush()
+    copyToSelf(uid, programme, self.id, selfProgrammes)
+    toast('Loaded in Train as your current programme')
+    navigate('/train')
+  }
+
+  function trainMine() {
+    flush()
+    if (programme.status !== 'active') activateProgramme(uid, programme, siblings)
+    navigate('/train')
+  }
+
   return (
     <div className="screen">
-      <Link to={client ? `/clients/${client.id}` : '/clients'} className="btn-ghost" style={{ alignSelf: 'flex-start', paddingLeft: 0, textDecoration: 'none' }}>
-        <span style={{ width: 20, height: 20, display: 'inline-flex' }}><IconBack /></span>
-        {client?.name ?? 'Clients'}
-      </Link>
-
-      <header className="screen-head" style={{ paddingTop: 0 }}>
-        <div style={{ minWidth: 0 }}>
-          <h1 className="display">{programme.title}</h1>
-          <p className="sub">
-            <span className={`tag${programme.status === 'active' ? ' accent' : ''}`}>{STATUS_LABEL[programme.status]}</span>{' '}
-            {[programme.frequency, programme.sessionLength, programme.durationWeeks ? `${programme.durationWeeks} weeks` : ''].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-        <button type="button" className="icon-btn menu-btn" aria-label="Programme menu" onClick={() => setMoreOpen(true)}>⋯</button>
-      </header>
+      <TopBar
+        back={{ to: client ? `/clients/${client.id}` : '/clients', label: isMine ? 'You' : client?.name ?? 'Clients' }}
+        noteClientId={programme.clientId}
+        actions={<button type="button" className="icon-btn" aria-label="Programme menu" onClick={() => setMoreOpen(true)}><IconMore /></button>}
+      />
 
       {programme.deletedAt && (
-        <div className="banner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <div className="banner row-banner">
           <span>This programme is in Recently deleted.</span>
-          <button type="button" className="btn-acc" onClick={() => { restoreProgramme(uid, programme.id); toast('Programme restored') }}>Restore</button>
+          <button type="button" className="text-link" onClick={() => { restoreProgramme(uid, programme.id); toast('Programme restored') }}>Restore</button>
         </div>
       )}
-      {programme.goal && <p className="muted" style={{ margin: 0 }}>{programme.goal}</p>}
 
-      <div className="tabs" role="tablist" aria-label="Days">
+      <article className="paper-doc">
+        <span className="paper-eyebrow">{STATUS_LABEL[programme.status]}{programme.durationWeeks ? ` · ${programme.durationWeeks}-week plan` : ''}</span>
+        <h1 className="display paper-doc-title">{programme.title}</h1>
+        {programme.goal && <p className="paper-goal">{programme.goal}</p>}
+        <div className="paper-stats">
+          {programme.frequency && <span><span>Frequency</span><b className="mono">{programme.frequency}</b></span>}
+          {programme.sessionLength && <span><span>Length</span><b className="mono">{programme.sessionLength}</b></span>}
+        </div>
         {programme.sessions.map((s, i) => (
-          <button type="button" role="tab" key={s.id} className="tab" aria-selected={i === index} onClick={() => setSessionIndex(i)}>
-            {s.title || `Day ${i + 1}`}
-          </button>
+          <DayList key={s.id} session={s} index={i} mode="read" />
         ))}
-      </div>
+      </article>
 
-      {session && <DayList session={session} index={index} mode="train" onChange={(fn) => change(mapSession(programme, session.id, fn))} />}
-
-      <div className="clock-bar">
+      <div className="button-pair">
         {isMine ? (
-          <button
-            type="button"
-            className="btn-cta btn-block"
-            onClick={() => {
-              flush()
-              if (programme.status !== 'active') activateProgramme(uid, programme, siblings)
-              navigate('/train')
-            }}
-          >
-            {programme.status === 'active' ? 'Train this programme' : 'Make current & train'}
-          </button>
+          <button type="button" className="btn-cta" onClick={trainMine}>{programme.status === 'active' ? 'Open in Train' : 'Make current & train'}</button>
         ) : (
-          <button
-            type="button"
-            className="btn-cta btn-block"
-            onClick={() => {
-              if (!self) {
-                toast('Add your own profile first: Clients → + Add → Your own profile')
-                return
-              }
-              flush()
-              copyToSelf(uid, programme, self.id, selfProgrammes)
-              toast('Loaded in Train as your current programme')
-              navigate('/train')
-            }}
-          >
-            Load in Train
-          </button>
+          <button type="button" className="btn-cta" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
         )}
+        <Link to={`/create/${programme.id}`} className="btn-outline" onClick={flush}>Rework with Claude</Link>
       </div>
 
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title={programme.title}>
-        <div className="list">
-          <MenuItem title="Edit programme" meta="Days, exercises, goal and notes" onClick={() => { setMoreOpen(false); setEditOpen(true) }} />
-          <MenuItem title="Export" meta="HTML or Word, English or German" onClick={() => { setMoreOpen(false); setExportOpen(true) }} />
-          <MenuItem title="Rework with Claude" meta="Open this programme in Create" onClick={() => { flush(); navigate(`/create/${programme.id}`) }} />
-          <MenuItem title="Build next block" meta="New draft based on this one, in Create" onClick={() => { flush(); const nid = createNextBlock(uid, programme); navigate(`/create/${nid}`) }} />
+        <div className="lines">
+          <MenuLine title="Edit programme" meta="Days, exercises, goal and notes" onClick={() => { setMoreOpen(false); setEditOpen(true) }} />
+          {isMine ? (
+            <MenuLine title="Export" meta="HTML or Word, English or German" onClick={() => { setMoreOpen(false); setExportOpen(true) }} />
+          ) : (
+            <MenuLine title="Load in Train" meta="Use a copy for your own training" onClick={loadInTrain} />
+          )}
+          <MenuLine title="Build next block" meta="A new draft based on this one, in Create" onClick={() => { flush(); navigate(`/create/${createNextBlock(uid, programme)}`) }} />
           {programme.status !== 'active' && (
-            <MenuItem title="Make current" meta={`${isMine ? 'Your' : `${client?.name ?? 'The client'}'s`} current programme is archived`} onClick={() => { activateProgramme(uid, programme, siblings); setMoreOpen(false); toast('Now the current programme') }} />
+            <MenuLine title="Make current" meta={`${isMine ? 'Your' : `${firstName}'s`} current programme is archived`} onClick={() => { activateProgramme(uid, programme, siblings); setMoreOpen(false); toast('Now the current programme') }} />
           )}
           {programme.status !== 'archived' && (
-            <MenuItem title="Archive" meta="Keeps it in the client's history" onClick={() => { updateProgrammeFields(uid, programme.id, { status: 'archived' }); setMoreOpen(false); toast('Programme archived') }} />
+            <MenuLine title="Archive" meta="Keeps it in the history" onClick={() => { updateProgrammeFields(uid, programme.id, { status: 'archived' }); setMoreOpen(false); toast('Programme archived') }} />
           )}
-          <MenuItem title="Duplicate" meta="An independent copy, as a draft" onClick={() => { flush(); const nid = duplicateProgramme(uid, programme); setMoreOpen(false); navigate(`/programmes/${nid}`) }} />
+          <MenuLine title="Duplicate" meta="An independent copy, as a draft" onClick={() => { flush(); navigate(`/programmes/${duplicateProgramme(uid, programme)}`) }} />
           <ConfirmButton
+            className="danger-link"
             onConfirm={() => {
               flush()
               softDeleteProgramme(uid, programme.id)
@@ -153,19 +138,19 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
         </div>
       </Sheet>
 
-      <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} onChange={change} />
+      <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} clientName={isMine ? 'You' : client?.name} onChange={change} />
       <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} programme={programme} client={client} />
     </div>
   )
 }
 
-function MenuItem({ title, meta, onClick }: { title: string; meta: string; onClick: () => void }) {
+function MenuLine({ title, meta, onClick }: { title: string; meta: string; onClick: () => void }) {
   return (
-    <button type="button" className="row-link" onClick={onClick}>
-      <div className="grow">
-        <div className="title">{title}</div>
-        <div className="meta">{meta}</div>
-      </div>
+    <button type="button" className="line-link" onClick={onClick}>
+      <span className="grow">
+        <span className="line-title">{title}</span>
+        <span className="line-meta">{meta}</span>
+      </span>
     </button>
   )
 }

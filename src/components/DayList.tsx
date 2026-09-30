@@ -1,9 +1,10 @@
 /*
- * The one programme layout used everywhere in the app: one line per exercise (name ··· sets),
- * tap to open it in place. What the open exercise offers depends on the mode:
+ * The one programme layout used everywhere: ruled lines with dotted leaders
+ * (Back Squat ······ 4 × 5). Tap a line to open it in place. What the open card offers
+ * depends on the mode:
  *   read  — cue, alternative, video
- *   train — plus sets/reps − +, rest, swap, note (changes stick to the programme)
- *   edit  — plus cue/alternative text, move, delete, section and session titles, add exercise
+ *   train — plus sets/reps − +, swap, note (changes stick to the programme)
+ *   edit  — plus name, cue, alternative, rest, superset, move, delete, section and day titles
  */
 import { useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
@@ -12,6 +13,7 @@ import { findExercise, videoUrl } from '../data/exercises'
 import { move } from '../data/programmeEdits'
 import { estimateSessionMin, isSteppable, newRow, newSection, repsLabel, setsLabel, stepReps, stepSets, withLibraryLink } from '../data/programmeUtils'
 import type { ExerciseRow, ProgrammeSection, ProgrammeSession, ProgressionBlock } from '../data/types'
+import { splitDayTitle } from '../util/dayTitle'
 
 export type DayListMode = 'read' | 'train' | 'edit'
 
@@ -25,16 +27,23 @@ interface DayListProps {
   onNote?: (exerciseName: string) => void
   /** Edit mode: open a progression table for editing. */
   onEditBlock?: (blockId: string) => void
+  /** Hide the day number and title (Train shows them as the page heading). */
+  hideHeader?: boolean
+  /** Rows Claude changed in its last reply (highlighted). */
   claude?: Set<string>
+  /** Rows Pete changed by hand since then (moss rule). */
   mine?: Set<string>
+  /** Rows changed during the running session (numbers in the accent colour). */
+  changed?: Set<string>
 }
 
-export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock, claude, mine }: DayListProps) {
+export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock, hideHeader, claude, mine, changed }: DayListProps) {
   const [openRow, setOpenRow] = useState<string | null>(null)
   const [openBlock, setOpenBlock] = useState<string | null>(null)
   const [swapFor, setSwapFor] = useState<ExerciseRow | null>(null)
   const edit = mode === 'edit'
   const minutes = estimateSessionMin(s)
+  const { main, extra } = splitDayTitle(s.title, index)
 
   const updateSection = (secId: string, fn: (sec: ProgrammeSection) => ProgrammeSection) =>
     onChange?.((x) => ({ ...x, sections: x.sections.map((sec) => (sec.id === secId ? fn(sec) : sec)) }))
@@ -43,33 +52,35 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
 
   return (
     <section className="day">
-      <header className="day-head">
-        <span className="day-num">{String(index + 1).padStart(2, '0')}</span>
-        {edit ? (
-          <div className="day-title">
-            <input className="plain day-title-input" value={s.title} placeholder={`Day ${index + 1}`} onChange={(e) => onChange?.((x) => ({ ...x, title: e.target.value }))} aria-label="Day title" />
-            <input className="plain plain-muted" value={s.focus} placeholder="Focus (one line)" onChange={(e) => onChange?.((x) => ({ ...x, focus: e.target.value }))} aria-label="Day focus" />
-          </div>
-        ) : (
-          <div className="day-title">
-            <h3 className="display">{s.title || `Day ${index + 1}`}</h3>
-            {s.focus && <p>{s.focus}</p>}
-          </div>
-        )}
-        {minutes > 0 && <span className="day-min mono">~{minutes} min</span>}
-      </header>
+      {!hideHeader && (
+        <header className="day-head">
+          <span className="day-num">{String(index + 1).padStart(2, '0')}</span>
+          {edit ? (
+            <div className="day-title">
+              <input className="plain day-title-input" value={s.title} placeholder={`Day ${index + 1}`} onChange={(e) => onChange?.((x) => ({ ...x, title: e.target.value }))} aria-label="Day title" />
+              <input className="plain plain-muted" value={s.focus} placeholder="Focus (one line)" onChange={(e) => onChange?.((x) => ({ ...x, focus: e.target.value }))} aria-label="Day focus" />
+            </div>
+          ) : (
+            <div className="day-title">
+              <h3 className="display">{main}{extra && <span className="day-extra"> {extra}</span>}</h3>
+              {s.focus && <p>{s.focus}</p>}
+            </div>
+          )}
+          {minutes > 0 && <span className="day-min mono">~{minutes} min</span>}
+        </header>
+      )}
 
       {s.sections.map((sec) => (
         <div key={sec.id} className="day-section">
           {edit ? (
             <div className="day-section-edit">
-              <input className="plain day-section-input" value={sec.title} placeholder="Section (optional)" onChange={(e) => updateSection(sec.id, (x) => ({ ...x, title: e.target.value }))} aria-label="Section title" />
+              <input className="plain section-label-input" value={sec.title} placeholder="Section (optional)" onChange={(e) => updateSection(sec.id, (x) => ({ ...x, title: e.target.value }))} aria-label="Section title" />
               {s.sections.length > 1 && (
-                <ConfirmButton className="btn-ghost danger day-small" label="Delete section" onConfirm={() => onChange?.((x) => ({ ...x, sections: x.sections.filter((y) => y.id !== sec.id) }))}>✕</ConfirmButton>
+                <ConfirmButton className="btn-ghost danger small" label="Delete section" onConfirm={() => onChange?.((x) => ({ ...x, sections: x.sections.filter((y) => y.id !== sec.id) }))}>✕</ConfirmButton>
               )}
             </div>
           ) : (
-            sec.title && <div className="day-section-title">{sec.title}</div>
+            sec.title && <div className="section-label">{sec.title}{sec.duration ? ` · ${sec.duration}` : ''}</div>
           )}
 
           {sec.rows.map((r, i) => {
@@ -83,10 +94,10 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
                     {r.name || <em className="muted">New exercise</em>}
                   </span>
                   <span className="ex-dots" aria-hidden="true" />
-                  <span className="ex-rx mono">{r.prescription}</span>
+                  <span className={`ex-rx mono${changed?.has(r.id) ? ' changed' : ''}`}>{r.prescription}</span>
                 </button>
                 {open && (
-                  <ExercisePanel
+                  <ExerciseCard
                     row={r}
                     mode={mode}
                     onChange={(fn) => updateRow(sec.id, r.id, fn)}
@@ -103,7 +114,7 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
           })}
 
           {edit && (
-            <button type="button" className="btn-ghost day-add" onClick={() => { const row = newRow(); updateSection(sec.id, (x) => ({ ...x, rows: [...x.rows, row] })); setOpenRow(row.id) }}>
+            <button type="button" className="text-link add-line" onClick={() => { const row = newRow(); updateSection(sec.id, (x) => ({ ...x, rows: [...x.rows, row] })); setOpenRow(row.id) }}>
               + Exercise
             </button>
           )}
@@ -115,7 +126,7 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
       ))}
 
       {edit && (
-        <button type="button" className="btn-ghost day-add" onClick={() => onChange?.((x) => ({ ...x, sections: [...x.sections, newSection({ title: 'New section' })] }))}>
+        <button type="button" className="text-link add-line" onClick={() => onChange?.((x) => ({ ...x, sections: [...x.sections, newSection({ title: 'New section' })] }))}>
           + Section
         </button>
       )}
@@ -135,7 +146,7 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
   )
 }
 
-interface PanelProps {
+interface CardProps {
   row: ExerciseRow
   mode: DayListMode
   onChange: (fn: (r: ExerciseRow) => ExerciseRow) => void
@@ -147,7 +158,7 @@ interface PanelProps {
   canMoveDown: boolean
 }
 
-function ExercisePanel({ row: r, mode, onChange, onSwap, onNote, onMove, onDelete, canMoveUp, canMoveDown }: PanelProps) {
+function ExerciseCard({ row: r, mode, onChange, onSwap, onNote, onMove, onDelete, canMoveUp, canMoveDown }: CardProps) {
   const ex = findExercise(r.exerciseKey ?? r.name)
   const video = r.name ? videoUrl(ex ?? { name: r.name }) : null
   const edit = mode === 'edit'
@@ -155,7 +166,7 @@ function ExercisePanel({ row: r, mode, onChange, onSwap, onNote, onMove, onDelet
   const steppable = isSteppable(r.prescription)
 
   return (
-    <div className="ex-panel">
+    <div className="ex-card">
       {edit ? (
         <input className="plain ex-name-input" list="exercise-names" value={r.name} placeholder="Exercise name" onChange={(e) => onChange((x) => withLibraryLink({ ...x, name: e.target.value }))} aria-label="Exercise name" autoFocus={!r.name} />
       ) : (
@@ -169,39 +180,38 @@ function ExercisePanel({ row: r, mode, onChange, onSwap, onNote, onMove, onDelet
         </div>
       )}
 
-      {adjustable && (
-        <div className="ex-fields">
-          {(edit || !steppable) && (
-            <label>Sets × reps<input className="plain mono" value={r.prescription} placeholder="3 × 8–10" onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>
-          )}
-          <label>Rest<input className="plain mono" value={r.rest} placeholder="90s" onChange={(e) => onChange((x) => ({ ...x, rest: e.target.value }))} /></label>
-          {edit && <label>Superset<input className="plain mono" value={r.superset} placeholder="A1" onChange={(e) => onChange((x) => ({ ...x, superset: e.target.value }))} /></label>}
-        </div>
-      )}
-      {!adjustable && r.rest && <p className="ex-meta mono">Rest {r.rest}</p>}
-
-      {edit ? (
+      {edit && (
         <>
+          <div className="ex-fields">
+            <label>Sets × reps<input className="plain mono" value={r.prescription} placeholder="3 × 8–10" onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>
+            <label>Rest<input className="plain mono" value={r.rest} placeholder="90s" onChange={(e) => onChange((x) => ({ ...x, rest: e.target.value }))} /></label>
+            <label>Superset<input className="plain mono" value={r.superset} placeholder="A1" onChange={(e) => onChange((x) => ({ ...x, superset: e.target.value }))} /></label>
+          </div>
           <input className="plain plain-muted" value={r.notes} placeholder="Cue for the client (8 words max)" onChange={(e) => onChange((x) => ({ ...x, notes: e.target.value }))} aria-label="Cue" />
           <input className="plain plain-muted" value={r.alternative} placeholder="Alternative (optional)" onChange={(e) => onChange((x) => ({ ...x, alternative: e.target.value }))} aria-label="Alternative" />
         </>
-      ) : (
-        r.alternative && <p className="ex-meta">Alternative: {r.alternative}</p>
       )}
+      {/* Prescriptions like "5 min" or "10 reps" have no − / +; they're typed instead. */}
+      {mode === 'train' && !steppable && (
+        <div className="ex-fields">
+          <label>Sets × reps<input className="plain mono" value={r.prescription} onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>
+        </div>
+      )}
+      {!edit && r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
 
       <div className="ex-actions">
-        {video && (
-          <a className={`video-link${video.isSearch ? ' search' : ''}`} href={video.url} target="_blank" rel="noopener noreferrer">▶ Video</a>
-        )}
-        {adjustable && <button type="button" className="btn-ghost" onClick={onSwap}>Swap</button>}
-        {onNote && <button type="button" className="btn-ghost" onClick={onNote}>Note</button>}
+        {video && <a href={video.url} target="_blank" rel="noopener noreferrer">Video</a>}
+        {adjustable && <button type="button" onClick={onSwap}>Swap</button>}
+        {onNote && <button type="button" onClick={onNote}>Note</button>}
         {edit && (
           <>
-            <button type="button" className="btn-ghost" disabled={!canMoveUp} onClick={() => onMove(-1)} aria-label="Move up">↑</button>
-            <button type="button" className="btn-ghost" disabled={!canMoveDown} onClick={() => onMove(1)} aria-label="Move down">↓</button>
-            <ConfirmButton onConfirm={onDelete}>Delete</ConfirmButton>
+            <button type="button" disabled={!canMoveUp} onClick={() => onMove(-1)} aria-label="Move up">↑</button>
+            <button type="button" disabled={!canMoveDown} onClick={() => onMove(1)} aria-label="Move down">↓</button>
+            <ConfirmButton className="danger-link" onConfirm={onDelete}>Delete</ConfirmButton>
           </>
         )}
+        <span className="grow" />
+        {!edit && r.rest && <span className="mono muted small">rest {r.rest}</span>}
       </div>
     </div>
   )
@@ -210,9 +220,11 @@ function ExercisePanel({ row: r, mode, onChange, onSwap, onNote, onMove, onDelet
 function Stepper({ label, value, onStep }: { label: string; value: string; onStep: (delta: number) => void }) {
   return (
     <div className="stepper">
-      <span className="stepper-label">{label}</span>
       <button type="button" onClick={() => onStep(-1)} aria-label={`Fewer ${label.toLowerCase()}`}>−</button>
-      <span className="stepper-value mono">{value}</span>
+      <span className="stepper-value">
+        <span className="mono">{value}</span>
+        <span className="stepper-label">{label}</span>
+      </span>
       <button type="button" onClick={() => onStep(1)} aria-label={`More ${label.toLowerCase()}`}>+</button>
     </div>
   )

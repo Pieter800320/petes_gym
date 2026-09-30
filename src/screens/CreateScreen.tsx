@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ConfirmButton } from '../components/ConfirmButton'
-import { IconAttach, IconBack, IconChevronUp, IconSend, IconTrash } from '../components/Icons'
+import { IconAttach, IconBack, IconPen, IconSend } from '../components/Icons'
+import { openNote } from '../components/noteEvents'
 import { LibraryBrowser } from '../components/LibraryBrowser'
 import { ProgrammeSheet } from '../components/ProgrammeSheet'
 import { Sheet } from '../components/Sheet'
+import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { describeClaudeError } from '../claude/client'
@@ -21,15 +22,21 @@ import { getApiKey, getCreateProgrammeId, setCreateProgrammeId } from '../settin
 
 /** Delay before a manual edit is written to Firestore, so typing doesn't write on every key. */
 const AUTOSAVE_MS = 700
-/** Upward finger travel on the programme bar that opens the sheet. */
-const SWIPE_OPEN_PX = 30
 
 export function CreateScreen() {
   const { id } = useParams()
   return id ? <Workspace id={id} /> : <CreateHome />
 }
 
-// ── Home: drafts + new programme + library ───────────────────────────
+function relativeDay(ms: number): string {
+  const d = new Date(ms)
+  const days = Math.floor((Date.now() - ms) / 86_400_000)
+  if (days < 1 && d.getDate() === new Date().getDate()) return 'today'
+  if (days < 6) return d.toLocaleDateString(undefined, { weekday: 'short' })
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+}
+
+// ── Home: what's in progress, the library, and NEW ───────────────────
 
 function CreateHome() {
   const { user } = useAuth()
@@ -41,21 +48,13 @@ function CreateHome() {
   const drafts = programmes.filter((p) => p.status === 'draft')
   const clientName = (id: string) => clients.find((c) => c.id === id)?.name ?? ''
 
-  // Tapping the Create tab reopens the programme Pete was working on; the back arrow
-  // in the chat sets `stay` to show this list instead.
+  // Tapping the Create tab reopens the programme Pete was working on; the back arrow in the
+  // chat sets `stay` to show this page instead.
   const stay = (location.state as { stay?: boolean } | null)?.stay
   useEffect(() => {
     const last = getCreateProgrammeId()
     if (!stay && last) navigate(`/create/${last}`, { replace: true })
   }, [stay, navigate])
-
-  function removeDraft(id: string) {
-    if (!user) return
-    // Drafts go to Recently deleted (Clients tab) and keep their chat, so they can be restored.
-    softDeleteProgramme(user.uid, id)
-    if (getCreateProgrammeId() === id) setCreateProgrammeId(null)
-    toast('Draft moved to Recently deleted')
-  }
 
   function start(client: Client) {
     if (!user) return
@@ -65,67 +64,49 @@ function CreateHome() {
   }
 
   return (
-    <div className="screen">
-      <header className="screen-head">
-        <div>
-          <h1 className="display">Create</h1>
-          <p className="sub">Build programmes with Claude</p>
-        </div>
-      </header>
+    <div className="screen has-dial">
+      <TopBar overline="WITH CLAUDE" />
+      <BigTitle text="Create" />
 
-      {!getApiKey() && (
-        <div className="banner">Add your Anthropic API key in Settings (Clients → gear icon) to chat with Claude on this device.</div>
-      )}
+      {!getApiKey() && <p className="lead">Add your Anthropic API key first: Clients → You → Settings.</p>}
 
-      <div className="list">
-        <button type="button" className="new-slot" onClick={() => setPickOpen(true)}>
-          <span className="new-slot-plus" aria-hidden="true">+</span> New programme
-        </button>
+      <div className="section-label">In progress</div>
+      <div className="lines">
+        {drafts.map((p) => (
+          <Link key={p.id} to={`/create/${p.id}`} className="line-link">
+            <span className="grow">
+              <span className="line-title">{clientName(p.clientId)}</span>
+              <span className="line-meta">{p.title}</span>
+            </span>
+            <span className="mono muted small">{relativeDay(p.updatedAt)}</span>
+          </Link>
+        ))}
+        {!loading && !drafts.length && <p className="muted small">Nothing in progress. Tap NEW to start a programme.</p>}
       </div>
 
-      {drafts.length > 0 && (
-        <>
-          <div className="section-title"><span className="label">Drafts</span></div>
-          <div className="list">
-            {drafts.map((p) => (
-              <div key={p.id} className="draft-row">
-                <Link to={`/create/${p.id}`} className="row-link">
-                  <div className="grow">
-                    <div className="title">{p.title}</div>
-                    <div className="meta">{clientName(p.clientId)} · edited {new Date(p.updatedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</div>
-                  </div>
-                </Link>
-                <ConfirmButton className="icon-btn draft-delete" label={`Delete draft ${p.title}`} onConfirm={() => removeDraft(p.id)}>
-                  <IconTrash />
-                </ConfirmButton>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-      {!loading && !drafts.length && <p className="muted" style={{ margin: 0 }}>No drafts. Unfinished programmes appear here.</p>}
-
-      <div className="section-title"><span className="label">Exercise library</span></div>
+      <div className="section-label">Exercise library</div>
       <LibraryBrowser />
 
+      <Dial label="NEW" ariaLabel="New programme" onClick={() => setPickOpen(true)} />
+
       <Sheet open={pickOpen} onClose={() => setPickOpen(false)} title="Programme for…">
-        <div className="list">
+        <div className="lines">
           {clients.map((c) => (
-            <button type="button" key={c.id} className="row-link" onClick={() => start(c)}>
-              <div className="grow">
-                <div className="title">{c.name}{c.isSelf ? ' (me)' : ''}</div>
-                <div className="meta">{c.goals || 'No goals on the profile yet'}</div>
-              </div>
+            <button type="button" key={c.id} className="line-link" onClick={() => start(c)}>
+              <span className="grow">
+                <span className="line-title">{c.isSelf ? 'You' : c.name}</span>
+                <span className="line-meta">{c.goals || 'No goals on the profile yet'}</span>
+              </span>
             </button>
           ))}
-          {!clients.length && <p className="muted">Add a client first (Clients tab).</p>}
+          {!clients.length && <p className="muted">Add a client first (Clients → ADD).</p>}
         </div>
       </Sheet>
     </div>
   )
 }
 
-// ── Workspace: full-screen chat; the programme opens in a sheet ──────
+// ── Workspace: the chat; the programme opens in a sheet ──────────────
 
 function Workspace({ id }: { id: string }) {
   const { data: programme, loading } = useProgramme(id)
@@ -141,10 +122,10 @@ function Workspace({ id }: { id: string }) {
     return (
       <div className="screen">
         {missing ? (
-          <div className="empty">
-            <h3 className="display">Programme not found</h3>
-            <Link to="/create" state={{ stay: true }} className="btn-acc" style={{ textDecoration: 'none' }}>Back to Create</Link>
-          </div>
+          <>
+            <TopBar back={{ to: '/create', label: 'Create', state: { stay: true } }} />
+            <p className="lead">This programme no longer exists.</p>
+          </>
         ) : (
           <span className="label">Loading…</span>
         )}
@@ -184,7 +165,6 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   /** Edit waiting for the autosave timer; written immediately if the screen closes first. */
   const unsaved = useRef<Programme | null>(null)
   const chatEnd = useRef<HTMLDivElement | null>(null)
-  const peekStart = useRef<number | null>(null)
 
   const history = useMemo(() => parseHistory(chat), [chat])
   const display = useMemo(() => toDisplay(history), [history])
@@ -194,6 +174,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   const issues = useMemo(() => checkProgramme(programme, client), [programme, client])
   const busy = pending !== null
   const exerciseCount = programme.sessions.reduce((n, s) => n + s.sections.reduce((m, sec) => m + sec.rows.length, 0), 0)
+  const changedCount = chat?.lastChanged.length ?? 0
 
   // The Create tab reopens this programme next time.
   useEffect(() => setCreateProgrammeId(stored.id), [stored.id])
@@ -277,7 +258,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
       })
       if (recordTurn(uid, before, result)) saveProgramme(uid, result.programme)
       if (result.error) setError(result.error)
-      if (historyTooLarge(result.history)) setError('This chat is getting very long. Consider confirming and starting a fresh chat via “Build next block”.')
+      if (historyTooLarge(result.history)) setError('This chat is getting very long. Confirm the programme and start the next block in a fresh chat.')
     } catch (err) {
       console.error(err)
       // Nothing was saved: restore the draft text so Pete can retry.
@@ -306,20 +287,27 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
     activateProgramme(uid, programme, clientProgrammes)
     setCreateProgrammeId(null)
     toast('Programme confirmed')
-    navigate(`/programmes/${programme.id}`)
+    navigate(client ? `/clients/${client.id}` : `/programmes/${programme.id}`)
   }
 
-  const changedCount = chat?.lastChanged.length ?? 0
+  function deleteDraft() {
+    flushEdits()
+    softDeleteProgramme(uid, programme.id)
+    setCreateProgrammeId(null)
+    toast('Draft moved to Recently deleted')
+    navigate('/create', { state: { stay: true } })
+  }
 
   return (
     <div className="chat-screen">
-      <header className="chat-head">
-        <Link to="/create" state={{ stay: true }} className="icon-btn" aria-label="All drafts"><IconBack /></Link>
+      <div className="chat-head">
+        <Link to="/create" state={{ stay: true }} className="icon-btn" aria-label="Back to Create"><IconBack /></Link>
         <div className="chat-head-title">
-          <span className="display">{programme.title}</span>
-          <span className="muted">{client?.name}</span>
+          <span className="display">{client?.isSelf ? 'You' : client?.name ?? 'Client'}</span>
+          <span className="muted small">{programme.title}</span>
         </div>
-      </header>
+        <button type="button" className="icon-btn" aria-label="Quick note" onClick={() => openNote({ clientId: programme.clientId })}><IconPen /></button>
+      </div>
 
       <div className="chat-log" aria-live="polite">
         {display.map((m, i) => <Bubble key={i} item={m} />)}
@@ -334,43 +322,29 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
       </div>
 
       <div className="chat-bottom">
+        {error && <div className="banner error">{error}</div>}
         {chat?.undo && !busy && (
-          <div className="undo-bar">
+          <div className="undo-line">
             <span>Claude changed {changedCount || 'some'} exercise{changedCount === 1 ? '' : 's'}</span>
-            <button type="button" className="btn-ghost" onClick={undo}>Undo</button>
+            <button type="button" className="text-link" onClick={undo}>Undo</button>
           </div>
         )}
-        {error && <div className="banner error">{error}</div>}
+        <button type="button" className="programme-peek" onClick={() => setSheetOpen(true)}>
+          <span className="display peek-label">Programme</span>
+          <span className="grow muted small">
+            {programme.sessions.length} day{programme.sessions.length === 1 ? '' : 's'} · {exerciseCount} exercises
+          </span>
+          {changedCount > 0 && <span className="mono accent small">{changedCount} changed</span>}
+        </button>
         {attachments.length > 0 && (
           <div className="chips">
             {attachments.map((a, i) => (
               <button type="button" key={i} className="chip" aria-pressed="true" onClick={() => setAttachments((x) => x.filter((_, j) => j !== i))} title="Remove">
-                📎 {a.name} ✕
+                {a.name} ✕
               </button>
             ))}
           </div>
         )}
-        <button
-          type="button"
-          className="programme-peek"
-          onClick={() => setSheetOpen(true)}
-          onTouchStart={(e) => { peekStart.current = e.touches[0].clientY }}
-          onTouchEnd={(e) => {
-            // A swipe up opens the sheet, like pulling up a bottom sheet.
-            if (peekStart.current !== null && peekStart.current - e.changedTouches[0].clientY > SWIPE_OPEN_PX) setSheetOpen(true)
-            peekStart.current = null
-          }}
-        >
-          <span className="peek-text">
-            <b className="display">Programme</b>
-            <span className="muted">
-              {programme.sessions.length} session{programme.sessions.length === 1 ? '' : 's'} · {exerciseCount} exercises
-              {issues.some((i) => i.level === 'warn') ? ' · ⚠ check' : ''}
-            </span>
-          </span>
-          {changedCount > 0 && <span className="tag accent">{changedCount} changed</span>}
-          <span className="peek-chevron"><IconChevronUp /></span>
-        </button>
         <div className="composer-row">
           <label className="icon-btn attach" aria-label="Attach a file" title="Attach a client profile or old programme">
             <input type="file" accept={ACCEPTED_FILES} multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
@@ -378,8 +352,8 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
           </label>
           <textarea
             id="chat-input"
-            className="textarea composer-input"
-            placeholder={busy ? 'Claude is working…' : 'Message Claude…'}
+            className="composer-input"
+            placeholder={busy ? 'Claude is working…' : 'Message Claude'}
             value={input}
             disabled={busy}
             onChange={(e) => setInput(e.target.value)}
@@ -389,9 +363,9 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
             rows={1}
           />
           {busy ? (
-            <button type="button" className="btn-acc" onClick={() => abortRef.current?.abort()}>Stop</button>
+            <button type="button" className="send-btn stop" onClick={() => abortRef.current?.abort()} aria-label="Stop">■</button>
           ) : (
-            <button type="button" className="btn-cta send-btn" disabled={!input.trim() && !attachments.length} onClick={() => send(input)} aria-label="Send"><IconSend /></button>
+            <button type="button" className="send-btn" disabled={!input.trim() && !attachments.length} onClick={() => send(input)} aria-label="Send"><IconSend /></button>
           )}
         </div>
       </div>
@@ -403,30 +377,35 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
           setSheetOpen(false)
         }}
         programme={programme}
+        clientName={client?.isSelf ? 'You' : client?.name}
         onChange={manualChange}
         locked={busy}
         claude={claudeMarks}
         mine={mineMarks}
         issues={issues}
         onConfirm={confirm}
+        onDelete={programme.status === 'draft' ? deleteDraft : undefined}
       />
     </div>
   )
 }
 
-/** Renders "- " lines as bullets; everything else as paragraphs. */
+/** Pete's messages as dark bubbles; Claude's replies as plain text on paper. */
 function Bubble({ item }: { item: DisplayItem }) {
-  if (item.role === 'tool') return <div className="bubble tool">{item.text}</div>
+  if (item.role === 'tool') return <div className="msg-tool mono">{item.text}</div>
   const blocks = item.text.split(/\n{2,}/)
+  const body = blocks.map((b, i) => {
+    const lines = b.split('\n')
+    if (lines.every((l) => /^\s*[-•*]\s+/.test(l))) {
+      return <ul key={i}>{lines.map((l, j) => <li key={j}>{l.replace(/^\s*[-•*]\s+/, '').replace(/\*\*/g, '')}</li>)}</ul>
+    }
+    return <p key={i}>{b.replace(/\*\*/g, '')}</p>
+  })
+  if (item.role === 'user') return <div className="msg-user">{body}</div>
   return (
-    <div className={`bubble ${item.role}`}>
-      {blocks.map((b, i) => {
-        const lines = b.split('\n')
-        if (lines.every((l) => /^\s*[-•*]\s+/.test(l))) {
-          return <ul key={i}>{lines.map((l, j) => <li key={j}>{l.replace(/^\s*[-•*]\s+/, '').replace(/\*\*/g, '')}</li>)}</ul>
-        }
-        return <p key={i}>{b.replace(/\*\*/g, '')}</p>
-      })}
+    <div className="msg-claude">
+      <span className="msg-label mono">CLAUDE</span>
+      {body}
     </div>
   )
 }

@@ -8,8 +8,8 @@ import { getApiKey, setApiKey, useTheme, type ThemeSetting } from '../settings'
 
 const THEMES: { value: ThemeSetting; label: string }[] = [
   { value: 'system', label: 'System' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'light', label: 'Light' },
+  { value: 'light', label: 'Paper' },
+  { value: 'dark', label: 'Ink' },
 ]
 
 export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {

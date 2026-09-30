@@ -1,7 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { IconBack } from '../components/Icons'
-import { ProfileLinkButton } from '../components/ProfileLinkButton'
+import { BigTitle, TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { describeClaudeError } from '../claude/client'
@@ -57,17 +55,9 @@ export function ProfileImportScreen() {
 
   return (
     <div className="screen">
-      <Link to="/clients" className="btn-ghost" style={{ alignSelf: 'flex-start', paddingLeft: 0, textDecoration: 'none' }}>
-        <span style={{ width: 20, height: 20, display: 'inline-flex' }}><IconBack /></span>
-        Clients
-      </Link>
-      <header className="screen-head" style={{ paddingTop: 0 }}>
-        <div>
-          <h1 className="display">Import client profiles</h1>
-          <p className="sub">Answers from your Fitness Profile questionnaire</p>
-        </div>
-        <ProfileLinkButton />
-      </header>
+      <TopBar back={{ to: '/clients', label: 'Clients' }} />
+      <BigTitle text="Import answers" />
+      <p className="lead">Answers from your Fitness Profile questionnaire.</p>
 
       {!entries.length && (
         <>

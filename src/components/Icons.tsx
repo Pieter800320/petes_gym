@@ -11,29 +11,8 @@ const base: SVGProps<SVGSVGElement> = {
   'aria-hidden': true,
 }
 
-export const IconCreate = () => (
-  <svg {...base}><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" /><path d="M19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z" /></svg>
-)
-export const IconTrain = () => (
-  <svg {...base}><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11" /></svg>
-)
-export const IconClients = () => (
-  <svg {...base}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5" /><path d="M16 4.8a3.5 3.5 0 010 6.4M18.5 14.8c1.6.8 2.7 2.6 3 5.2" /></svg>
-)
-export const IconPlus = () => (
-  <svg {...base}><path d="M12 5v14M5 12h14" /></svg>
-)
-export const IconNote = () => (
-  <svg {...base}><path d="M5 4h10l4 4v12H5z" /><path d="M15 4v4h4M9 13h6M9 17h4" /></svg>
-)
-export const IconSettings = () => (
-  <svg {...base}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.6 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.6-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" /></svg>
-)
 export const IconBack = () => (
   <svg {...base}><path d="M15 18l-6-6 6-6" /></svg>
-)
-export const IconEdit = () => (
-  <svg {...base}><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
 )
 export const IconPin = () => (
   <svg {...base}><path d="M9 4h6l-1 5 4 4H6l4-4zM12 13v7" /></svg>
@@ -47,9 +26,12 @@ export const IconSend = () => (
 export const IconAttach = () => (
   <svg {...base}><path d="M20.5 11.5l-8.2 8.2a5 5 0 01-7.1-7.1l8.5-8.5a3.3 3.3 0 014.7 4.7l-8.5 8.5a1.7 1.7 0 01-2.4-2.4l7.8-7.8" /></svg>
 )
-export const IconChevronUp = () => (
-  <svg {...base}><path d="M6 15l6-6 6 6" /></svg>
+export const IconPen = () => (
+  <svg {...base} strokeWidth={1.8}><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
 )
-export const IconTrash = () => (
-  <svg {...base}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+export const IconChevronRight = () => (
+  <svg {...base} strokeWidth={1.8}><path d="M9 18l6-6-6-6" /></svg>
+)
+export const IconMore = () => (
+  <svg {...base} strokeWidth={2.2}><circle cx="5" cy="12" r="0.8" /><circle cx="12" cy="12" r="0.8" /><circle cx="19" cy="12" r="0.8" /></svg>
 )

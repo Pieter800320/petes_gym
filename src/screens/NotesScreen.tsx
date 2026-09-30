@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { IconBack } from '../components/Icons'
+import { BigTitle, TopBar } from '../components/TopBar'
 import { NoteCard } from '../components/NoteCard'
 import { NoteSheet } from '../components/NoteSheet'
 import { useNotes } from '../data/store'
@@ -13,16 +12,9 @@ export function NotesScreen() {
 
   return (
     <div className="screen">
-      <Link to="/clients" className="btn-ghost" style={{ alignSelf: 'flex-start', paddingLeft: 0, textDecoration: 'none' }}>
-        <span style={{ width: 20, height: 20, display: 'inline-flex' }}><IconBack /></span>
-        Clients
-      </Link>
-      <header className="screen-head" style={{ paddingTop: 0 }}>
-        <div>
-          <h1 className="display">General notes</h1>
-          <p className="sub">Notes not tied to a client</p>
-        </div>
-      </header>
+      <TopBar back={{ to: '/clients', label: 'Clients' }} noteClientId={null} />
+      <BigTitle text="General notes" />
+      <p className="lead">Notes not tied to a client. The pen at the top adds one.</p>
       {notes.length ? (
         <div className="list">
           {notes.map((n) => (

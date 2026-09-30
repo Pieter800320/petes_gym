@@ -19,7 +19,7 @@ interface NoteSheetProps {
 /** Quick capture: reachable from every tab, works offline, file under General or a client. */
 export function NoteSheet({ open, onClose, note, defaultClientId = null, initialText = '' }: NoteSheetProps) {
   return (
-    <Sheet open={open} onClose={onClose} title={note ? 'Edit note' : 'Quick note'}>
+    <Sheet open={open} onClose={onClose} title={note ? 'Edit note' : 'Note'}>
       {/* Keyed so each open starts from the note's current values, not stale form state. */}
       <NoteForm key={note?.id ?? `new-${defaultClientId}-${initialText}`} note={note} defaultClientId={defaultClientId} initialText={initialText} onDone={onClose} />
     </Sheet>
@@ -60,7 +60,7 @@ function NoteForm({ note, defaultClientId, initialText, onDone }: { note?: Note;
         </button>
         {clients.map((c) => (
           <button type="button" key={c.id} className="chip" aria-pressed={clientId === c.id} onClick={() => setClientId(c.id)}>
-            {c.name}
+            {c.isSelf ? 'Me' : c.name}
           </button>
         ))}
       </div>
@@ -75,7 +75,7 @@ function NoteForm({ note, defaultClientId, initialText, onDone }: { note?: Note;
       />
       {clientId && (
         <button type="button" className="chip" aria-pressed={pinned} onClick={() => setPinned(!pinned)} style={{ alignSelf: 'flex-start' }}>
-          Pin to next session
+          {clients.find((c) => c.id === clientId)?.isSelf ? 'Show it at my next session' : `Show it when I next open ${clients.find((c) => c.id === clientId)?.name ?? 'this client'}`}
         </button>
       )}
       <button type="button" className="btn-cta btn-block" onClick={save} disabled={!text.trim()}>

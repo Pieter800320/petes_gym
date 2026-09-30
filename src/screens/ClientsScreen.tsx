@@ -1,113 +1,98 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ClientSheet } from '../components/ClientSheet'
-import { SettingsSheet } from '../components/SettingsSheet'
-import { IconNote, IconSearch, IconSettings } from '../components/Icons'
-import { useClients, useNotes, useProgrammes } from '../data/store'
-import type { Client } from '../data/types'
-import { initials } from '../util/initials'
+import { IconChevronRight, IconSearch } from '../components/Icons'
+import { BigTitle, Dial, TopBar } from '../components/TopBar'
+import { useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
+import type { Client, Programme } from '../data/types'
 
-/**
- * Two groups: Pete's own space (his profile and general notes) at the top, then his clients.
- * Adding a client is the one dashed slot; imports live in Settings.
- */
+function shortDate(ms: number): string {
+  const d = new Date(ms)
+  if (Date.now() - ms < 86_400_000 && d.getDate() === new Date().getDate()) return 'today'
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+}
+
+/** Pete's own space (You, general notes) on a card at the top; clients as ruled lines below. */
 export function ClientsScreen() {
   const { data: clients, loading, error } = useClients()
   const { data: deletedClients } = useClients(true)
   const { data: deletedProgrammes } = useProgrammes('all', true)
+  const { data: programmes } = useProgrammes('all')
   const { data: generalNotes } = useNotes(null)
+  const self = clients.find((c) => c.isSelf)
+  const { data: myWorkouts } = useWorkouts(self ? { clientId: self.id } : null)
   const [search, setSearch] = useState('')
   const [newClient, setNewClient] = useState<null | 'client' | 'self'>(null)
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const self = clients.find((c) => c.isSelf)
   const others = clients.filter((c) => !c.isSelf)
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
     return others.filter((c) => !q || `${c.name} ${c.goals} ${c.injuries}`.toLowerCase().includes(q))
   }, [others, search])
+  const currentOf = (id: string): Programme | undefined => programmes.find((p) => p.clientId === id && p.status === 'active')
+  const lastTouched = (c: Client) => Math.max(c.updatedAt, ...programmes.filter((p) => p.clientId === c.id).map((p) => p.updatedAt))
   // Programmes deleted along with their client are counted under that client.
   const binCount = deletedClients.length + deletedProgrammes.filter((p) => !p.deletedWithClient).length
+  const mine = self ? currentOf(self.id) : undefined
 
   return (
-    <div className="screen">
-      <header className="screen-head">
-        <div>
-          <h1 className="display">Clients</h1>
-          <p className="sub">{loading ? 'Loading…' : `${others.length} client${others.length === 1 ? '' : 's'}`}</p>
-        </div>
-        <button type="button" className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
-          <IconSettings />
-        </button>
-      </header>
+    <div className="screen has-dial">
+      <TopBar overline={loading ? '' : `${others.length} CLIENT${others.length === 1 ? '' : 'S'}`} noteClientId={null} />
+      <BigTitle text="Clients" />
 
       {error && <div className="banner error">{error}</div>}
 
-      {/* Pete's own space */}
-      {(
-        <div className="list">
-          {self ? (
-            <ClientRow client={self} />
-          ) : (
-            !loading && (
-              <button type="button" className="new-slot" onClick={() => setNewClient('self')}>
-                <span className="new-slot-plus" aria-hidden="true">+</span> Your own profile
-              </button>
-            )
-          )}
-          <Link to="/notes" className="row-link">
-            <div className="avatar" style={{ background: 'var(--color-raised)', color: 'var(--color-note)' }}>
-              <span style={{ width: 22, height: 22 }}><IconNote /></span>
-            </div>
-            <div className="grow">
-              <div className="title">General notes</div>
-              <div className="meta">{generalNotes.length ? `${generalNotes.length} notes · latest: ${generalNotes[0].text}` : 'Notes not tied to a client'}</div>
-            </div>
+      <div className="own-card">
+        {self ? (
+          <Link to={`/clients/${self.id}`} className="line-link">
+            <span className="grow">
+              <span className="line-title">You</span>
+              <span className="line-meta">{[mine?.title ?? 'No current programme', myWorkouts.length ? `${myWorkouts.length} sessions` : ''].filter(Boolean).join(' · ')}</span>
+            </span>
+            <IconChevronRight />
           </Link>
-        </div>
-      )}
-
-      {/* Clients */}
-      <div className="group-title"><span className="label">Clients</span></div>
-      <div className="search-box">
-        <span className="search-icon" aria-hidden="true"><IconSearch /></span>
-        <input id="client-search" className="input search" style={{ paddingRight: 'var(--space-3)' }} placeholder="Search clients" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search clients" />
-      </div>
-
-      <div className="list">
-        {!search && (
-          <button type="button" className="new-slot" onClick={() => setNewClient('client')}>
-            <span className="new-slot-plus" aria-hidden="true">+</span> New client
-          </button>
+        ) : (
+          !loading && (
+            <button type="button" className="line-link" onClick={() => setNewClient('self')}>
+              <span className="grow">
+                <span className="line-title">You</span>
+                <span className="line-meta">Add your own profile to train with the app</span>
+              </span>
+              <IconChevronRight />
+            </button>
+          )
         )}
-        {visible.map((c) => <ClientRow key={c.id} client={c} />)}
-      </div>
-      {!loading && search && !visible.length && <p className="muted" style={{ margin: 0 }}>No client matches “{search}”.</p>}
-
-      {binCount > 0 && !search && (
-        <Link to="/deleted" className="btn-ghost" style={{ textDecoration: 'none', alignSelf: 'flex-start' }}>
-          Recently deleted ({binCount})
+        <Link to="/notes" className="line-link">
+          <span className="grow">
+            <span className="line-title">General notes</span>
+            <span className="line-meta">{generalNotes.length ? `${generalNotes.length} note${generalNotes.length === 1 ? '' : 's'} · “${generalNotes[0].text}”` : 'Notes not tied to a client'}</span>
+          </span>
+          <IconChevronRight />
         </Link>
-      )}
-
-      <ClientSheet open={newClient !== null} onClose={() => setNewClient(null)} initial={newClient === 'self' ? { name: 'Pete', isSelf: true } : undefined} />
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-    </div>
-  )
-}
-
-function ClientRow({ client }: { client: Client }) {
-  const meta = [client.frequency, client.injuries].filter(Boolean).join(' · ') || client.goals || 'No details yet'
-  return (
-    <Link to={`/clients/${client.id}`} className="row-link">
-      <div className={`avatar${client.isSelf ? ' self' : ''}`}>{initials(client.name)}</div>
-      <div className="grow">
-        <div className="title">
-          {client.name}
-          {client.isSelf && <span className="tag accent" style={{ marginLeft: 8 }}>ME</span>}
-        </div>
-        <div className="meta">{meta}</div>
       </div>
-    </Link>
+
+      <label className="search-line">
+        <IconSearch />
+        <input id="client-search" placeholder="Search clients" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search clients" />
+      </label>
+      <div className="lines">
+        {visible.map((c) => (
+          <Link key={c.id} to={`/clients/${c.id}`} className="line-link">
+            <span className="grow">
+              <span className="line-title">{c.name}</span>
+              <span className="line-meta">{currentOf(c.id)?.title ?? (c.questionnaire ? 'Questionnaire in' : c.goals || 'No programme yet')}</span>
+            </span>
+            <span className="mono muted small">{shortDate(lastTouched(c))}</span>
+          </Link>
+        ))}
+        {!loading && search && !visible.length && <p className="muted small">No client matches “{search}”.</p>}
+        {!loading && !search && !others.length && <p className="muted small">No clients yet. Tap ADD.</p>}
+      </div>
+
+      {binCount > 0 && !search && <Link to="/deleted" className="text-link quiet">Recently deleted ({binCount})</Link>}
+
+      <Dial label="ADD" ariaLabel="New client" onClick={() => setNewClient('client')} />
+      <ClientSheet open={newClient !== null} onClose={() => setNewClient(null)} initial={newClient === 'self' ? { name: 'Pete', isSelf: true } : undefined} />
+    </div>
   )
 }

@@ -1,37 +1,37 @@
 /*
- * Train: the day's programme as a simple list, with a clock bar at the bottom.
+ * Train — Pete's own training, like reading a training card.
  * Start sets the clock, Finish records the session. Changes made to an exercise during the
- * session (sets, reps, rest, swaps) stick to the programme and are listed in the session record.
+ * session (sets, reps, rest, swaps) stick to the programme and are listed with the session.
  */
-import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { DayList } from '../components/DayList'
-import { ExportSheet } from '../components/ExportSheet'
-import { NoteSheet } from '../components/NoteSheet'
-import { PinnedNotes } from '../components/PinnedNotes'
-import { ProgrammeSheet } from '../components/ProgrammeSheet'
-import { Sheet } from '../components/Sheet'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
+import { DayList } from '../components/DayList'
+import { PinnedNotes } from '../components/PinnedNotes'
+import { BigTitle, Dial, TopBar } from '../components/TopBar'
+import { openNote } from '../components/noteEvents'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { cancelWorkout, finishWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
-import { createNextBlock } from '../data/programmeActions'
 import { mapSession } from '../data/programmeEdits'
-import { formatClock } from '../data/programmeUtils'
-import { updateProgrammeFields, useClients, useProgrammes, useWorkouts } from '../data/store'
+import { estimateSessionMin, formatClock, sessionRows } from '../data/programmeUtils'
+import { useClients, useProgrammes, useWorkouts } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { Programme, Workout } from '../data/types'
+import { splitDayTitle } from '../util/dayTitle'
 
 /** Horizontal finger travel (px) that counts as a swipe to the next or previous day. */
 const SWIPE_PX = 70
 
-/** Index of the session after the most recently completed one ("Up next"). */
+/** Index of the session after the most recently completed one ("up next"). */
 function nextSessionIndex(p: Programme, workouts: Workout[]): number {
   const last = workouts[0]
   if (!last) return 0
   const i = p.sessions.findIndex((s) => s.id === last.sessionId)
   return i < 0 ? 0 : (i + 1) % p.sessions.length
 }
+
+const today = () => new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()
 
 /** Train is only for Pete's own training: it shows his profile's current programme. */
 export function TrainScreen() {
@@ -43,20 +43,16 @@ export function TrainScreen() {
   if (!programme) {
     return (
       <div className="screen">
-        <header className="screen-head"><h1 className="display">Train</h1></header>
+        <TopBar overline={today()} />
+        <BigTitle text="Train" />
         {clientsLoading || (self && loading) ? (
           <span className="label">Loading…</span>
         ) : !self ? (
-          <div className="empty">
-            <h3 className="display">Add your own profile</h3>
-            <p>Train is for your own training. Add your profile first: Clients → + Add → Your own profile.</p>
-            <Link to="/clients" className="btn-acc" style={{ textDecoration: 'none' }}>Go to clients</Link>
-          </div>
+          <p className="lead">Train is for your own training. Add your profile first: Clients → You.</p>
         ) : (
-          <div className="empty">
-            <h3 className="display">No current programme</h3>
-            <p>Build one for yourself in Create, or open a client's programme and tap “Load in Train”.</p>
-            <Link to="/create" className="btn-acc" style={{ textDecoration: 'none' }}>Go to Create</Link>
+          <div className="stack">
+            <p className="lead">No current programme. Build one for yourself in Create, or open a client's programme and tap “Load in Train”.</p>
+            <Link to="/create" className="text-link">Go to Create ›</Link>
           </div>
         )}
       </div>
@@ -69,8 +65,6 @@ export function TrainScreen() {
 
 function TrainProgramme({ stored }: { stored: Programme }) {
   const { user } = useAuth()
-  const navigate = useNavigate()
-  const { data: clients } = useClients()
   const { programme, change, flush } = useProgrammeDraft(stored)
   const { data: workouts, loading } = useWorkouts({ programmeId: stored.id })
   const active = useActiveWorkout()
@@ -80,13 +74,28 @@ function TrainProgramme({ stored }: { stored: Programme }) {
   const [selected, setSelected] = useState<number | null>(null)
   const index = Math.min(selected ?? (runningIndex >= 0 ? runningIndex : upNext), programme.sessions.length - 1)
   const session = programme.sessions[index]
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
-  const [exportOpen, setExportOpen] = useState(false)
-  const [note, setNote] = useState<string | null>(null)
   const swipe = useRef<{ x: number; y: number } | null>(null)
+  const now = useNow(Boolean(running))
 
-  if (!session || !user) return <div className="empty"><p>This programme has no days yet.</p></div>
+  // During a session, exercises changed since Start show their new numbers in the accent colour.
+  const changed = useMemo(() => {
+    if (!running || !session || session.id !== running.sessionId) return new Set<string>()
+    const before = new Map((running.baseline ?? []).map((r) => [r.id, r]))
+    return new Set(
+      sessionRows(session)
+        .filter((r) => {
+          const b = before.get(r.id)
+          return !b || b.name !== r.name || b.prescription !== r.prescription || b.rest !== r.rest
+        })
+        .map((r) => r.id),
+    )
+  }, [running, session])
+
+  if (!session || !user) return <p className="lead">This programme has no days yet.</p>
+
+  const { main, extra } = splitDayTitle(session.title, index)
+  const minutes = estimateSessionMin(session)
+  const status = running && index === runningIndex ? '' : index === upNext && !loading ? ' · up next' : ''
 
   function finish() {
     if (!user || !running) return
@@ -97,29 +106,36 @@ function TrainProgramme({ stored }: { stored: Programme }) {
   }
 
   return (
-    <div className="screen train">
-      <header className="screen-head">
-        <div style={{ minWidth: 0 }}>
-          <h1 className="display">Train</h1>
-          <p className="sub">{programme.title}</p>
-        </div>
-        <button type="button" className="icon-btn menu-btn" aria-label="Programme menu" onClick={() => setMenuOpen(true)}>⋯</button>
-      </header>
+    <div className="screen has-dial">
+      <TopBar overline={running ? <span className="live-label"><span className="live-dot" />IN SESSION</span> : today()} noteClientId={programme.clientId} />
+      <BigTitle
+        text={main}
+        accent={extra || undefined}
+        sub={`${programme.title} · Day ${index + 1} of ${programme.sessions.length}${status}`}
+      />
 
-      <div className="tabs" role="tablist" aria-label="Days">
+      <div className="day-picker" role="tablist" aria-label="Days">
         {programme.sessions.map((s, i) => (
-          <button type="button" role="tab" key={s.id} className="tab" aria-selected={i === index} onClick={() => setSelected(i)}>
-            {s.title || `Day ${i + 1}`}
-            {i === upNext && !loading && !running && <span className="dot" aria-label="Up next" />}
-            {i === runningIndex && <span className="dot live" aria-label="In progress" />}
+          <button
+            type="button"
+            role="tab"
+            key={s.id}
+            aria-selected={i === index}
+            aria-label={`Day ${i + 1}${i === upNext ? ', up next' : ''}`}
+            className={`day-dot${i === index ? ' on' : ''}${i === runningIndex ? ' live' : ''}`}
+            onClick={() => setSelected(i)}
+          >
+            {i + 1}
           </button>
         ))}
+        <span className="grow" />
+        {minutes > 0 && <span className="mono muted small">~{minutes} min</span>}
       </div>
 
       <PinnedNotes clientId={programme.clientId} />
 
       <div
-        className="train-day"
+        className="swipe-area"
         onTouchStart={(e) => { swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }}
         onTouchEnd={(e) => {
           const s = swipe.current
@@ -138,59 +154,49 @@ function TrainProgramme({ stored }: { stored: Programme }) {
           session={session}
           index={index}
           mode="train"
+          hideHeader
+          changed={changed}
           onChange={(fn) => change(mapSession(programme, session.id, fn))}
-          onNote={(name) => setNote(`${name}: `)}
+          onNote={(name) => openNote({ clientId: programme.clientId, text: `${name}: ` })}
         />
       </div>
 
-      <ClockBar
-        running={running}
-        busyElsewhere={Boolean(active && !running)}
-        dayTitle={programme.sessions[runningIndex]?.title}
-        onStart={() => {
-          flush()
-          startWorkout(programme.id, programme.clientId, session)
-        }}
-        onFinish={finish}
-      />
-
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={programme.title}>
-        <div className="list">
-          <MenuItem title="Edit programme" meta="Days, exercises, goal and notes" onClick={() => { setMenuOpen(false); setEditOpen(true) }} />
-          <MenuItem title="Export" meta="HTML or Word, English or German" onClick={() => { setMenuOpen(false); setExportOpen(true) }} />
-          <MenuItem title="Rework with Claude" meta="Open this programme in Create" onClick={() => { flush(); navigate(`/create/${programme.id}`) }} />
-          <MenuItem title="Build next block" meta="New draft based on this programme, in Create" onClick={() => { flush(); navigate(`/create/${createNextBlock(user.uid, programme)}`) }} />
-          {!running && (
-            <MenuItem title="Archive" meta="Finished with it; it stays in the client's history" onClick={() => { flush(); updateProgrammeFields(user.uid, programme.id, { status: 'archived' }); setMenuOpen(false); toast('Programme archived') }} />
-          )}
-          {running && (
-            <ConfirmButton onConfirm={() => { cancelWorkout(); setMenuOpen(false); toast('Session cancelled, nothing saved') }}>
-              Cancel running session
-            </ConfirmButton>
-          )}
+      {running ? (
+        <div className="quiet-links">
+          <span className="muted small">Changes you make now are saved to the programme and listed with this session.</span>
+          <ConfirmButton className="btn-ghost small" onConfirm={() => { cancelWorkout(); toast('Session cancelled, nothing saved') }}>Cancel session</ConfirmButton>
         </div>
-      </Sheet>
+      ) : (
+        <div className="quiet-links">
+          <Link to={`/create/${programme.id}`} className="text-link" onClick={flush}>Rework with Claude ›</Link>
+        </div>
+      )}
 
-      <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} onChange={change} />
-      <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} programme={programme} client={clients.find((c) => c.id === programme.clientId)} />
-      <NoteSheet open={note !== null} onClose={() => setNote(null)} defaultClientId={programme.clientId} initialText={note ?? ''} />
+      {running ? (
+        <Dial label="FINISH" time={formatClock((now - running.startedAt) / 1000)} onClick={finish} ariaLabel="Finish session" />
+      ) : (
+        <Dial
+          label="START"
+          disabled={Boolean(active)}
+          ariaLabel={active ? 'Another session is running' : `Start day ${index + 1}`}
+          onClick={() => {
+            flush()
+            startWorkout(programme.id, programme.clientId, session)
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function MenuItem({ title, meta, onClick }: { title: string; meta: string; onClick: () => void }) {
-  return (
-    <button type="button" className="row-link" onClick={onClick}>
-      <div className="grow">
-        <div className="title">{title}</div>
-        <div className="meta">{meta}</div>
-      </div>
-    </button>
-  )
-}
-
-/** Keeps the screen on while a session runs (supported in Chrome on Android and desktop). */
-function useWakeLock(on: boolean) {
+/** Current time, ticking every second while `on` (the session clock). Keeps the screen awake too. */
+function useNow(on: boolean): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!on) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [on])
   useEffect(() => {
     if (!on) return
     let lock: WakeLockSentinel | null = null
@@ -214,40 +220,5 @@ function useWakeLock(on: boolean) {
       lock?.release().catch(() => undefined)
     }
   }, [on])
-}
-
-interface ClockBarProps {
-  running: { startedAt: number } | null
-  /** A session is running for a different programme (shouldn't normally happen). */
-  busyElsewhere: boolean
-  dayTitle?: string
-  onStart: () => void
-  onFinish: () => void
-}
-
-function ClockBar({ running, busyElsewhere, dayTitle, onStart, onFinish }: ClockBarProps) {
-  const [now, setNow] = useState(() => Date.now())
-  useWakeLock(Boolean(running))
-  useEffect(() => {
-    if (!running) return
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [running])
-
-  if (!running) {
-    return (
-      <div className="clock-bar">
-        <button type="button" className="btn-cta btn-block" disabled={busyElsewhere} onClick={onStart}>
-          {busyElsewhere ? 'Another session is running' : '▶  Start session'}
-        </button>
-      </div>
-    )
-  }
-  return (
-    <div className="clock-bar running" role="timer" aria-label="Session time">
-      <span className="clock-time mono">{formatClock((now - running.startedAt) / 1000)}</span>
-      <span className="clock-day">{dayTitle}</span>
-      <button type="button" className="btn-cta" onClick={onFinish}>Finish</button>
-    </div>
-  )
+  return now
 }

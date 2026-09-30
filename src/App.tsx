@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useMatch } from 'react-router-dom'
 import { useAuth } from './auth/useAuth'
 import { isFirebaseConfigured } from './firebase'
-import { IconClients, IconCreate, IconPlus, IconTrain } from './components/Icons'
 import { NoteSheet } from './components/NoteSheet'
+import { onOpenNote, type NoteRequest } from './components/noteEvents'
 import { Snackbar } from './components/Snackbar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { ClientScreen } from './screens/ClientScreen'
@@ -17,12 +17,13 @@ import { ProfileImportScreen } from './screens/ProfileImportScreen'
 import { ProgrammeScreen } from './screens/ProgrammeScreen'
 import { TrainScreen } from './screens/TrainScreen'
 import { EXERCISES } from './data/exercises'
+import { useProgramme } from './data/store'
 import { useTheme } from './settings'
 
 const TABS = [
-  { to: '/create', label: 'CREATE', icon: <IconCreate /> },
-  { to: '/train', label: 'TRAIN', icon: <IconTrain /> },
-  { to: '/clients', label: 'CLIENTS', icon: <IconClients /> },
+  { to: '/train', label: 'Train' },
+  { to: '/create', label: 'Create' },
+  { to: '/clients', label: 'Clients' },
 ]
 
 export default function App() {
@@ -36,12 +37,15 @@ export default function App() {
 }
 
 function Shell() {
-  const [noteOpen, setNoteOpen] = useState(false)
-  // Quick notes started on a client's profile are pre-filed under that client.
+  const [note, setNote] = useState<NoteRequest | null>(null)
+  // Quick notes default to the client whose page (or programme) is open.
   const clientMatch = useMatch('/clients/:id')
-  // The quick-note button would cover the chat's Send button.
   const createMatch = useMatch('/create/:id')
-  const hideFab = Boolean(createMatch)
+  const programmeMatch = useMatch('/programmes/:id')
+  const { data: openProgramme } = useProgramme(createMatch?.params.id ?? programmeMatch?.params.id)
+  const pageClient = clientMatch?.params.id ?? openProgramme?.clientId ?? null
+
+  useEffect(() => onOpenNote(setNote), [])
 
   return (
     <div className="shell">
@@ -51,7 +55,7 @@ function Shell() {
         </div>
         {TABS.map((t) => (
           <NavLink key={t.to} to={t.to} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-            <span className="nav-pill">{t.icon}</span>
+            <span className="nav-dot" aria-hidden="true" />
             {t.label}
           </NavLink>
         ))}
@@ -60,10 +64,10 @@ function Shell() {
       <main className="shell-main">
         <Routes>
           <Route path="/" element={<Navigate to="/train" replace />} />
-          <Route path="/create" element={<CreateScreen />} />
-          <Route path="/create/:id" element={<CreateScreen />} />
           <Route path="/train" element={<TrainScreen />} />
           <Route path="/train/live" element={<Navigate to="/train" replace />} />
+          <Route path="/create" element={<CreateScreen />} />
+          <Route path="/create/:id" element={<CreateScreen />} />
           <Route path="/programmes/:id" element={<ProgrammeScreen />} />
           <Route path="/clients" element={<ClientsScreen />} />
           <Route path="/clients/:id" element={<ClientScreen />} />
@@ -75,12 +79,12 @@ function Shell() {
         </Routes>
       </main>
 
-      {!hideFab && (
-        <button type="button" className="fab" aria-label="Quick note" onClick={() => setNoteOpen(true)}>
-          <IconPlus />
-        </button>
-      )}
-      <NoteSheet open={noteOpen} onClose={() => setNoteOpen(false)} defaultClientId={clientMatch?.params.id ?? null} />
+      <NoteSheet
+        open={note !== null}
+        onClose={() => setNote(null)}
+        defaultClientId={note?.clientId !== undefined ? note.clientId : pageClient}
+        initialText={note?.text ?? ''}
+      />
       <Snackbar />
       <UpdateBanner />
       {/* Library names for every exercise-name field (autocomplete). */}

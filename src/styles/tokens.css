@@ -1,30 +1,42 @@
 /*
- * Pete's Gym design tokens. Components never use raw hex values — only these variables.
- * Dark-first: bare :root holds the dark palette. Light applies when the OS asks for it
- * (unless the user forced dark in Settings) or when the user forced light.
+ * Pete's Gym design tokens — "the app is the training card".
+ * Two looks: Paper (warm paper and ink, like the exported programmes) and Ink (the same after dark).
+ * Components never use raw hex values — only these variables.
+ * Bare :root holds Ink (dark). Paper applies when the OS asks for light (unless Ink is forced in
+ * Settings) or when Paper is forced.
  */
 :root {
   /* Surfaces */
-  --color-bg: #0D0E17;
-  --color-surface: #171927;
-  --color-raised: #20233A;
-  --color-border: #2A2D45;
-  --color-scrim: rgba(5, 6, 12, 0.6);
+  --color-bg: #141517;
+  --color-surface: #1E1F22;       /* cards, inputs, sheets */
+  --color-raised: #26272B;        /* stepper buttons, pressed rows */
+  --color-border: #2A2B2F;        /* rules between lines */
+  --color-scrim: rgba(8, 8, 10, 0.62);
 
   /* Text */
-  --color-text: #F2F3F8;
-  --color-text-muted: #9097B3;
+  --color-text: #ECE8DE;
+  --color-text-muted: #A39E91;
+  --color-faint: #57534C;         /* dotted leaders, decoration only */
 
-  /* Accents */
-  --color-accent: #FF6A33;          /* Ember — primary actions, Claude's edits */
-  --color-accent-wash: #2B1710;
-  --color-on-accent: #FFFFFF;
-  --color-accent-2: #6D83FF;        /* Cobalt — Pete's edits, links, rest */
-  --color-accent-2-wash: #1A2045;
-  --color-success: #2DD4A3;         /* Mint — completed sets */
-  --color-success-wash: #0F2A24;
-  --color-note: #FFC247;            /* Solar — notes */
-  --color-danger: #FF5C72;
+  /* Accent: one colour for the one main action and for changes */
+  --color-accent: #FF7A45;
+  --color-accent-wash: rgba(255, 122, 69, 0.14);
+  --color-accent-shadow: rgba(255, 122, 69, 0.5);
+  --color-on-accent: #141517;
+  /* Moss: Pete's own edits and progression tables */
+  --color-accent-2: #5FB3A3;
+  --color-accent-2-wash: rgba(95, 179, 163, 0.14);
+  --color-success: #5FB3A3;
+  --color-note: #FF7A45;
+  --color-danger: #FF6B6B;
+
+  /* The paper document (client programmes look like what the client receives) */
+  --paper: #F7F4ED;
+  --paper-ink: #1B1D18;
+  --paper-soft: #5B584E;
+  --paper-rule: #E0DACC;
+  --paper-accent: #C6491D;
+  --paper-wash: rgba(198, 73, 29, 0.09);
 
   /* Type */
   --font-display: "Oswald", "Arial Narrow", system-ui, sans-serif;
@@ -46,58 +58,63 @@
 
   /* Shape & motion */
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-sheet: 28px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+  --radius-sheet: 26px;
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Layout */
-  --nav-height: 64px;
-  /* Pinned action bar (Start session / clock) and the + button sit at fixed heights on every page. */
-  --action-bar-h: 60px;
-  --action-gap: var(--space-2);
-  --action-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + var(--action-gap));
+  --nav-height: 72px;
   --rail-width: 200px;
+  --gutter: 24px;
+  /* The round action button sits at one fixed height on every tab. */
+  --dial-size: 96px;
+  --dial-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 10px);
 
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --color-bg: #F4F5FA;
-    --color-surface: #FFFFFF;
-    --color-raised: #EBEDF5;
-    --color-border: #DDE0EA;
-    --color-scrim: rgba(18, 19, 31, 0.45);
-    --color-text: #12131F;
-    --color-text-muted: #5C6178;
-    --color-accent: #F2541B;
-    --color-accent-wash: #FDE9E1;
-    --color-accent-2: #3050F0;
-    --color-accent-2-wash: #E6EAFE;
-    --color-success: #0E9F73;
-    --color-success-wash: #DDF6EE;
-    --color-note: #D08A00;
-    --color-danger: #D6334A;
+    --color-bg: #EFECE4;
+    --color-surface: #F8F6F0;
+    --color-raised: #E6E1D5;
+    --color-border: #D9D3C5;
+    --color-scrim: rgba(40, 38, 32, 0.45);
+    --color-text: #1A1B1E;
+    --color-text-muted: #5E5A50;
+    --color-faint: #A8A294;
+    --color-accent: #C4451C;
+    --color-accent-wash: rgba(196, 69, 28, 0.1);
+    --color-accent-shadow: rgba(196, 69, 28, 0.55);
+    --color-on-accent: #FFFFFF;
+    --color-accent-2: #2B6358;
+    --color-accent-2-wash: rgba(43, 99, 88, 0.1);
+    --color-success: #2B6358;
+    --color-note: #C4451C;
+    --color-danger: #B3261E;
     color-scheme: light;
   }
 }
 
 :root[data-theme="light"] {
-  --color-bg: #F4F5FA;
-  --color-surface: #FFFFFF;
-  --color-raised: #EBEDF5;
-  --color-border: #DDE0EA;
-  --color-scrim: rgba(18, 19, 31, 0.45);
-  --color-text: #12131F;
-  --color-text-muted: #5C6178;
-  --color-accent: #F2541B;
-  --color-accent-wash: #FDE9E1;
-  --color-accent-2: #3050F0;
-  --color-accent-2-wash: #E6EAFE;
-  --color-success: #0E9F73;
-  --color-success-wash: #DDF6EE;
-  --color-note: #D08A00;
-  --color-danger: #D6334A;
+  --color-bg: #EFECE4;
+  --color-surface: #F8F6F0;
+  --color-raised: #E6E1D5;
+  --color-border: #D9D3C5;
+  --color-scrim: rgba(40, 38, 32, 0.45);
+  --color-text: #1A1B1E;
+  --color-text-muted: #5E5A50;
+  --color-faint: #A8A294;
+  --color-accent: #C4451C;
+  --color-accent-wash: rgba(196, 69, 28, 0.1);
+  --color-accent-shadow: rgba(196, 69, 28, 0.55);
+  --color-on-accent: #FFFFFF;
+  --color-accent-2: #2B6358;
+  --color-accent-2-wash: rgba(43, 99, 88, 0.1);
+  --color-success: #2B6358;
+  --color-note: #C4451C;
+  --color-danger: #B3261E;
   color-scheme: light;
 }

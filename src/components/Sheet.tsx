@@ -17,6 +17,8 @@ interface SheetProps {
   action?: ReactNode
   /** Full-height sheet for long content (the programme sheet). */
   tall?: boolean
+  /** Paper background, like the documents clients receive. */
+  paper?: boolean
   children: ReactNode
 }
 
@@ -25,7 +27,7 @@ interface SheetProps {
  * Stays mounted through the close animation, then unmounts so each open starts with fresh state.
  * Only the handle is draggable, so a drag never swallows taps on inputs and buttons inside.
  */
-export function Sheet({ open, onClose, title, action, tall = false, children }: SheetProps) {
+export function Sheet({ open, onClose, title, action, tall = false, paper = false, children }: SheetProps) {
   const [mounted, setMounted] = useState(open)
   const [visible, setVisible] = useState(false)
   /** Pointer Y where the current handle drag began; null when not dragging. */
@@ -81,7 +83,7 @@ export function Sheet({ open, onClose, title, action, tall = false, children }: 
     <>
       <div className={`sheet-overlay${visible ? ' visible' : ''}`} onClick={onClose} />
       <div
-        className={`sheet${tall ? ' tall' : ''}${visible ? ' open' : ''}${dragStartY !== null ? ' dragging' : ''}`}
+        className={`sheet${tall ? ' tall' : ''}${paper ? ' paper' : ''}${visible ? ' open' : ''}${dragStartY !== null ? ' dragging' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

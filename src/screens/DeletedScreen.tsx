@@ -1,6 +1,5 @@
-import { Link } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
-import { IconBack } from '../components/Icons'
+import { BigTitle, TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { purgeClient, purgeProgramme, restoreClient, restoreProgramme, useClients, useProgrammes } from '../data/store'
@@ -21,16 +20,9 @@ export function DeletedScreen() {
 
   return (
     <div className="screen">
-      <Link to="/clients" className="btn-ghost" style={{ alignSelf: 'flex-start', paddingLeft: 0, textDecoration: 'none' }}>
-        <span style={{ width: 20, height: 20, display: 'inline-flex' }}><IconBack /></span>
-        Clients
-      </Link>
-      <header className="screen-head" style={{ paddingTop: 0 }}>
-        <div>
-          <h1 className="display">Recently deleted</h1>
-          <p className="sub">Restore puts things back exactly as they were</p>
-        </div>
-      </header>
+      <TopBar back={{ to: '/clients', label: 'Clients' }} />
+      <BigTitle text="Recently deleted" />
+      <p className="lead">Restore puts things back exactly as they were.</p>
 
       {!loading && !deletedClients.length && !loose.length && <p className="muted" style={{ margin: 0 }}>Nothing here.</p>}
 

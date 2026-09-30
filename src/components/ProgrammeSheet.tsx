@@ -1,13 +1,13 @@
 /*
- * The whole programme in one tall sheet: title and key facts at the top, then each day as a
- * compact list (tap an exercise to change it). Used by Create ("Programme" bar) and by Train
- * and the programme page ("Edit programme").
+ * The whole programme as a paper document in a tall sheet — the same look the client receives.
+ * Every line can be edited in place (tap it). Used by Create (the Programme bar) and the
+ * programme page (Edit programme).
  */
 import { useState } from 'react'
 import { BlockSheet } from './BlockSheet'
+import { ConfirmButton } from './ConfirmButton'
 import { DayList } from './DayList'
 import { Sheet } from './Sheet'
-import { ConfirmButton } from './ConfirmButton'
 import type { HealthIssue } from '../data/health'
 import { mapBlock, mapSession } from '../data/programmeEdits'
 import { newProgressionBlock, newSession } from '../data/programmeUtils'
@@ -17,44 +17,64 @@ interface ProgrammeSheetProps {
   open: boolean
   onClose: () => void
   programme: Programme
+  clientName?: string
   onChange: (p: Programme) => void
   /** True while Claude is working: editing is paused so the two can't collide. */
   locked?: boolean
   claude?: Set<string>
   mine?: Set<string>
   issues?: HealthIssue[]
-  /** Create only: turns the draft into the client's active programme. */
+  /** Create only: turns the draft into the client's current programme. */
   onConfirm?: () => void
+  /** Create only: moves the draft to Recently deleted. */
+  onDelete?: () => void
 }
 
-export function ProgrammeSheet({ open, onClose, programme: p, onChange, locked = false, claude, mine, issues = [], onConfirm }: ProgrammeSheetProps) {
+export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChange, locked = false, claude, mine, issues = [], onConfirm, onDelete }: ProgrammeSheetProps) {
   const [block, setBlock] = useState<{ sessionId: string | null; blockId: string } | null>(null)
   const [showIssues, setShowIssues] = useState(false)
   const set = <K extends keyof Programme>(k: K, v: Programme[K]) => onChange({ ...p, [k]: v })
   const blockData = block ? (block.sessionId ? p.sessions.find((s) => s.id === block.sessionId)?.progressionBlocks.find((b) => b.id === block.blockId) : p.progression) ?? null : null
   const warnings = issues.filter((i) => i.level === 'warn').length
+  const eyebrow = [clientName, p.durationWeeks ? `${p.durationWeeks}-week training plan` : 'Training plan'].filter(Boolean).join(' · ')
 
   return (
-    <Sheet open={open} onClose={onClose} title="Programme" tall>
-      <fieldset className="plain-programme" disabled={locked}>
+    <Sheet open={open} onClose={onClose} title="Programme" tall paper>
+      <fieldset className="doc" disabled={locked}>
         {locked && <div className="banner">Claude is working. Editing is paused until it's done.</div>}
 
-        <input id="pp-title" className="plain plain-title" value={p.title} onChange={(e) => set('title', e.target.value)} aria-label="Programme title" />
-        <textarea id="pp-goal" className="plain plain-muted" rows={2} placeholder="Goal" value={p.goal} onChange={(e) => set('goal', e.target.value)} aria-label="Goal" />
-        <div className="plain-meta">
-          <label>Frequency<input id="pp-freq" className="plain mono" placeholder="3× / week" value={p.frequency} onChange={(e) => set('frequency', e.target.value)} /></label>
-          <label>Length<input id="pp-len" className="plain mono" placeholder="45–60 min" value={p.sessionLength} onChange={(e) => set('sessionLength', e.target.value)} /></label>
-          <label>Weeks<input id="pp-weeks" className="plain mono" inputMode="numeric" value={p.durationWeeks ?? ''} onChange={(e) => { const n = parseInt(e.target.value, 10); set('durationWeeks', Number.isFinite(n) && n > 0 ? n : null) }} /></label>
-        </div>
-
-        <div className="sheet-chips">
-          {issues.length > 0 && (
-            <button type="button" className={`chip${warnings ? ' chip-warn' : ''}`} onClick={() => setShowIssues(!showIssues)} aria-expanded={showIssues}>
-              {warnings ? `${warnings} to check` : `${issues.length} note${issues.length > 1 ? 's' : ''}`}
+        <header className="doc-mast">
+          <span className="doc-eyebrow">{eyebrow}</span>
+          <textarea id="pp-title" className="plain doc-title" rows={1} value={p.title} onChange={(e) => set('title', e.target.value)} aria-label="Programme title" />
+          <textarea id="pp-goal" className="plain doc-goal" rows={2} placeholder="Goal" value={p.goal} onChange={(e) => set('goal', e.target.value)} aria-label="Goal" />
+          <div className="doc-stats">
+            <label>Frequency<input id="pp-freq" className="plain mono" placeholder="3× / week" value={p.frequency} onChange={(e) => set('frequency', e.target.value)} /></label>
+            <label>Length<input id="pp-len" className="plain mono" placeholder="45–60 min" value={p.sessionLength} onChange={(e) => set('sessionLength', e.target.value)} /></label>
+            <label>Weeks<input id="pp-weeks" className="plain mono" inputMode="numeric" value={p.durationWeeks ?? ''} onChange={(e) => { const n = parseInt(e.target.value, 10); set('durationWeeks', Number.isFinite(n) && n > 0 ? n : null) }} /></label>
+          </div>
+          <div className="doc-chips">
+            {issues.length > 0 && (
+              <button type="button" className={`chip${warnings ? ' chip-warn' : ''}`} onClick={() => setShowIssues(!showIssues)} aria-expanded={showIssues}>
+                {warnings ? `${warnings} to check` : `${issues.length} note${issues.length > 1 ? 's' : ''}`}
+              </button>
+            )}
+            <button
+              type="button"
+              className="chip"
+              onClick={() => {
+                if (!p.progression) {
+                  const b = newProgressionBlock({ title: 'Week by week', columns: ['Week', 'Focus'] })
+                  set('progression', b)
+                  setBlock({ sessionId: null, blockId: b.id })
+                } else setBlock({ sessionId: null, blockId: p.progression.id })
+              }}
+            >
+              {p.progression ? 'Week by week' : '+ Week by week'}
             </button>
-          )}
-          <details className="plain-details">
-            <summary className="chip">Note, markers & coach notes</summary>
+          </div>
+          {showIssues && <ul className="issue-list">{issues.map((i, k) => <li key={k} className={i.level}>{i.text}</li>)}</ul>}
+          <details className="doc-details">
+            <summary>Note to client, markers &amp; coach notes</summary>
             <label className="field"><span className="label">Personal note to the client</span>
               <textarea id="pp-note" className="textarea" value={p.personalNote} onChange={(e) => set('personalNote', e.target.value)} />
             </label>
@@ -65,25 +85,10 @@ export function ProgrammeSheet({ open, onClose, programme: p, onChange, locked =
               <textarea id="pp-coach" className="textarea" value={p.coachNotes} onChange={(e) => set('coachNotes', e.target.value)} />
             </label>
           </details>
-        </div>
-        {showIssues && <ul className="issue-list">{issues.map((i, k) => <li key={k} className={i.level}>{i.text}</li>)}</ul>}
-
-        <button
-          type="button"
-          className="btn-ghost day-add"
-          onClick={() => {
-            if (!p.progression) {
-              const b = newProgressionBlock({ title: 'Week by week', columns: ['Week', 'Focus'] })
-              set('progression', b)
-              setBlock({ sessionId: null, blockId: b.id })
-            } else setBlock({ sessionId: null, blockId: p.progression.id })
-          }}
-        >
-          {p.progression ? `${p.progression.title || 'Week by week'} ›` : '+ Week-by-week plan'}
-        </button>
+        </header>
 
         {p.sessions.map((s, i) => (
-          <div key={s.id} className="sheet-day">
+          <div key={s.id} className="doc-day">
             <DayList
               session={s}
               index={i}
@@ -93,30 +98,29 @@ export function ProgrammeSheet({ open, onClose, programme: p, onChange, locked =
               claude={claude}
               mine={mine}
             />
-            <div className="toolbar">
-              <button type="button" className="btn-ghost day-add" onClick={() => { const b = newProgressionBlock({ title: 'Progression' }); onChange(mapSession(p, s.id, (x) => ({ ...x, progressionBlocks: [...x.progressionBlocks, b] }))); setBlock({ sessionId: s.id, blockId: b.id }) }}>
+            <div className="doc-day-actions">
+              <button type="button" className="text-link" onClick={() => { const b = newProgressionBlock({ title: 'Progression' }); onChange(mapSession(p, s.id, (x) => ({ ...x, progressionBlocks: [...x.progressionBlocks, b] }))); setBlock({ sessionId: s.id, blockId: b.id }) }}>
                 + Progression table
               </button>
               {p.sessions.length > 1 && (
-                <ConfirmButton className="btn-ghost danger day-small" onConfirm={() => onChange({ ...p, sessions: p.sessions.filter((x) => x.id !== s.id) })}>
-                  Delete day
-                </ConfirmButton>
+                <ConfirmButton className="danger-link" onConfirm={() => onChange({ ...p, sessions: p.sessions.filter((x) => x.id !== s.id) })}>Delete day</ConfirmButton>
               )}
             </div>
           </div>
         ))}
 
-        <button type="button" className="btn-acc" onClick={() => onChange({ ...p, sessions: [...p.sessions, newSession({ title: `Day ${p.sessions.length + 1}` })] })}>
+        <button type="button" className="text-link add-line" onClick={() => onChange({ ...p, sessions: [...p.sessions, newSession({ title: `Day ${p.sessions.length + 1}` })] })}>
           + Day
         </button>
-        {(claude?.size || mine?.size) ? (
-          <p className="legend muted"><span className="swatch claude" /> Claude's last changes <span className="swatch mine" /> your edits since</p>
+        {claude?.size || mine?.size ? (
+          <p className="legend"><span className="swatch claude" /> Claude's last changes <span className="swatch mine" /> your edits since</p>
         ) : null}
       </fieldset>
 
       {onConfirm && (
         <div className="sheet-footer">
           <button type="button" className="btn-cta btn-block" disabled={locked} onClick={onConfirm}>Confirm programme</button>
+          {onDelete && <ConfirmButton className="danger-link center" onConfirm={onDelete}>Delete draft</ConfirmButton>}
         </div>
       )}
 

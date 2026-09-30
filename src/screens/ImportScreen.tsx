@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { IconBack } from '../components/Icons'
+import { BigTitle, TopBar } from '../components/TopBar'
 import { DayList } from '../components/DayList'
 import { Sheet } from '../components/Sheet'
 import { toast } from '../components/toast'
@@ -102,16 +101,9 @@ export function ImportScreen() {
 
   return (
     <div className="screen">
-      <Link to="/clients" className="btn-ghost" style={{ alignSelf: 'flex-start', paddingLeft: 0, textDecoration: 'none' }}>
-        <span style={{ width: 20, height: 20, display: 'inline-flex' }}><IconBack /></span>
-        Clients
-      </Link>
-      <header className="screen-head" style={{ paddingTop: 0 }}>
-        <div>
-          <h1 className="display">Import programmes</h1>
-          <p className="sub">Word, PDF, HTML, Markdown or photos of your old programmes</p>
-        </div>
-      </header>
+      <TopBar back={{ to: '/clients', label: 'Clients' }} />
+      <BigTitle text="Import programmes" />
+      <p className="lead">Word, PDF, HTML, Markdown or photos of your old programmes.</p>
 
       {!getApiKey() ? (
         <div className="banner error">Add your Anthropic API key in Settings first. Claude reads and converts each file.</div>
