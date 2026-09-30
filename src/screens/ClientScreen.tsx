@@ -24,7 +24,7 @@ const DETAIL_FIELDS = [
 /** Sessions listed before "Show all". */
 const SESSIONS_SHOWN = 5
 
-const STATUS_TAG = { active: 'Active', draft: 'Draft', archived: '' } as const
+const STATUS_TAG = { active: 'Current', draft: 'Draft', archived: '' } as const
 
 export function ClientScreen() {
   const { id } = useParams()
@@ -73,11 +73,13 @@ export function ClientScreen() {
         <button type="button" className="icon-btn menu-btn" aria-label="Client menu" onClick={() => setMenuOpen(true)}>⋯</button>
       </header>
 
+      {client.isSelf && (
       <div className="stats">
         <div className="stat"><b>{workouts.length}</b><span>sessions</span></div>
         <div className="stat"><b>{hoursTrained(workouts.reduce((n, w) => n + w.durationSec, 0))}</b><span>hours trained</span></div>
         <div className="stat"><b>{new Set(workouts.map((w) => new Date(w.startedAt).toDateString())).size}</b><span>days trained</span></div>
       </div>
+      )}
 
       <div className="section-title"><span className="label">Notes</span></div>
       {notes.length ? (
@@ -96,8 +98,8 @@ export function ClientScreen() {
         {programmes.map((p) => <ProgrammeRow key={p.id} programme={p} sessions={workouts.filter((w) => w.programmeId === p.id).length} />)}
       </div>
 
-      <div className="section-title"><span className="label">Sessions</span></div>
-      {workouts.length ? (
+      {client.isSelf && <div className="section-title"><span className="label">Sessions</span></div>}
+      {!client.isSelf ? null : workouts.length ? (
         <>
           <div className="list">
             {shownSessions.map((w) => (

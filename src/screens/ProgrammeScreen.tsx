@@ -8,14 +8,13 @@ import { ProgrammeSheet } from '../components/ProgrammeSheet'
 import { Sheet } from '../components/Sheet'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
-import { activateProgramme, createNextBlock, duplicateProgramme } from '../data/programmeActions'
+import { activateProgramme, copyToSelf, createNextBlock, duplicateProgramme } from '../data/programmeActions'
 import { mapSession } from '../data/programmeEdits'
 import { restoreProgramme, softDeleteProgramme, updateProgrammeFields, useClients, useProgramme, useProgrammes } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { Programme, ProgrammeStatus } from '../data/types'
-import { setTrainProgrammeId } from '../settings'
 
-const STATUS_LABEL: Record<ProgrammeStatus, string> = { draft: 'Draft', active: 'Active', archived: 'Archived' }
+const STATUS_LABEL: Record<ProgrammeStatus, string> = { draft: 'Draft', active: 'Current', archived: 'Archived' }
 
 export function ProgrammeScreen() {
   const { id } = useParams()
@@ -50,6 +49,9 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
   const [exportOpen, setExportOpen] = useState(false)
 
   const client = clients.find((c) => c.id === programme.clientId)
+  const self = clients.find((c) => c.isSelf)
+  const isMine = Boolean(client?.isSelf)
+  const { data: selfProgrammes } = useProgrammes(self?.id ?? '__none__')
   const index = Math.min(sessionIndex, programme.sessions.length - 1)
   const session = programme.sessions[index]
 
@@ -93,18 +95,36 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
       {session && <DayList session={session} index={index} mode="train" onChange={(fn) => change(mapSession(programme, session.id, fn))} />}
 
       <div className="clock-bar">
-        <button
-          type="button"
-          className="btn-cta btn-block"
-          onClick={() => {
-            flush()
-            if (programme.status !== 'active') activateProgramme(uid, programme, siblings)
-            setTrainProgrammeId(programme.id)
-            navigate('/train')
-          }}
-        >
-          {programme.status === 'active' ? 'Train this programme' : 'Make active & train'}
-        </button>
+        {isMine ? (
+          <button
+            type="button"
+            className="btn-cta btn-block"
+            onClick={() => {
+              flush()
+              if (programme.status !== 'active') activateProgramme(uid, programme, siblings)
+              navigate('/train')
+            }}
+          >
+            {programme.status === 'active' ? 'Train this programme' : 'Make current & train'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn-acc btn-block"
+            onClick={() => {
+              if (!self) {
+                toast('Add your own profile first: Clients → + Add → Your own profile')
+                return
+              }
+              flush()
+              copyToSelf(uid, programme, self.id, selfProgrammes)
+              toast('Copied to your own training')
+              navigate('/train')
+            }}
+          >
+            Use for my own training
+          </button>
+        )}
       </div>
 
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title={programme.title}>
@@ -114,7 +134,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
           <MenuItem title="Rework with Claude" meta="Open this programme in Create" onClick={() => { flush(); navigate(`/create/${programme.id}`) }} />
           <MenuItem title="Build next block" meta="New draft based on this one, in Create" onClick={() => { flush(); const nid = createNextBlock(uid, programme); navigate(`/create/${nid}`) }} />
           {programme.status !== 'active' && (
-            <MenuItem title="Make active" meta="Any other active programme for this client is archived" onClick={() => { activateProgramme(uid, programme, siblings); setMoreOpen(false); toast('Programme is now active') }} />
+            <MenuItem title="Make current" meta={`${isMine ? 'Your' : `${client?.name ?? 'The client'}'s`} current programme is archived`} onClick={() => { activateProgramme(uid, programme, siblings); setMoreOpen(false); toast('Now the current programme') }} />
           )}
           {programme.status !== 'archived' && (
             <MenuItem title="Archive" meta="Keeps it in the client's history" onClick={() => { updateProgrammeFields(uid, programme.id, { status: 'archived' }); setMoreOpen(false); toast('Programme archived') }} />

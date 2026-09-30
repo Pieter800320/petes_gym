@@ -21,7 +21,6 @@ import { formatClock } from '../data/programmeUtils'
 import { updateProgrammeFields, useClients, useProgrammes, useWorkouts } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { Programme, Workout } from '../data/types'
-import { getTrainProgrammeId, setTrainProgrammeId } from '../settings'
 
 /** Horizontal finger travel (px) that counts as a swipe to the next or previous day. */
 const SWIPE_PX = 70
@@ -34,63 +33,41 @@ function nextSessionIndex(p: Programme, workouts: Workout[]): number {
   return i < 0 ? 0 : (i + 1) % p.sessions.length
 }
 
+/** Train is only for Pete's own training: it shows his profile's current programme. */
 export function TrainScreen() {
-  const { data: programmes, loading } = useProgrammes('all')
-  const { data: clients } = useClients()
-  const active = useActiveWorkout()
-  const [pickedId, setPickedId] = useState(getTrainProgrammeId)
-
-  const activeProgrammes = programmes.filter((p) => p.status === 'active')
-  const selfId = clients.find((c) => c.isSelf)?.id
-  // A running session always shows its own programme.
-  const programme =
-    (active && programmes.find((p) => p.id === active.programmeId)) ||
-    activeProgrammes.find((p) => p.id === pickedId) ||
-    activeProgrammes.find((p) => p.clientId === selfId) ||
-    activeProgrammes[0] ||
-    null
-  const clientName = (id: string) => clients.find((c) => c.id === id)?.name ?? ''
+  const { data: clients, loading: clientsLoading } = useClients()
+  const self = clients.find((c) => c.isSelf)
+  const { data: programmes, loading } = useProgrammes(self?.id ?? '__none__')
+  const programme = programmes.find((p) => p.status === 'active') ?? null
 
   if (!programme) {
     return (
       <div className="screen">
         <header className="screen-head"><h1 className="display">Train</h1></header>
-        {loading ? (
+        {clientsLoading || (self && loading) ? (
           <span className="label">Loading…</span>
+        ) : !self ? (
+          <div className="empty">
+            <h3 className="display">Add your own profile</h3>
+            <p>Train is for your own training. Add your profile first: Clients → + Add → Your own profile.</p>
+            <Link to="/clients" className="btn-acc" style={{ textDecoration: 'none' }}>Go to clients</Link>
+          </div>
         ) : (
           <div className="empty">
-            <h3 className="display">No active programme</h3>
-            <p>Confirm a programme in Create, or open one from a client's profile and make it active.</p>
-            <Link to="/clients" className="btn-acc" style={{ textDecoration: 'none' }}>Go to clients</Link>
+            <h3 className="display">No current programme</h3>
+            <p>Build one for yourself in Create, or open a client's programme and tap “Use for my own training”.</p>
+            <Link to="/create" className="btn-acc" style={{ textDecoration: 'none' }}>Go to Create</Link>
           </div>
         )}
       </div>
     )
   }
 
-  return (
-    // Keyed so the day selection resets when switching programme.
-    <TrainProgramme
-      key={programme.id}
-      stored={programme}
-      clientName={clientName(programme.clientId)}
-      others={activeProgrammes.filter((p) => p.id !== programme.id).map((p) => ({ id: p.id, label: `${clientName(p.clientId)} · ${p.title}` }))}
-      onSwitch={(id) => {
-        setTrainProgrammeId(id)
-        setPickedId(id)
-      }}
-    />
-  )
+  // Keyed so the day selection resets when the current programme changes.
+  return <TrainProgramme key={programme.id} stored={programme} />
 }
 
-interface TrainProgrammeProps {
-  stored: Programme
-  clientName: string
-  others: { id: string; label: string }[]
-  onSwitch: (id: string) => void
-}
-
-function TrainProgramme({ stored, clientName, others, onSwitch }: TrainProgrammeProps) {
+function TrainProgramme({ stored }: { stored: Programme }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { data: clients } = useClients()
@@ -124,7 +101,7 @@ function TrainProgramme({ stored, clientName, others, onSwitch }: TrainProgramme
       <header className="screen-head">
         <div style={{ minWidth: 0 }}>
           <h1 className="display">Train</h1>
-          <p className="sub">{clientName} · {programme.title}</p>
+          <p className="sub">{programme.title}</p>
         </div>
         <button type="button" className="icon-btn menu-btn" aria-label="Programme menu" onClick={() => setMenuOpen(true)}>⋯</button>
       </header>
@@ -186,10 +163,6 @@ function TrainProgramme({ stored, clientName, others, onSwitch }: TrainProgramme
           {!running && (
             <MenuItem title="Archive" meta="Finished with it; it stays in the client's history" onClick={() => { flush(); updateProgrammeFields(user.uid, programme.id, { status: 'archived' }); setMenuOpen(false); toast('Programme archived') }} />
           )}
-          {!running &&
-            others.map((o) => (
-              <MenuItem key={o.id} title={`Switch to ${o.label}`} meta="Another active programme" onClick={() => { setMenuOpen(false); onSwitch(o.id) }} />
-            ))}
           {running && (
             <ConfirmButton onConfirm={() => { cancelWorkout(); setMenuOpen(false); toast('Session cancelled, nothing saved') }}>
               Cancel running session

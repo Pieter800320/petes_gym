@@ -4,8 +4,8 @@ import { createProgramme, updateProgrammeFields } from './store'
 import type { Programme } from './types'
 
 /**
- * Makes a programme the client's active one. Any other active programme for the same client is
- * archived, so each client has at most one active programme and TRAIN is never ambiguous.
+ * Makes a programme the client's current one ("active" in data). Any other current programme for
+ * the same client is archived, so each client, including Pete, has exactly one current programme.
  */
 export function activateProgramme(uid: string, programme: Programme, siblings: Programme[]) {
   for (const other of siblings) {
@@ -28,6 +28,27 @@ export function createNextBlock(uid: string, p: Programme): string {
     sessions: p.sessions.map(cloneSession),
     progression: p.progression ? { ...p.progression, rows: p.progression.rows.map((r) => [...r]) } : null,
     parentId: p.id,
+  })
+}
+
+/**
+ * "Use for my own training": copies a client's programme to Pete's profile as his current
+ * programme (archiving his previous one). The client's original is left untouched.
+ */
+export function copyToSelf(uid: string, p: Programme, selfId: string, selfProgrammes: Programme[]): string {
+  for (const other of selfProgrammes) {
+    if (other.status === 'active') updateProgrammeFields(uid, other.id, { status: 'archived' })
+  }
+  const { id: _id, createdAt: _c, updatedAt: _u, deletedAt: _d, deletedWithClient: _w, translationsDe: _t, ...rest } = p
+  return createProgramme(uid, {
+    ...rest,
+    clientId: selfId,
+    status: 'active',
+    personalNote: '',
+    startDate: null,
+    sessions: p.sessions.map(cloneSession),
+    progression: p.progression ? { ...p.progression, rows: p.progression.rows.map((r) => [...r]) } : null,
+    parentId: null,
   })
 }
 

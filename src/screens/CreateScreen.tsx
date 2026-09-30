@@ -305,7 +305,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
     flushEdits()
     activateProgramme(uid, programme, clientProgrammes)
     setCreateProgrammeId(null)
-    toast('Programme confirmed and active')
+    toast('Programme confirmed')
     navigate(`/programmes/${programme.id}`)
   }
 
