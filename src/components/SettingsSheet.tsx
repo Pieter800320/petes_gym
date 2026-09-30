@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PlaybookSheet } from './PlaybookSheet'
 import { Sheet } from './Sheet'
-import { toast } from './toast'
 import { useAuth } from '../auth/useAuth'
 import { getApiKey, setApiKey, useTheme, type ThemeSetting } from '../settings'
 
@@ -27,7 +26,6 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
   const [key, setKey] = useState(getApiKey)
   const [showKey, setShowKey] = useState(false)
   const [playbookOpen, setPlaybookOpen] = useState(false)
-  const savedKey = getApiKey()
 
   return (
     <div className="form">
@@ -53,26 +51,19 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
             spellCheck={false}
             placeholder="sk-ant-…"
             value={key}
-            onChange={(e) => setKey(e.target.value)}
+            onChange={(e) => {
+              // Saved as you type or paste: closing the sheet can't lose it.
+              setKey(e.target.value)
+              setApiKey(e.target.value)
+            }}
           />
           <button type="button" className="btn-ghost" onClick={() => setShowKey(!showKey)}>
             {showKey ? 'Hide' : 'Show'}
           </button>
         </div>
         <span className="muted" style={{ fontSize: 'var(--type-sm)' }}>
-          Stored on this device only. It is never synced or uploaded, so enter it once on each device.
+          {key.trim() ? 'Saved on this device. ' : ''}Stored on this device only and never synced or uploaded, so enter it once on each device.
         </span>
-        <button
-          type="button"
-          className="btn-acc"
-          disabled={key.trim() === savedKey}
-          onClick={() => {
-            setApiKey(key)
-            toast(key.trim() ? 'API key saved on this device' : 'API key removed')
-          }}
-        >
-          Save key
-        </button>
       </div>
 
       <div className="field">

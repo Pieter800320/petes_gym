@@ -3,7 +3,8 @@
  * (Back Squat ······ 4 × 5). Tap a line to open it in place. What the open card offers
  * depends on the mode:
  *   read  — cue, alternative, video
- *   train — plus sets/reps − +, swap, note (changes stick to the programme)
+ *   train — plus sets/reps − +, swap, note, remove; tap a section name to add an exercise
+ *           (changes stick to the programme)
  *   edit  — plus name, cue, alternative, rest, superset, move, delete, section and day titles
  */
 import { useState } from 'react'
@@ -16,6 +17,9 @@ import type { ExerciseRow, ProgrammeSection, ProgrammeSession, ProgressionBlock 
 import { splitDayTitle } from '../util/dayTitle'
 
 export type DayListMode = 'read' | 'train' | 'edit'
+
+/** Starting prescription for an exercise added mid-session; the − / + buttons adjust it. */
+const ADDED_RX = '3 × 10'
 
 interface DayListProps {
   session: ProgrammeSession
@@ -41,7 +45,11 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
   const [openRow, setOpenRow] = useState<string | null>(null)
   const [openBlock, setOpenBlock] = useState<string | null>(null)
   const [swapFor, setSwapFor] = useState<ExerciseRow | null>(null)
+  /** Train: the section whose "+ Exercise" line is showing, and the one being added to. */
+  const [addOpen, setAddOpen] = useState<string | null>(null)
+  const [addTo, setAddTo] = useState<string | null>(null)
   const edit = mode === 'edit'
+  const train = mode === 'train'
   const minutes = estimateSessionMin(s)
   const { main, extra } = splitDayTitle(s.title, index)
 
@@ -79,6 +87,11 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
                 <ConfirmButton className="btn-ghost danger small" label="Delete section" onConfirm={() => onChange?.((x) => ({ ...x, sections: x.sections.filter((y) => y.id !== sec.id) }))}>✕</ConfirmButton>
               )}
             </div>
+          ) : train && sec.title ? (
+            <button type="button" className="section-label section-toggle" onClick={() => setAddOpen(addOpen === sec.id ? null : sec.id)} aria-expanded={addOpen === sec.id}>
+              {sec.title}{sec.duration ? ` · ${sec.duration}` : ''}
+              <span aria-hidden="true">{addOpen === sec.id ? '−' : '+'}</span>
+            </button>
           ) : (
             sec.title && <div className="section-label">{sec.title}{sec.duration ? ` · ${sec.duration}` : ''}</div>
           )}
@@ -113,6 +126,12 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
             )
           })}
 
+          {train && (addOpen === sec.id || !sec.title) && (
+            <button type="button" className="text-link add-line" onClick={() => setAddTo(sec.id)}>
+              + Exercise{sec.title ? ` in ${sec.title}` : ''}
+            </button>
+          )}
+
           {edit && (
             <button type="button" className="text-link add-line" onClick={() => { const row = newRow(); updateSection(sec.id, (x) => ({ ...x, rows: [...x.rows, row] })); setOpenRow(row.id) }}>
               + Exercise
@@ -132,10 +151,17 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
       )}
 
       <ExercisePicker
-        open={swapFor !== null}
-        onClose={() => setSwapFor(null)}
+        open={swapFor !== null || addTo !== null}
+        onClose={() => { setSwapFor(null); setAddTo(null) }}
         current={swapFor?.name}
         onPick={(e) => {
+          if (addTo) {
+            const row = newRow({ name: e.name, exerciseKey: e.key, prescription: ADDED_RX })
+            updateSection(addTo, (x) => ({ ...x, rows: [...x.rows, row] }))
+            setOpenRow(row.id)
+            setAddOpen(null)
+            return
+          }
           const target = swapFor
           if (!target) return
           const sec = s.sections.find((x) => x.rows.some((r) => r.id === target.id))
@@ -210,6 +236,7 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onNote, onMove, onDelete
             <ConfirmButton className="danger-link" onConfirm={onDelete}>Delete</ConfirmButton>
           </>
         )}
+        {mode === 'train' && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Remove</ConfirmButton>}
         <span className="grow" />
         {!edit && r.rest && <span className="mono muted small">rest {r.rest}</span>}
       </div>
