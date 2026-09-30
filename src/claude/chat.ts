@@ -102,7 +102,7 @@ const APP_INSTRUCTIONS = `You work inside Pete's Gym, Pete's programme-building 
 How to work:
 - Change the programme only through the tools. Never paste the programme or long tables into the chat.
 - write_session replaces a whole session: resend every section and row you want to keep, with their existing ids. Rows you omit are deleted.
-- For large programmes, write at most two sessions per reply; you can keep going in the next reply.
+- For large programmes, write at most two sessions per tool round, then carry straight on with the next sessions. Finish everything Pete asked for before your final message; only stop early for a decision that genuinely needs his answer, and then still complete the parts that don't depend on it.
 - Use exact library names (see the library index below). Search the library when unsure.
 - After editing, reply briefly: what you changed and why, one line per change. Ask a question only if you need an answer to continue.
 - The app highlights your edits and lets Pete undo them. Pete may edit the programme by hand between your replies; you'll be told what he changed.
@@ -271,7 +271,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
         type: 'tool_result',
         tool_use_id: last.id,
         is_error: true,
-        content: 'Your reply reached the length limit while writing this call, so it was NOT applied. The calls before it were applied. Resend this one, and write at most two sessions per reply from here on.',
+        content: 'Your reply reached the length limit while writing this call, so it was NOT applied. The calls before it were applied. Resend this one, and write at most two sessions per tool round from here on.',
       })
     }
     // All results of one assistant turn go back in a single user message.
