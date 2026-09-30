@@ -23,6 +23,8 @@ type ContentBlockParam = Anthropic.Beta.BetaContentBlockParam
 
 /** Upper bound on model ↔ tool round trips in one reply, so a confused loop can't run up a bill. */
 const MAX_TOOL_ROUNDS = 12
+/** Room for thinking plus several whole sessions of tool input in one reply (streaming allows up to 128K). */
+const MAX_OUTPUT_TOKENS = 64000
 /** Firestore documents max out at 1 MiB; warn well before that. */
 const HISTORY_SOFT_LIMIT_BYTES = 800_000
 
@@ -100,6 +102,7 @@ const APP_INSTRUCTIONS = `You work inside Pete's Gym, Pete's programme-building 
 How to work:
 - Change the programme only through the tools. Never paste the programme or long tables into the chat.
 - write_session replaces a whole session: resend every section and row you want to keep, with their existing ids. Rows you omit are deleted.
+- For large programmes, write at most two sessions per reply; you can keep going in the next reply.
 - Use exact library names (see the library index below). Search the library when unsure.
 - After editing, reply briefly: what you changed and why, one line per change. Ask a question only if you need an answer to continue.
 - The app highlights your edits and lets Pete undo them. Pete may edit the programme by hand between your replies; you'll be told what he changed.
@@ -213,7 +216,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     const stream = client.beta.messages.stream(
       {
         model: MODEL_DESIGN,
-        max_tokens: 32000,
+        max_tokens: MAX_OUTPUT_TOKENS,
         betas: [FALLBACK_BETA],
         fallbacks: 'default',
         thinking: { type: 'adaptive' },
@@ -243,22 +246,32 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     }
     if (message.stop_reason === 'pause_turn') continue
     const toolUses = message.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use')
-    if (message.stop_reason === 'max_tokens') {
-      // A cut-off tool input must not run; close the loop with error results so history stays valid.
-      if (toolUses.length) {
-        messages.push({ role: 'user', content: toolUses.map((t) => ({ type: 'tool_result', tool_use_id: t.id, is_error: true, content: 'Cut off at the length limit; not applied.' })) })
-      }
-      return { history: messages, programme, changed: changedRowIds(before, programme), error: 'The reply was too long and got cut off. Ask for one session at a time.' }
+    const cutOff = message.stop_reason === 'max_tokens'
+    if (cutOff && !toolUses.length) {
+      return { history: messages, programme, changed: changedRowIds(before, programme), error: 'Claude’s reply hit the length limit. Ask it to continue.' }
     }
     if (!toolUses.length) break
 
+    // At the length limit the last tool call is truncated and must never run (a partial
+    // write_session would silently drop rows). The complete calls before it are applied, and
+    // Claude is told to resend the cut-off one, so a big rewrite finishes on its own.
+    const runnable = cutOff ? toolUses.slice(0, -1) : toolUses
     const results: Anthropic.Beta.BetaToolResultBlockParam[] = []
-    for (const t of toolUses) {
+    for (const t of runnable) {
       const outcome = runTool(t.name, t.input, programme, input.toolContext)
       programme = outcome.programme
       input.onToolLabel(outcome.label)
       input.onProgramme(programme)
       results.push({ type: 'tool_result', tool_use_id: t.id, content: outcome.result, is_error: outcome.isError || undefined })
+    }
+    if (cutOff) {
+      const last = toolUses[toolUses.length - 1]
+      results.push({
+        type: 'tool_result',
+        tool_use_id: last.id,
+        is_error: true,
+        content: 'Your reply reached the length limit while writing this call, so it was NOT applied. The calls before it were applied. Resend this one, and write at most two sessions per reply from here on.',
+      })
     }
     // All results of one assistant turn go back in a single user message.
     messages.push({ role: 'user', content: results })
