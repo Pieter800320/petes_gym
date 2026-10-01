@@ -9,10 +9,11 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.6.9 (2026-10-01). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.7.0 (2026-10-01). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
-  - M2 Train: one screen — day list (tap an exercise: sets/reps −/+, a private Weight field
-    (`ExerciseRow.load`: open card only, never exported or sent to Claude), swap, note), dial
+  - M2 Train: one screen — day list (tap an exercise: sets/reps −/+, swap to a library exercise or
+    your own typed name, a private Weight field
+    (`ExerciseRow.load`: open card only, never exported or sent to Claude), note), dial
     (Start → clock; ❚❚/▶ on the dial's edge pauses/resumes, paused time not counted; Finish → session recorded
     with mid-session changes; no per-set logging), stats.
   - M3 Export: HTML + Word in the Sophie house style, EN/DE (German via Claude, cached per programme);

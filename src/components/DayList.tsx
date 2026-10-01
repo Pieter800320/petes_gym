@@ -3,7 +3,7 @@
  * (Back Squat ······ 4 × 5). Tap a line to open it in place. What the open card offers
  * depends on the mode:
  *   read  — cue, alternative, video
- *   train — plus sets/reps − +, swap, note, remove; tap a section name to add an exercise
+ *   train — plus sets/reps − +, swap (library or own name), note, remove; tap a section name to add an exercise
  *           (changes stick to the programme)
  *   edit  — plus name, cue, alternative, rest, superset, move, delete, section and day titles
  */
