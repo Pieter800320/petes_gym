@@ -9,16 +9,25 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.5.5 (redesign "the app is the training card"; smoothness and data-safety audit done). All five milestones built (2026-09-30):
+- **Version:** 0.6.6 (2026-10-01). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
-  - M2 Train: one screen — day list (tap an exercise: sets/reps −/+, rest, swap, note), clock bar
-    (Start → clock, Finish → session recorded with mid-session changes; no per-set logging), stats.
-  - M3 Export: HTML + Word in the Sophie house style, EN/DE (German via Claude, cached per programme).
+  - M2 Train: one screen — day list (tap an exercise: sets/reps −/+, a private Weight field
+    (`ExerciseRow.load`: open card only, never exported or sent to Claude), swap, note), dial
+    (Start → clock; ❚❚ on the dial's edge pauses, paused time not counted; Finish → session recorded
+    with mid-session changes; no per-set logging), stats.
+  - M3 Export: HTML + Word in the Sophie house style, EN/DE (German via Claude, cached per programme);
+    video link on its own line under each exercise.
   - M4 Create: Claude co-author (`src/claude/chat.ts`, tools in `programmeTools.ts`), highlights,
     undo, health strip, attachments, editable Coach Playbook (Settings).
-  - M5 Import: old programmes (Word/PDF/HTML/MD/photos) → archived programmes (`/import`).
+  - M5 Import: old programmes (Word/PDF/HTML/MD/photos) → archived programmes (`/import`), and
+    questionnaire answers → client profiles. Hardened in 0.6.3: client matching in
+    `src/data/clientMatch.ts` (ambiguous names must be chosen by hand), earlier answers never lost,
+    large CSVs read in batches, truncation is an error, unsaved results kept on the device.
+  - Desktop: swipe-to-delete rows also get a bin button on hover/focus (`SwipeRow`).
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
+  0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
+  pause/resume are not yet tested against the real API or in the signed-in app.
 
 ## 1. Stack (fixed)
 
