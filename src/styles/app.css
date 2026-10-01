@@ -1,6 +1,7 @@
 /*
  * Pete's Gym — "the app is the training card".
- * Ruled lines, dotted leaders, big Oswald headings, one accent. Colours come from tokens.css;
+ * Ruled lines, dotted leaders, big Oswald headings, one accent (the Classic look). Colours, fonts,
+ * letter case and corners come from tokens.css, so Settings › Look can swap them;
  * paper surfaces (.paper-doc, .paper-card, .sheet.paper) remap the tokens so everything inside
  * them renders as the printed document, in both themes.
  */
@@ -35,7 +36,7 @@ svg { flex: none; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-.display { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; font-weight: 600; line-height: 1.1; margin: 0; }
+.display { font-family: var(--font-display); text-transform: var(--display-case); letter-spacing: var(--display-tracking); font-weight: var(--display-weight); line-height: 1.1; margin: 0; }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .muted { color: var(--color-text-muted); }
 .accent { color: var(--color-accent); }
@@ -45,8 +46,8 @@ svg { flex: none; }
 .lead { margin: 0; font-size: 15px; color: var(--color-text-muted); max-width: 60ch; }
 .prose { white-space: pre-wrap; margin: 0; overflow-wrap: anywhere; }
 .title { font-weight: 600; }
-.label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-text-muted); }
-.section-label { margin-top: var(--space-3); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-text-muted); }
+.label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
+.section-label { margin-top: var(--space-3); font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
 .section-title { display: flex; justify-content: space-between; align-items: baseline; margin-top: var(--space-3); }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
@@ -75,7 +76,7 @@ svg { flex: none; }
 .nav-link {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   text-decoration: none; color: var(--color-text-muted);
-  font-family: var(--font-display); font-size: 13px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
+  font-family: var(--font-display); font-size: 13px; font-weight: 500; letter-spacing: var(--label-tracking); text-transform: var(--label-case);
 }
 .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: transparent; }
 .nav-link.active { color: var(--color-text); font-weight: 600; }
@@ -99,7 +100,7 @@ svg { flex: none; }
 
 /* ── Top bar, headings ────────────────────────────────────────────── */
 .topbar { display: flex; align-items: center; justify-content: space-between; min-height: 48px; gap: var(--space-2); }
-.overline { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-muted); }
+.overline { font-family: var(--font-mono); font-size: 12px; letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--color-text-muted); }
 .live-label { display: inline-flex; align-items: center; gap: 8px; color: var(--color-accent); }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-accent); }
 .topbar-back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; margin-left: -10px; padding-right: 8px; color: var(--color-text); text-decoration: none; font-weight: 600; font-size: 15px; }
@@ -110,7 +111,7 @@ svg { flex: none; }
 
 .big-title { display: flex; flex-direction: column; gap: 6px; }
 .big-title-sub { font-size: 13px; color: var(--color-text-muted); }
-.big-title-text { font-weight: 600; line-height: 1.02; overflow-wrap: anywhere; hyphens: auto; text-wrap: balance; }
+.big-title-text { font-weight: var(--display-weight); line-height: 1.02; overflow-wrap: anywhere; hyphens: auto; text-wrap: balance; }
 .big-title-text.size-xl { font-size: 40px; }
 .big-title-text.size-l { font-size: 32px; }
 .big-title-text.size-m { font-size: 26px; }
@@ -219,8 +220,18 @@ svg { flex: none; }
   --color-accent-2: #2B6358;
   --color-accent-2-wash: rgba(43, 99, 88, 0.1);
   --color-danger: #B3261E;
+  --font-display: var(--paper-font-display);
+  --font-body: var(--paper-font-body);
+  --font-mono: var(--paper-font-mono);
+  --display-case: uppercase;
+  --display-tracking: 0.02em;
+  --display-weight: 600;
+  --label-case: uppercase;
+  --label-tracking: 0.14em;
+  --leader-color: var(--color-faint);
   background: var(--paper);
   color: var(--paper-ink);
+  font-family: var(--font-body);
 }
 .paper-card { display: flex; flex-direction: column; padding: 18px 18px 6px; border-radius: var(--radius-lg); box-shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.45); }
 .paper-eyebrow { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-accent); }
@@ -240,7 +251,7 @@ svg { flex: none; }
 
 /* ── Train ────────────────────────────────────────────────────────── */
 .day-picker { display: flex; align-items: center; gap: 8px; }
-.day-dot { width: 40px; height: 40px; flex: none; border-radius: 50%; border: 1px solid var(--color-border); background: none; color: var(--color-text-muted); font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+.day-dot { width: 40px; height: 40px; flex: none; border-radius: var(--radius-control); border: 1px solid var(--color-border); background: none; color: var(--color-text-muted); font-family: var(--font-display); font-size: 16px; font-weight: 600; }
 .day-dot.on { border-color: var(--color-text); background: var(--color-text); color: var(--color-bg); }
 .day-dot.live { box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent); }
 .swipe-area { touch-action: pan-y; }
@@ -253,12 +264,12 @@ svg { flex: none; }
 .day-title h3 { font-weight: 500; font-size: 19px; overflow-wrap: anywhere; }
 .day-extra { color: var(--color-accent); }
 .day-title p { margin: 2px 0 0; font-size: 13px; color: var(--color-text-muted); }
-.day-title-input { font-family: var(--font-display); font-size: 19px; font-weight: 500; text-transform: uppercase; }
+.day-title-input { font-family: var(--font-display); font-size: 19px; font-weight: 500; text-transform: var(--display-case); }
 .day-min { flex: none; font-size: 12px; color: var(--color-text-muted); }
 .day-section { display: flex; flex-direction: column; }
 .day-section .section-label { margin-top: 14px; }
 .day-section-edit { display: flex; align-items: center; gap: 4px; margin-top: 14px; }
-.section-label-input { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-text-muted); }
+.section-label-input { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
 .add-line { padding: 10px 0; }
 
 .ex { border-radius: var(--radius-md); }
@@ -270,7 +281,7 @@ svg { flex: none; }
 }
 .ex-name { font-size: 16px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
 .ex-ss { font-family: var(--font-mono); font-size: 12px; color: var(--color-accent-2); margin-right: 6px; }
-.ex-dots { flex: 1; min-width: 12px; border-bottom: 1px dotted var(--color-faint); transform: translateY(-4px); }
+.ex-dots { flex: 1; min-width: 12px; border-bottom: 1px dotted var(--leader-color); transform: translateY(-4px); }
 .ex-rx { flex: none; white-space: nowrap; font-size: 14px; }
 .ex-rx.changed { color: var(--color-accent); font-weight: 500; }
 .ex.open { margin: 6px -12px; padding: 0 12px 16px; background: var(--color-surface); }
@@ -283,26 +294,26 @@ svg { flex: none; }
 .ex-meta { margin: 0; font-size: 13px; color: var(--color-text-muted); }
 .ex-name-input { font-weight: 600; font-size: 16px; }
 .ex-fields { display: flex; flex-wrap: wrap; gap: var(--space-3); }
-.ex-fields label { display: flex; flex-direction: column; flex: 1 1 90px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-muted); }
+.ex-fields label { display: flex; flex-direction: column; flex: 1 1 90px; font-family: var(--font-mono); font-size: 10px; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
 .ex-fields .plain { font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--color-text); }
 .ex-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; font-size: 14px; font-weight: 500; }
 .ex-actions a, .ex-actions > button { border: 0; background: none; padding: 6px 0; color: var(--color-text); text-decoration: none; font-weight: 500; }
 .ex-actions > button:disabled { opacity: 0.35; }
 .steppers { display: flex; gap: 12px; }
-.stepper { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 6px; border-radius: 26px; border: 1px solid var(--color-border); }
-.stepper button { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--color-bg); font-size: 20px; line-height: 1; }
+.stepper { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 6px; border-radius: var(--radius-pill); border: 1px solid var(--color-border); }
+.stepper button { flex: none; width: 40px; height: 40px; border-radius: var(--radius-control); border: 0; background: var(--color-bg); font-size: 20px; line-height: 1; }
 .stepper button:active { background: var(--color-accent-wash); }
 .stepper-value { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
 .stepper-value .mono { font-size: 17px; font-weight: 500; white-space: nowrap; }
 .stepper-value.long .mono { font-size: 14px; letter-spacing: -0.03em; }
-.stepper-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-text-muted); }
+.stepper-label { font-size: 10px; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
 .block-line { margin-top: var(--space-2); border-top: 1px dashed var(--color-border); }
 .block-line .ex-name { color: var(--color-accent-2); }
 .block-body { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: var(--space-2); font-size: var(--type-sm); }
 .block-body p { margin: 0; }
 .table-scroll { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-size: var(--type-sm); }
-.data-table th { text-align: left; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); padding: 0 var(--space-2) var(--space-1); border-bottom: 1px solid var(--color-border); }
+.data-table th { text-align: left; font-family: var(--font-mono); font-size: 10px; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); padding: 0 var(--space-2) var(--space-1); border-bottom: 1px solid var(--color-border); }
 .data-table td { padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--color-border); vertical-align: top; }
 .grid-edit td, .grid-edit th { padding: 2px; border: 0; }
 .grid-edit .input { min-height: 40px; min-width: 110px; padding: var(--space-1) var(--space-2); }
@@ -322,7 +333,7 @@ svg { flex: none; }
 .doc { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .doc-mast { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 3px solid var(--color-text); }
 .doc-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-accent); }
-.doc-title { font-family: var(--font-display); font-size: 26px; font-weight: 600; line-height: 1.1; text-transform: uppercase; field-sizing: content; }
+.doc-title { font-family: var(--font-display); font-size: 26px; font-weight: var(--display-weight); line-height: 1.1; text-transform: var(--display-case); field-sizing: content; }
 .doc-goal { font-size: 14px; color: var(--color-text-muted); field-sizing: content; }
 .doc-stats { display: flex; gap: 18px; }
 .doc-stats label { display: flex; flex-direction: column; flex: 1 1 0; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); }
@@ -558,7 +569,7 @@ svg { flex: none; }
 .ex-card .ex-actions { gap: 0; margin: 0 -12px; }
 .ex-card .ex-actions a, .ex-card .ex-actions > button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; min-width: 48px; padding: 0 12px; }
 .ex-card .ex-actions > .mono { padding-right: 12px; }
-.ex-card .stepper { height: 58px; padding: 0 4px; border-radius: 29px; }
+.ex-card .stepper { height: 58px; padding: 0 4px; border-radius: var(--radius-pill); }
 .ex-card .stepper button { width: 48px; height: 48px; }
 .ex-card .ex-fields .plain { min-height: 48px; }
 /* Open card in Train: 1 how (cue, alternative) · 2 a 2×2 grid of Sets, Reps, Rest, Weight · 3 note · 4 actions. */

@@ -9,11 +9,22 @@ import '@fontsource/ibm-plex-sans/latin-500.css'
 import '@fontsource/ibm-plex-sans/latin-600.css'
 import '@fontsource/ibm-plex-mono/latin-500.css'
 import '@fontsource/ibm-plex-mono/latin-600.css'
+// Faces for Settings › Look (Swiss Print, Clinic); precached with the rest for offline use.
+import '@fontsource/schibsted-grotesk/latin-400.css'
+import '@fontsource/schibsted-grotesk/latin-500.css'
+import '@fontsource/schibsted-grotesk/latin-600.css'
+import '@fontsource/schibsted-grotesk/latin-700.css'
+import '@fontsource/schibsted-grotesk/latin-800.css'
+import '@fontsource/public-sans/latin-400.css'
+import '@fontsource/public-sans/latin-500.css'
+import '@fontsource/public-sans/latin-600.css'
+import '@fontsource/public-sans/latin-700.css'
 import './styles/tokens.css'
 import './styles/app.css'
 import App from './App'
 import { AuthProvider } from './auth/AuthProvider'
 import { installTapHaptics } from './haptics'
+import { applyLook, getLook } from './settings'
 
 /** Set while reloading after a failed lazy import, so a persistent failure can't loop. */
 const CHUNK_RELOAD_KEY = 'pg_chunk_reload'
@@ -41,6 +52,8 @@ setTimeout(() => {
 }, CHUNK_RELOAD_RESET_MS)
 
 installTapHaptics()
+// Before the first paint, so a chosen Look never flashes Classic.
+applyLook(getLook())
 
 // HashRouter: GitHub Pages has no server-side rewrites, so /#/clients/abc survives a reload.
 createRoot(document.getElementById('root')!).render(

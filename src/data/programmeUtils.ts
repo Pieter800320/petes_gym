@@ -291,7 +291,7 @@ export function typedRest(text: string): string {
 
 // ── − / + stepper for weight ─────────────────────────────────────────
 
-/** Pieter's choice (2026-10-01): 0.5 kg per tap; 2.5 kg is the fallback if that's too many taps. */
+/** Pieter's choice (2026-10-01): 0.5 kg per tap; bigger jumps are typed into the pill. */
 const LOAD_STEP = 0.5
 
 /** "16 kg" → 16 kg, "35lb" → 35 lb, "" → empty. Null for anything else ("red band", "2 × 16 kg"). */

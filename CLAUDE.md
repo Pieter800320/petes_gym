@@ -9,11 +9,11 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.7.6 (2026-10-01). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.8.0 (2026-10-01). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
-    grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg,
-    Pieter may switch to 2.5; private `ExerciseRow.load`); a private note for
+    grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
+    (Pieter, 2026-10-01: bigger jumps are typed); private `ExerciseRow.load`); a private note for
     next time (`ExerciseRow.memo`, dot after the name; both never exported or sent to Claude); actions
     (Video, Swap to a library exercise or your own name, Remove in red on the right). Then the dial
     (Start → clock; ❚❚/▶ on the dial's edge pauses/resumes, paused time not counted; Finish → session recorded
@@ -29,6 +29,10 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - Desktop: swipe-to-delete rows also get a bin button on hover/focus (`SwipeRow`).
   - Haptics (Android): light tick on every tap, strong pulse on Start/Finish and confirmed deletes;
     switch in Settings. iPhones can't vibrate from web apps.
+  - Looks (0.8.0, trial): Settings › Look switches Classic / Swiss Print / Clinic per device
+    (`pg_look_v1`, `data-look` on `<html>`), each in dark and light. Pieter is choosing after testers
+    said Classic looked AI-made; mockups: https://claude.ai/artifact/BffcD8HQ28uQtTyPqTWhuq.
+    Paper surfaces (programme sheet) keep the export type in every look.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -37,6 +41,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   `Input.dispatchTouchEvent`; one buzz per action); open-card touch targets measured ≥48px at 360 and
   390px. Swipe fix confirmed on Pieter's phone. Swap-with-own-name and the exercise note checked in
   isolation, not yet in the signed-in app.
+  0.8.0: all three looks rendered in dark and light in headless Chrome on a Train fixture built from
+  the real classes (fonts load, Classic unchanged); not yet seen in the signed-in app.
 
 ## 1. Stack (fixed)
 
@@ -47,7 +53,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 | Auth | Firebase Auth, Google sign-in | |
 | Hosting | GitHub Pages via `.github/workflows/deploy.yml`, base `/petes_gym/` | Free, deploys on push to `main` |
 | Routing | `HashRouter` | GitHub Pages has no rewrites |
-| Fonts | Oswald / IBM Plex Sans / IBM Plex Mono via `@fontsource` (latin subsets) | Match the Sophie export style; bundled for offline |
+| Fonts | Oswald / IBM Plex Sans / IBM Plex Mono via `@fontsource` (latin subsets); Schibsted Grotesk (Swiss Print) and Public Sans (Clinic) for the trial looks | Match the Sophie export style; bundled for offline |
 
 ## 2. Rules specific to this repo
 
@@ -72,7 +78,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   `var EX=`), the master list. Keys follow Falkenburg's `exKey()`. Never invent YouTube links. If there's
   no library video, fall back to a YouTube search URL (`videoUrl()`).
 - **Styling:** tokens only (`src/styles/tokens.css`), no raw hex in components. Dark-first; light mode
-  is a full equal. 48px minimum touch targets. One CTA per screen.
+  is a full equal. 48px minimum touch targets. One CTA per screen. Letter case, tracking, heading
+  weight, leaders and control corners are tokens too (`--display-case`, `--label-case`,
+  `--radius-control`…), so every Look can set them; don't hard-code `uppercase` or `50%` in app.css.
 - **Haptics:** one global click listener (`src/haptics.ts`) covers every button, link and tab. Don't call
   `navigator.vibrate` directly; mark an element `data-haptic="strong"` (session-level actions) or
   `data-haptic="none"` when it calls `haptic()` itself (see `ConfirmButton`).
