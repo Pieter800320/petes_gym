@@ -534,10 +534,10 @@ svg { flex: none; }
   .swipe-hint-touch { display: none; }
   .swipe-hint-pointer { display: inline; }
 }
-/* Paused session: grey ring, dimmed frozen time, RESUME in the accent colour. */
+/* Paused session: grey ring, dimmed frozen time. */
 .dial-paused { background: var(--color-border); }
 .dial-paused .dial-time { color: var(--color-text-muted); }
-/* Small button riding the dial's upper-left edge (Pause / Finish now); a ring of background keeps it apart. */
+/* Small button riding the dial's upper-left edge (Pause / Resume); a ring of background keeps it apart. */
 .dial-wrap { position: relative; display: flex; }
 .dial-side {
   pointer-events: auto;

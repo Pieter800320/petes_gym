@@ -10,7 +10,7 @@ import { DayList } from '../components/DayList'
 import { PinnedNotes } from '../components/PinnedNotes'
 import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { openNote } from '../components/noteEvents'
-import { IconPause, IconStop } from '../components/Icons'
+import { IconPause, IconPlay } from '../components/Icons'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { activeMs, cancelWorkout, finishWorkout, pauseWorkout, resumeWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
@@ -183,18 +183,7 @@ function TrainProgramme({ stored }: { stored: Programme }) {
       )}
 
       {running ? (
-        paused ? (
-          <Dial
-            label="RESUME"
-            time={formatClock(activeMs(running) / 1000)}
-            paused
-            onClick={resumeWorkout}
-            ariaLabel="Resume session"
-            side={{ icon: <IconStop />, label: 'Finish now', onClick: finish }}
-          />
-        ) : (
-          <FinishDial workout={running} onFinish={finish} />
-        )
+        <FinishDial workout={running} onFinish={finish} />
       ) : (
         <Dial
           label="START"
@@ -210,8 +199,9 @@ function TrainProgramme({ stored }: { stored: Programme }) {
   )
 }
 
-/** The running session clock. Ticks on its own so the day list doesn't redraw every second. */
+/** The session dial: FINISH with the clock, plus Pause/Resume on its edge. Ticks on its own so the day list doesn't redraw every second. */
 function FinishDial({ workout, onFinish }: { workout: ActiveWorkout; onFinish: () => void }) {
+  const paused = Boolean(workout.pausedAt)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
@@ -223,7 +213,9 @@ function FinishDial({ workout, onFinish }: { workout: ActiveWorkout; onFinish: (
       time={formatClock(activeMs(workout, now) / 1000)}
       onClick={onFinish}
       ariaLabel="Finish session"
-      side={{ icon: <IconPause />, label: 'Pause', onClick: pauseWorkout }}
+      paused={paused}
+      // The small button only ever runs the clock; the dial only ever ends the session.
+      side={paused ? { icon: <IconPlay />, label: 'Resume', onClick: resumeWorkout } : { icon: <IconPause />, label: 'Pause', onClick: pauseWorkout }}
     />
   )
 }

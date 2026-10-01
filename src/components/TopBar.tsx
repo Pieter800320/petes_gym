@@ -72,9 +72,9 @@ interface DialProps {
   /** Running clock: shows the time with the label underneath, as a progress ring. */
   time?: string
   disabled?: boolean
-  /** Stopped clock: dimmed time, label as the action (RESUME). */
+  /** Paused clock: grey ring, dimmed frozen time. */
   paused?: boolean
-  /** Small round button on the dial's upper-left edge (Pause, Finish now): its own tap target. */
+  /** Small round button on the dial's upper-left edge (Pause / Resume): its own tap target. */
   side?: { icon: ReactNode; label: string; onClick: () => void }
 }
 
