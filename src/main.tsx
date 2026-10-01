@@ -13,6 +13,7 @@ import './styles/tokens.css'
 import './styles/app.css'
 import App from './App'
 import { AuthProvider } from './auth/AuthProvider'
+import { installTapHaptics } from './haptics'
 
 /** Set while reloading after a failed lazy import, so a persistent failure can't loop. */
 const CHUNK_RELOAD_KEY = 'pg_chunk_reload'
@@ -38,6 +39,8 @@ setTimeout(() => {
     // Storage blocked: nothing to reset.
   }
 }, CHUNK_RELOAD_RESET_MS)
+
+installTapHaptics()
 
 // HashRouter: GitHub Pages has no server-side rewrites, so /#/clients/abc survives a reload.
 createRoot(document.getElementById('root')!).render(

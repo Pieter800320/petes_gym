@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.7.2 (2026-10-01). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.7.3 (2026-10-01). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list (tap an exercise: sets/reps −/+, swap to a library exercise or
     your own typed name, a private Weight field
@@ -26,6 +26,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     `src/data/clientMatch.ts` (ambiguous names must be chosen by hand), earlier answers never lost,
     large CSVs read in batches, truncation is an error, unsaved results kept on the device.
   - Desktop: swipe-to-delete rows also get a bin button on hover/focus (`SwipeRow`).
+  - Haptics (Android): light tick on every tap, strong pulse on Start/Finish and confirmed deletes;
+    switch in Settings. iPhones can't vibrate from web apps.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -66,6 +68,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   no library video, fall back to a YouTube search URL (`videoUrl()`).
 - **Styling:** tokens only (`src/styles/tokens.css`), no raw hex in components. Dark-first; light mode
   is a full equal. 48px minimum touch targets. One CTA per screen.
+- **Haptics:** one global click listener (`src/haptics.ts`) covers every button, link and tab. Don't call
+  `navigator.vibrate` directly; mark an element `data-haptic="strong"` (session-level actions) or
+  `data-haptic="none"` when it calls `haptic()` itself (see `ConfirmButton`).
 - **Sheets:** use `components/Sheet.tsx` (bottom sheet on phone, dialog ≥900px). Keep it the single
   sheet implementation; don't hand-roll another.
 - **Exports** (M3) follow `Sophie_8Week_Program.html` in `Desktop\Pete's Gym` exactly: warm paper, Oswald

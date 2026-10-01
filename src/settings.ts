@@ -76,3 +76,14 @@ export function getCreateProgrammeId(): string | null {
 export function setCreateProgrammeId(id: string | null) {
   write(CREATE_PROGRAMME_KEY, id)
 }
+
+const HAPTICS_KEY = 'pg_haptics_v1'
+
+/** Vibrate on taps (Android; iPhones don't let web apps vibrate). On unless switched off. */
+export function getHaptics(): boolean {
+  return read(HAPTICS_KEY) !== 'off'
+}
+
+export function setHaptics(on: boolean) {
+  write(HAPTICS_KEY, on ? null : 'off')
+}

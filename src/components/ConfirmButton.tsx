@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { haptic } from '../haptics'
 
 /** How long the armed "tap again" state lasts before resetting. */
 const ARM_MS = 3000
@@ -25,9 +26,13 @@ export function ConfirmButton({ onConfirm, children, className = 'btn-ghost dang
 
   function activate() {
     if (armed) {
+      haptic('strong')
       setArmed(false)
       onConfirm()
-    } else setArmed(true)
+    } else {
+      haptic()
+      setArmed(true)
+    }
   }
 
   return (
@@ -35,6 +40,8 @@ export function ConfirmButton({ onConfirm, children, className = 'btn-ghost dang
       type="button"
       className={className}
       aria-label={label}
+      // Own haptics: a tick to arm, a strong pulse to confirm (the global tap tick would double up).
+      data-haptic="none"
       onPointerDown={(e) => { down.current = fastTap && e.pointerType !== 'mouse' ? { x: e.clientX, y: e.clientY } : null }}
       onPointerCancel={() => { down.current = null }}
       onPointerUp={(e) => {

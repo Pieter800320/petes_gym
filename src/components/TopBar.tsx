@@ -84,14 +84,14 @@ export function Dial({ label, onClick, ariaLabel, time, disabled, paused, side }
     <div className="dial-dock">
       <div className="dial-wrap">
         {time ? (
-          <button type="button" className={`dial dial-running${paused ? ' dial-paused' : ''}`} onClick={onClick} aria-label={ariaLabel ?? `${label}, ${time}`}>
+          <button type="button" className={`dial dial-running${paused ? ' dial-paused' : ''}`} onClick={onClick} aria-label={ariaLabel ?? `${label}, ${time}`} data-haptic="strong">
             <span className="dial-inner">
               <span className="dial-time">{time}</span>
               <span className="dial-sub">{label}</span>
             </span>
           </button>
         ) : (
-          <button type="button" className="dial" onClick={onClick} aria-label={ariaLabel} disabled={disabled}>
+          <button type="button" className="dial" onClick={onClick} aria-label={ariaLabel} disabled={disabled} data-haptic="strong">
             {label}
           </button>
         )}

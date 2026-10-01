@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { ConfirmButton } from './ConfirmButton'
 import { IconTrash } from './Icons'
+import { haptic } from '../haptics'
 
 /** How far the line slides to reveal Delete (matches .swipe-actions width). */
 const REVEAL_PX = 96
@@ -16,6 +17,8 @@ export function SwipeRow({ children, onDelete }: { children: ReactNode; onDelete
   const [dragging, setDragging] = useState(false)
   const start = useRef<{ x: number; y: number; base: number } | null>(null)
   const swiped = useRef(false)
+  /** Offset as last dragged, read on release (state may not have re-rendered yet). */
+  const live = useRef(0)
 
   return (
     <div className={`swipe-row${offset !== 0 ? ' open' : ''}`} onKeyDown={(e) => { if (e.key === 'Escape') setOffset(0) }}>
@@ -39,12 +42,20 @@ export function SwipeRow({ children, onDelete }: { children: ReactNode; onDelete
             swiped.current = true
             setDragging(true)
           }
-          if (swiped.current) setOffset(Math.min(0, Math.max(-REVEAL_PX, s.base + dx)))
+          if (swiped.current) {
+            live.current = Math.min(0, Math.max(-REVEAL_PX, s.base + dx))
+            setOffset(live.current)
+          }
         }}
         onPointerUp={() => {
+          const base = start.current?.base ?? 0
           start.current = null
           setDragging(false)
-          if (swiped.current) setOffset((o) => (o < -REVEAL_PX / 2 ? -REVEAL_PX : 0))
+          if (swiped.current) {
+            const opens = live.current < -REVEAL_PX / 2
+            if (opens && base !== -REVEAL_PX) haptic() // A tick as Delete appears.
+            setOffset(opens ? -REVEAL_PX : 0)
+          }
         }}
         onPointerCancel={() => {
           start.current = null

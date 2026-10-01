@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { PlaybookSheet } from './PlaybookSheet'
 import { Sheet } from './Sheet'
 import { useAuth } from '../auth/useAuth'
-import { getApiKey, setApiKey, useTheme, type ThemeSetting } from '../settings'
+import { getApiKey, getHaptics, setApiKey, setHaptics, useTheme, type ThemeSetting } from '../settings'
+import { canVibrate, haptic } from '../haptics'
 import { formatUsd } from '../claude/client'
 import { useCostLedger, type CostMonth } from '../data/store'
 
@@ -42,6 +43,7 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [theme, setTheme] = useTheme()
+  const [vibrate, setVibrate] = useState(getHaptics)
   const [key, setKey] = useState(getApiKey)
   const [showKey, setShowKey] = useState(false)
   const [playbookOpen, setPlaybookOpen] = useState(false)
@@ -58,6 +60,21 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="field">
+        <span className="label">Vibrate on tap</span>
+        {canVibrate ? (
+          <div className="chips" role="group" aria-label="Vibrate on tap">
+            {[true, false].map((on) => (
+              <button type="button" key={String(on)} className="chip" aria-pressed={vibrate === on} data-haptic="none" onClick={() => { setHaptics(on); setVibrate(on); if (on) haptic() }}>
+                {on ? 'On' : 'Off'}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="muted small">This phone doesn’t let web apps vibrate (iPhones never do).</span>
+        )}
       </div>
 
       <div className="field">
