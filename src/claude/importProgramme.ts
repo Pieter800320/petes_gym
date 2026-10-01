@@ -122,7 +122,8 @@ export interface ImportedProgramme {
 export async function parseProgrammeDocument(fileName: string, text: string): Promise<ImportedProgramme> {
   const stream = getClaude().messages.stream({
     model: MODEL_DESIGN,
-    max_tokens: 32000,
+    // Sonnet 5.5 thinks before answering and that counts here too; 32K cut long programmes off.
+    max_tokens: 96000,
     output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA as unknown as Record<string, unknown> } },
     system: [
       { type: 'text', text: SYSTEM },
@@ -136,7 +137,13 @@ export async function parseProgrammeDocument(fileName: string, text: string): Pr
   if (message.stop_reason === 'refusal') throw new Error('Claude could not convert this file.')
   if (message.stop_reason === 'max_tokens') throw new Error('This programme is too long to convert in one go.')
   const json = message.content.find((b) => b.type === 'text')?.text ?? ''
-  const parsed = zResult.safeParse(JSON.parse(json))
+  let data: unknown
+  try {
+    data = JSON.parse(json)
+  } catch {
+    throw new Error('The converted programme came back garbled. Try this file again.')
+  }
+  const parsed = zResult.safeParse(data)
   if (!parsed.success) throw new Error('The converted programme was incomplete. Try this file again.')
   const r = parsed.data
 

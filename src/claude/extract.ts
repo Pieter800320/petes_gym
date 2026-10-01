@@ -44,9 +44,10 @@ async function transcribe(file: File): Promise<string> {
     ? ({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } } as const)
     : ({ type: 'image', source: { type: 'base64', media_type: imageType!, data } } as const)
 
-  const response = await getClaude().messages.create({
+  // Streamed so long documents get Haiku's full output allowance without an HTTP timeout.
+  const stream = getClaude().messages.stream({
     model: MODEL_LIGHT,
-    max_tokens: 16000,
+    max_tokens: 64000,
     messages: [
       {
         role: 'user',
@@ -60,8 +61,11 @@ async function transcribe(file: File): Promise<string> {
       },
     ],
   })
+  const response = await stream.finalMessage()
   trackCost('import', response)
   if (response.stop_reason === 'refusal') throw new Error(`Claude could not read ${file.name}.`)
+  // A cut-off transcription would silently drop the end of the programme.
+  if (response.stop_reason === 'max_tokens') throw new Error(`${file.name} is too long to read in one go. Split it into smaller files.`)
   return response.content
     .filter((b) => b.type === 'text')
     .map((b) => b.text)

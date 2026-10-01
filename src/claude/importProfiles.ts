@@ -5,7 +5,7 @@
  */
 import { z } from 'zod'
 import { getClaude, MODEL_LIGHT, trackCost } from './client'
-import type { Client, ClientDraft } from '../data/types'
+import type { ClientDraft } from '../data/types'
 
 const SYSTEM = `You read responses to a personal trainer's "Fitness Profile" questionnaire (a Google Forms CSV export or pasted text) and turn each person's response into profile fields.
 Rules:
@@ -62,10 +62,49 @@ const zProfile = z.object({
 })
 export type ParsedProfile = z.infer<typeof zProfile>
 
-export async function parseProfiles(text: string): Promise<ParsedProfile[]> {
+/** Responses per Claude call. Each person's full answers are echoed back, so batches stay small. */
+const RESPONSES_PER_CALL = 8
+
+/**
+ * Splits CSV text into raw records, respecting quoted fields with commas and line breaks
+ * (Google Forms quotes long answers). Returns null when the text isn't a consistent CSV.
+ */
+export function splitCsvRecords(text: string): string[] | null {
+  const records: { raw: string; fields: number }[] = []
+  let start = 0
+  let fields = 1
+  let quoted = false
+  for (let i = 0; i <= text.length; i++) {
+    const ch = text[i]
+    if (ch === '"') quoted = !quoted // "" inside quotes toggles twice, which is correct.
+    else if (!quoted && ch === ',') fields++
+    else if (!quoted && (ch === '\n' || ch === undefined)) {
+      const raw = text.slice(start, i).replace(/\r$/, '')
+      if (raw.trim()) records.push({ raw, fields })
+      start = i + 1
+      fields = 1
+    }
+  }
+  if (quoted || records.length < 2 || records[0].fields < 3) return null
+  if (records.some((r) => r.fields !== records[0].fields)) return null
+  return records.map((r) => r.raw)
+}
+
+/** Pieces of input for Claude: big CSVs become batches that each repeat the header row. */
+export function profileBatches(text: string): string[] {
+  const records = splitCsvRecords(text.trim())
+  if (!records || records.length - 1 <= RESPONSES_PER_CALL) return [text]
+  const [header, ...rows] = records
+  const batches: string[] = []
+  for (let i = 0; i < rows.length; i += RESPONSES_PER_CALL) batches.push([header, ...rows.slice(i, i + RESPONSES_PER_CALL)].join('\n'))
+  return batches
+}
+
+/** Reads one batch from profileBatches(); the screen runs them in order so a failure keeps earlier ones. */
+export async function parseProfileBatch(text: string): Promise<ParsedProfile[]> {
   const stream = getClaude().messages.stream({
     model: MODEL_LIGHT,
-    max_tokens: 32000,
+    max_tokens: 64000,
     system: SYSTEM,
     output_config: { format: { type: 'json_schema', schema: SCHEMA } },
     messages: [{ role: 'user', content: `<responses>\n${text}\n</responses>` }],
@@ -73,17 +112,18 @@ export async function parseProfiles(text: string): Promise<ParsedProfile[]> {
   const message = await stream.finalMessage()
   trackCost('import', message)
   if (message.stop_reason === 'refusal') throw new Error('Claude could not read these responses.')
-  if (message.stop_reason === 'max_tokens') throw new Error('Too many responses at once. Import them in smaller batches.')
+  if (message.stop_reason === 'max_tokens') throw new Error('These answers are too long to read in one go. Paste fewer responses at a time.')
   const json = message.content.find((b) => b.type === 'text')?.text ?? ''
-  const parsed = z.object({ profiles: z.array(zProfile) }).safeParse(JSON.parse(json))
+  let data: unknown
+  try {
+    data = JSON.parse(json)
+  } catch {
+    throw new Error('The answers came back garbled. Try again.')
+  }
+  const parsed = z.object({ profiles: z.array(zProfile) }).safeParse(data)
   if (!parsed.success) throw new Error('The profiles came back incomplete. Try again.')
-  return parsed.data.profiles.filter((p) => p.name.trim())
-}
-
-/** Same first name (case-insensitive), the way the questionnaire asks for names. */
-export function matchClientByName(name: string, clients: Client[]): Client | undefined {
-  const first = name.trim().toLowerCase().split(/\s+/)[0]
-  return first ? clients.find((c) => c.name.trim().toLowerCase().split(/\s+/)[0] === first) : undefined
+  // Responses without a name are kept: Pete picks the client for them instead of losing them.
+  return parsed.data.profiles.filter((p) => p.name.trim() || p.questionnaire.trim())
 }
 
 type TextField = 'goals' | 'injuries' | 'frequency' | 'sessionLength' | 'equipment' | 'background'
@@ -116,7 +156,7 @@ export function mergeProfile(existing: ClientDraft, p: ParsedProfile): { patch: 
 
   for (const f of FIELDS) {
     const incoming = (f.key === 'background' ? background : String(p[f.from])).trim()
-    const current = existing[f.key].trim()
+    const current = (existing[f.key] ?? '').trim()
     if (!incoming || current.includes(incoming)) continue
     let next: string
     if (!current) next = incoming
@@ -125,9 +165,26 @@ export function mergeProfile(existing: ClientDraft, p: ParsedProfile): { patch: 
     patch[f.key] = next
     changes.push({ label: f.label, before: current, after: next })
   }
-  if (p.questionnaire.trim()) {
-    patch.questionnaire = p.questionnaire.trim()
-    patch.questionnaireDate = p.date || undefined
-  }
+  const q = mergeQuestionnaire(existing, p)
+  if (q) Object.assign(patch, q)
   return { patch, changes }
+}
+
+/**
+ * The newest answers go first; earlier answers stay below them, so importing an older response
+ * (or the same person twice) never loses anything.
+ */
+function mergeQuestionnaire(existing: ClientDraft, p: ParsedProfile): Pick<ClientDraft, 'questionnaire' | 'questionnaireDate'> | null {
+  const incoming = p.questionnaire.trim()
+  const current = (existing.questionnaire ?? '').trim()
+  if (!incoming || current.includes(incoming)) return null
+  if (!current) return { questionnaire: incoming, questionnaireDate: p.date || undefined }
+  const currentDate = existing.questionnaireDate ?? ''
+  // Undated answers count as the newest: they were most likely just pasted in.
+  const incomingIsNewer = !p.date || !currentDate || p.date >= currentDate
+  const [newer, older, newerDate, olderDate] = incomingIsNewer ? [incoming, current, p.date, currentDate] : [current, incoming, currentDate, p.date]
+  return {
+    questionnaire: `${newer}\n\nEarlier answers${olderDate ? ` (${olderDate})` : ''}:\n${older}`,
+    questionnaireDate: newerDate || undefined,
+  }
 }
