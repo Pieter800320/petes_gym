@@ -1,7 +1,7 @@
 /*
  * Train — Pete's own training, like reading a training card.
- * Start sets the clock, Finish records the session. Changes made to an exercise during the
- * session (sets, reps, rest, swaps) stick to the programme and are listed with the session.
+ * Start sets the clock, Pause stops it (paused time isn't counted), Finish records the session.
+ * Changes made to an exercise during the session (sets, reps, rest, swaps) stick to the programme and are listed with the session.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -12,12 +12,12 @@ import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { openNote } from '../components/noteEvents'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
-import { cancelWorkout, finishWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
+import { activeMs, cancelWorkout, finishWorkout, pauseWorkout, resumeWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
 import { mapSession } from '../data/programmeEdits'
 import { estimateSessionMin, formatClock, sessionRows } from '../data/programmeUtils'
 import { useClients, useProgrammes, useWorkouts } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
-import type { Programme, Workout } from '../data/types'
+import type { ActiveWorkout, Programme, Workout } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
 
 /** Horizontal finger travel (px) that counts as a swipe to the next or previous day. */
@@ -75,7 +75,8 @@ function TrainProgramme({ stored }: { stored: Programme }) {
   const index = Math.min(selected ?? (runningIndex >= 0 ? runningIndex : upNext), programme.sessions.length - 1)
   const session = programme.sessions[index]
   const swipe = useRef<{ x: number; y: number } | null>(null)
-  useWakeLock(Boolean(running))
+  const paused = Boolean(running?.pausedAt)
+  useWakeLock(Boolean(running) && !paused)
 
   // During a session, exercises changed since Start show their new numbers in the accent colour.
   const changed = useMemo(() => {
@@ -107,7 +108,7 @@ function TrainProgramme({ stored }: { stored: Programme }) {
 
   return (
     <div className="screen has-dial">
-      <TopBar overline={running ? <span className="live-label"><span className="live-dot" />IN SESSION</span> : today()} noteClientId={programme.clientId} />
+      <TopBar overline={running ? (paused ? <span className="live-label">PAUSED</span> : <span className="live-label"><span className="live-dot" />IN SESSION</span>) : today()} noteClientId={programme.clientId} />
       <BigTitle
         text={main}
         accent={extra || undefined}
@@ -163,14 +164,21 @@ function TrainProgramme({ stored }: { stored: Programme }) {
 
       {running ? (
         <div className="quiet-links">
-          <span className="muted small">Changes you make now are saved to the programme and listed with this session.</span>
+          <span className="muted small">
+            {paused ? 'Paused. The clock is stopped; paused time isn’t counted.' : 'Changes you make now are saved to the programme and listed with this session.'}
+          </span>
           <ConfirmButton className="btn-ghost small" onConfirm={() => { cancelWorkout(); toast('Session cancelled, nothing saved') }}>Cancel session</ConfirmButton>
+          {paused ? (
+            <button type="button" className="btn-ghost small" onClick={finish}>Finish now</button>
+          ) : (
+            <button type="button" className="btn-ghost small" onClick={pauseWorkout}>Pause</button>
+          )}
         </div>
       ) : (
         <div className="quiet-links">
           {active && (
             <>
-              <span className="muted small">A session on an earlier programme is still running, so START is paused.</span>
+              <span className="muted small">A session on an earlier programme is still open, so START is unavailable until it ends.</span>
               <ConfirmButton className="btn-ghost small" armedLabel="Tap again to end it" onConfirm={() => { cancelWorkout(); toast('Earlier session ended, nothing saved') }}>End that session</ConfirmButton>
             </>
           )}
@@ -179,7 +187,11 @@ function TrainProgramme({ stored }: { stored: Programme }) {
       )}
 
       {running ? (
-        <FinishDial startedAt={running.startedAt} onFinish={finish} />
+        paused ? (
+          <Dial label="RESUME" time={formatClock(activeMs(running) / 1000)} paused onClick={resumeWorkout} ariaLabel="Resume session" />
+        ) : (
+          <FinishDial workout={running} onFinish={finish} />
+        )
       ) : (
         <Dial
           label="START"
@@ -196,13 +208,13 @@ function TrainProgramme({ stored }: { stored: Programme }) {
 }
 
 /** The running session clock. Ticks on its own so the day list doesn't redraw every second. */
-function FinishDial({ startedAt, onFinish }: { startedAt: number; onFinish: () => void }) {
+function FinishDial({ workout, onFinish }: { workout: ActiveWorkout; onFinish: () => void }) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
-  return <Dial label="FINISH" time={formatClock((now - startedAt) / 1000)} onClick={onFinish} ariaLabel="Finish session" />
+  return <Dial label="FINISH" time={formatClock(activeMs(workout, now) / 1000)} onClick={onFinish} ariaLabel="Finish session" />
 }
 
 /** Keeps the screen awake while a session runs. */

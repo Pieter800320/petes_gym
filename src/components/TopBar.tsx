@@ -72,14 +72,16 @@ interface DialProps {
   /** Running clock: shows the time with the label underneath, as a progress ring. */
   time?: string
   disabled?: boolean
+  /** Stopped clock: dimmed time, label as the action (RESUME). */
+  paused?: boolean
 }
 
 /** The one round action per tab (Start, New, Add), always in the same spot above the nav. */
-export function Dial({ label, onClick, ariaLabel, time, disabled }: DialProps) {
+export function Dial({ label, onClick, ariaLabel, time, disabled, paused }: DialProps) {
   return (
     <div className="dial-dock">
       {time ? (
-        <button type="button" className="dial dial-running" onClick={onClick} aria-label={ariaLabel ?? `${label}, ${time}`}>
+        <button type="button" className={`dial dial-running${paused ? ' dial-paused' : ''}`} onClick={onClick} aria-label={ariaLabel ?? `${label}, ${time}`}>
           <span className="dial-inner">
             <span className="dial-time">{time}</span>
             <span className="dial-sub">{label}</span>

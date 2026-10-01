@@ -534,3 +534,6 @@ svg { flex: none; }
   .swipe-hint-touch { display: none; }
   .swipe-hint-pointer { display: inline; }
 }
+/* Paused session: grey ring, dimmed frozen time, RESUME in the accent colour. */
+.dial-paused { background: var(--color-border); }
+.dial-paused .dial-time { color: var(--color-text-muted); }

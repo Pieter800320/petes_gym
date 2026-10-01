@@ -1,5 +1,6 @@
 /*
- * The running session: Start sets the clock, Finish records the session. Nothing else is needed.
+ * The running session: Start sets the clock, Pause/Resume stop and restart it, Finish records
+ * the session (time trained, pauses left out).
  * It lives in localStorage (not Firestore) so the clock survives reloads and a locked phone;
  * elapsed time is derived from startedAt, so it keeps "running" while the app is closed.
  */
@@ -70,6 +71,21 @@ export function cancelWorkout() {
   write(null)
 }
 
+/** Time actually trained: pauses (including one still going) are left out. */
+export function activeMs(w: ActiveWorkout, now = Date.now()): number {
+  return Math.max(0, (w.pausedAt ?? now) - w.startedAt - (w.pausedMs ?? 0))
+}
+
+export function pauseWorkout() {
+  const w = snapshot()
+  if (w && !w.pausedAt) write({ ...w, pausedAt: Date.now() })
+}
+
+export function resumeWorkout() {
+  const w = snapshot()
+  if (w?.pausedAt) write({ ...w, pausedAt: null, pausedMs: (w.pausedMs ?? 0) + Math.max(0, Date.now() - w.pausedAt) })
+}
+
 /** Human-readable changes between the start of the session and now. */
 export function describeSessionChanges(before: RowSnapshot[], after: RowSnapshot[]): string[] {
   const lines: string[] = []
@@ -93,7 +109,7 @@ export function describeSessionChanges(before: RowSnapshot[], after: RowSnapshot
 export function finishWorkout(uid: string, active: ActiveWorkout, session: ProgrammeSession | undefined): number {
   const endedAt = Date.now()
   const rows = session ? snapshotRows(session) : []
-  const durationSec = Math.round((endedAt - active.startedAt) / 1000)
+  const durationSec = Math.round(activeMs(active, endedAt) / 1000)
   saveWorkout(uid, {
     programmeId: active.programmeId,
     clientId: active.clientId,

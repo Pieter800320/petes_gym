@@ -196,4 +196,8 @@ export interface ActiveWorkout {
   sessionId: string
   startedAt: Millis
   baseline: RowSnapshot[]
+  /** Set while paused; the clock stands still. */
+  pausedAt?: Millis | null
+  /** Total length of earlier pauses, left out of the session's time. */
+  pausedMs?: number
 }
