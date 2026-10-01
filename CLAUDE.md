@@ -32,6 +32,10 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
   pause/resume are not yet tested against the real API or in the signed-in app.
+  0.6.9–0.7.3: swipe Delete and haptics tested with real touch input in headless Chrome (CDP
+  `Input.dispatchTouchEvent`; one buzz per action); open-card touch targets measured ≥48px at 360 and
+  390px. Swipe fix confirmed on Pieter's phone. Swap-with-own-name and the exercise note checked in
+  isolation, not yet in the signed-in app.
 
 ## 1. Stack (fixed)
 
