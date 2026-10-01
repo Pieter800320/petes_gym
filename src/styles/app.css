@@ -553,3 +553,11 @@ svg { flex: none; }
 .ex-fields label.ex-memo { flex-basis: 100%; }
 .ex-memo textarea { width: 100%; resize: none; field-sizing: content; min-height: 1.6em; font-family: var(--font-body); line-height: 1.4; }
 .ex-memo-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent); align-self: center; }
+/* Open exercise card: every control gets a 48px touch area; type sizes unchanged. Action words
+   get invisible padding, and the row shifts left by that padding so "Video" still lines up. */
+.ex-card .ex-actions { gap: 0; margin: 0 -12px; }
+.ex-card .ex-actions a, .ex-card .ex-actions > button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; min-width: 48px; padding: 0 12px; }
+.ex-card .ex-actions > .mono { padding-right: 12px; }
+.ex-card .stepper { height: 58px; padding: 0 4px; border-radius: 29px; }
+.ex-card .stepper button { width: 48px; height: 48px; }
+.ex-card .ex-fields .plain { min-height: 48px; }
