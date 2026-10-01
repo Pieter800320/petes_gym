@@ -165,7 +165,7 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
           const target = swapFor
           if (!target) return
           const sec = s.sections.find((x) => x.rows.some((r) => r.id === target.id))
-          if (sec) updateRow(sec.id, target.id, (r) => ({ ...r, name: e.name, exerciseKey: e.key }))
+          if (sec) updateRow(sec.id, target.id, (r) => ({ ...r, name: e.name, exerciseKey: e.key, load: '' }))
         }}
       />
     </section>
@@ -212,15 +212,17 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onNote, onMove, onDelete
             <label>Sets × reps<input className="plain mono" value={r.prescription} placeholder="3 × 8–10" onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>
             <label>Rest<input className="plain mono" value={r.rest} placeholder="90s" onChange={(e) => onChange((x) => ({ ...x, rest: e.target.value }))} /></label>
             <label>Superset<input className="plain mono" value={r.superset} placeholder="A1" onChange={(e) => onChange((x) => ({ ...x, superset: e.target.value }))} /></label>
+            <LoadField row={r} onChange={onChange} />
           </div>
           <input className="plain plain-muted" value={r.notes} placeholder="Cue for the client (8 words max)" onChange={(e) => onChange((x) => ({ ...x, notes: e.target.value }))} aria-label="Cue" />
           <input className="plain plain-muted" value={r.alternative} placeholder="Alternative (optional)" onChange={(e) => onChange((x) => ({ ...x, alternative: e.target.value }))} aria-label="Alternative" />
         </>
       )}
       {/* Prescriptions like "5 min" or "10 reps" have no − / +; they're typed instead. */}
-      {mode === 'train' && !steppable && (
+      {mode === 'train' && (
         <div className="ex-fields">
-          <label>Sets × reps<input className="plain mono" value={r.prescription} onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>
+          {!steppable && <label>Sets × reps<input className="plain mono" value={r.prescription} onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>}
+          <LoadField row={r} onChange={onChange} />
         </div>
       )}
       {!edit && r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
@@ -244,11 +246,19 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onNote, onMove, onDelete
   )
 }
 
+/** Free-text working weight; only visible in the open card. */
+function LoadField({ row: r, onChange }: { row: ExerciseRow; onChange: CardProps['onChange'] }) {
+  return (
+    <label>Weight<input className="plain mono" value={r.load ?? ''} placeholder="20 kg" inputMode="text" onChange={(e) => onChange((x) => ({ ...x, load: e.target.value }))} /></label>
+  )
+}
+
 function Stepper({ label, value, onStep }: { label: string; value: string; onStep: (delta: number) => void }) {
   return (
     <div className="stepper">
       <button type="button" onClick={() => onStep(-1)} aria-label={`Fewer ${label.toLowerCase()}`}>−</button>
-      <span className="stepper-value">
+      {/* Ranges like "8–10" or "30–45s" drop a size so they fit beside the buttons. */}
+      <span className={`stepper-value${value.length > 3 ? ' long' : ''}`}>
         <span className="mono">{value}</span>
         <span className="stepper-label">{label}</span>
       </span>

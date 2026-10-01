@@ -308,6 +308,7 @@ export function runTool(name: string, input: unknown, p: Programme, ctx: ToolCon
       const keep = idKeeper(allIds(p))
       const existing = s.session_id ? p.sessions.find((x) => x.id === s.session_id) : undefined
       if (s.session_id && !existing) return fail(`No session with id ${s.session_id}. Use null to add a new session.`)
+      const oldRows = new Map([...rowMap(p)].map(([id, { row }]) => [id, row]))
       const session: ProgrammeSession = {
         id: existing ? existing.id : newId(),
         title: s.title,
@@ -317,7 +318,12 @@ export function runTool(name: string, input: unknown, p: Programme, ctx: ToolCon
           title: sec.title,
           duration: sec.duration,
           note: sec.note,
-          rows: sec.rows.map((r) => withLibraryLink({ ...r, id: keep(r.id), exerciseKey: null })),
+          // Claude never sees the weight, so a kept row carries it over unless Claude renamed the exercise.
+          rows: sec.rows.map((r) => {
+            const prev = r.id ? oldRows.get(r.id) : undefined
+            const load = prev?.load && prev.name === r.name ? { load: prev.load } : {}
+            return withLibraryLink({ ...r, ...load, id: keep(r.id), exerciseKey: null })
+          }),
         })),
         progressionBlocks: s.progression_blocks.map((b) => toBlock(b, keep)),
       }

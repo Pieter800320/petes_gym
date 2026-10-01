@@ -113,6 +113,8 @@ export interface ExerciseRow {
   alternative: string
   /** Superset label, e.g. "A1". */
   superset: string
+  /** The trainee's own working weight ("20 kg", "red band"). Typed in the open card only; not exported or sent to Claude. */
+  load?: string
 }
 
 export interface ProgressionBlock {
