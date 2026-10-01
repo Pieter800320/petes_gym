@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.6.7 (2026-10-01). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.6.8 (2026-10-01). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list (tap an exercise: sets/reps −/+, a private Weight field
     (`ExerciseRow.load`: open card only, never exported or sent to Claude), swap, note), dial

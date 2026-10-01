@@ -18,7 +18,7 @@ export function SwipeRow({ children, onDelete }: { children: ReactNode; onDelete
   const swiped = useRef(false)
 
   return (
-    <div className={`swipe-row${offset !== 0 ? ' open' : ''}`} onKeyDown={(e) => { if (e.key === 'Escape') setOffset(0) }}>
+    <div className={`swipe-row${offset !== 0 ? ' open' : ''}${offset === -REVEAL_PX && !dragging ? ' revealed' : ''}`} onKeyDown={(e) => { if (e.key === 'Escape') setOffset(0) }}>
       <div className="swipe-actions" aria-hidden={offset === 0}>
         <ConfirmButton className="swipe-delete" armedLabel="Sure?" onConfirm={onDelete}>Delete</ConfirmButton>
       </div>
