@@ -104,9 +104,9 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHe
                   <span className="ex-name">
                     {r.superset && <span className="ex-ss">{r.superset}</span>}
                     {r.name || <em className="muted">New exercise</em>}
+                    {mode !== 'read' && r.memo?.trim() && <span className="ex-memo-dot" title="Has a note" aria-label="Has a note" />}
                   </span>
                   <span className="ex-dots" aria-hidden="true" />
-                  {mode !== 'read' && r.memo?.trim() && <span className="ex-memo-dot" title="Has a note" aria-label="Has a note" />}
                   <span className={`ex-rx mono${changed?.has(r.id) ? ' changed' : ''}`}>{r.prescription}</span>
                 </button>
                 {open && (
@@ -256,7 +256,7 @@ function LoadField({ row: r, onChange }: { row: ExerciseRow; onChange: CardProps
 function MemoField({ row: r, onChange }: { row: ExerciseRow; onChange: CardProps['onChange'] }) {
   return (
     <label className="ex-memo">Note
-      <textarea className="plain" rows={1} value={r.memo ?? ''} placeholder="For next time · only you see this" onChange={(e) => onChange((x) => ({ ...x, memo: e.target.value }))} />
+      <textarea className="plain" rows={1} value={r.memo ?? ''} placeholder="Add a note" onChange={(e) => onChange((x) => ({ ...x, memo: e.target.value }))} />
     </label>
   )
 }
