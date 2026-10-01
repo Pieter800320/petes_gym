@@ -177,3 +177,59 @@ export function repsLabel(rx: string): string | null {
   const p = splitRx(rx)
   return p ? `${range(p.repsLo, p.repsHi)}${p.suffix}`.trim() : null
 }
+
+// ── − / + stepper for rest ───────────────────────────────────────────
+
+/** Below 2 min rest moves in 15 s steps and reads "90s"; from 2 min on in 30 s steps, read "2.5 min". */
+const REST_MINUTES_FROM = 120
+
+/** "60–90s" → [60, 90], "2 min" → [120, null], "1:30" → [90, null], "" or "—" → [] (no rest). Null when unreadable. */
+function splitRest(rest: string): number[] | null {
+  const t = rest.trim()
+  if (!t || /^[—–-]$/.test(t)) return []
+  const clock = t.match(/^(\d+):(\d{2})$/)
+  if (clock) return [Number(clock[1]) * 60 + Number(clock[2])]
+  const m = t.match(/^(\d+(?:[.,]\d+)?)\s*(s|sec|secs|seconds|min|mins|minutes)?\s*(?:[–—-]\s*(\d+(?:[.,]\d+)?)\s*(s|sec|secs|seconds|min|mins|minutes)?)?$/i)
+  if (!m || !(m[2] || m[4])) return null
+  // "1–2 min": a unit written only after the range applies to both ends.
+  const unitLo = m[2] ?? m[4]
+  const toSec = (n: string, unit: string) => Math.round(Number(n.replace(',', '.')) * (/^m/i.test(unit) ? 60 : 1))
+  return m[3] ? [toSec(m[1], unitLo), toSec(m[3], m[4] ?? unitLo)] : [toSec(m[1], unitLo)]
+}
+
+function formatRest(sec: number): string {
+  return sec < REST_MINUTES_FROM ? `${sec}s` : `${sec / 60} min`
+}
+
+function stepRestSec(sec: number, delta: number): number {
+  const up = delta > 0
+  const step = sec > REST_MINUTES_FROM || (sec === REST_MINUTES_FROM && up) ? 30 : 15
+  // Snap to the step grid first, so an odd value like "100s" lands on 105 or 90.
+  const snapped = up ? Math.floor(sec / step) * step + step : Math.ceil(sec / step) * step - step
+  return Math.max(0, snapped)
+}
+
+/** True when rest can be adjusted with − / + buttons (empty counts: + adds 15s). */
+export function isRestSteppable(rest: string): boolean {
+  return splitRest(rest) !== null
+}
+
+/** Moves rest one step (both ends of a range). Stepping below 15s clears it. */
+export function stepRest(rest: string, delta: number): string {
+  const parts = splitRest(rest)
+  if (parts === null) return rest
+  if (!parts.length) return delta > 0 ? formatRest(15) : ''
+  const next = parts.map((s) => stepRestSec(s, delta))
+  if (next[0] <= 0) return parts.length === 1 ? '' : rest
+  if (next.length === 2 && next[1] <= next[0]) return rest
+  if (next.length === 1) return formatRest(next[0])
+  const [lo, hi] = next
+  // Same unit on both ends reads as one range: "60–90s", "2–3 min".
+  if (hi < REST_MINUTES_FROM) return `${lo}–${hi}s`
+  if (lo >= REST_MINUTES_FROM) return `${lo / 60}–${hi / 60} min`
+  return `${formatRest(lo)}–${formatRest(hi)}`
+}
+
+export function restLabel(rest: string): string {
+  return rest.trim() || '—'
+}

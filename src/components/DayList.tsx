@@ -12,7 +12,7 @@ import { ConfirmButton } from './ConfirmButton'
 import { ExercisePicker } from './ExercisePicker'
 import { findExercise, videoUrl } from '../data/exercises'
 import { move } from '../data/programmeEdits'
-import { estimateSessionMin, isSteppable, newRow, newSection, repsLabel, setsLabel, stepReps, stepSets, withLibraryLink } from '../data/programmeUtils'
+import { estimateSessionMin, isRestSteppable, isSteppable, newRow, newSection, repsLabel, restLabel, setsLabel, stepReps, stepRest, stepSets, withLibraryLink } from '../data/programmeUtils'
 import type { ExerciseRow, ProgrammeSection, ProgrammeSession, ProgressionBlock } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
 
@@ -186,7 +186,7 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMov
   const ex = findExercise(r.exerciseKey ?? r.name)
   const video = r.name ? videoUrl(ex ?? { name: r.name }) : null
   const edit = mode === 'edit'
-  const adjustable = mode !== 'read'
+  const train = mode === 'train'
   const steppable = isSteppable(r.prescription)
 
   return (
@@ -194,18 +194,46 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMov
       {edit ? (
         <input className="plain ex-name-input" list="exercise-names" value={r.name} placeholder="Exercise name" onChange={(e) => onChange((x) => withLibraryLink({ ...x, name: e.target.value }))} aria-label="Exercise name" autoFocus={!r.name} />
       ) : (
-        r.notes && <p className="ex-cue">{r.notes}</p>
+        // 1 · How to do it: read-only, quiet.
+        (r.notes || r.alternative || (mode === 'read' && r.rest)) && (
+          <div className="ex-how">
+            {r.notes && <p className="ex-cue">{r.notes}</p>}
+            {r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
+            {mode === 'read' && r.rest && <p className="ex-meta">Rest {r.rest}</p>}
+          </div>
+        )
       )}
 
-      {adjustable && steppable && (
-        <div className="steppers">
-          <Stepper label="Sets" value={setsLabel(r.prescription) ?? ''} onStep={(d) => onChange((x) => ({ ...x, prescription: stepSets(x.prescription, d) }))} />
-          <Stepper label="Reps" value={repsLabel(r.prescription) ?? ''} onStep={(d) => onChange((x) => ({ ...x, prescription: stepReps(x.prescription, d) }))} />
+      {/* 2 · What to do: everything adjusted between sets, in one grid. 3 · Pete's note, full width. */}
+      {train && (
+        <div className="ex-fields ex-grid">
+          {steppable ? (
+            <>
+              <Stepper label="Sets" value={setsLabel(r.prescription) ?? ''} onStep={(d) => onChange((x) => ({ ...x, prescription: stepSets(x.prescription, d) }))} />
+              <Stepper label="Reps" value={repsLabel(r.prescription) ?? ''} onStep={(d) => onChange((x) => ({ ...x, prescription: stepReps(x.prescription, d) }))} />
+            </>
+          ) : (
+            // Prescriptions like "5 min" or "10 reps" have no − / +; they're typed instead.
+            <label className="span-all">Sets × reps<input className="plain mono" value={r.prescription} onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>
+          )}
+          {isRestSteppable(r.rest) ? (
+            <Stepper label="Rest" less="Shorter" more="Longer" value={restLabel(r.rest)} onStep={(d) => onChange((x) => ({ ...x, rest: stepRest(x.rest, d) }))} />
+          ) : (
+            <label>Rest<input className="plain mono" value={r.rest} onChange={(e) => onChange((x) => ({ ...x, rest: e.target.value }))} /></label>
+          )}
+          <LoadField row={r} onChange={onChange} />
+          <MemoField row={r} onChange={onChange} />
         </div>
       )}
 
       {edit && (
         <>
+          {steppable && (
+            <div className="steppers">
+              <Stepper label="Sets" value={setsLabel(r.prescription) ?? ''} onStep={(d) => onChange((x) => ({ ...x, prescription: stepSets(x.prescription, d) }))} />
+              <Stepper label="Reps" value={repsLabel(r.prescription) ?? ''} onStep={(d) => onChange((x) => ({ ...x, prescription: stepReps(x.prescription, d) }))} />
+            </div>
+          )}
           <div className="ex-fields">
             <label>Sets × reps<input className="plain mono" value={r.prescription} placeholder="3 × 8–10" onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>
             <label>Rest<input className="plain mono" value={r.rest} placeholder="90s" onChange={(e) => onChange((x) => ({ ...x, rest: e.target.value }))} /></label>
@@ -217,29 +245,20 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMov
           <input className="plain plain-muted" value={r.alternative} placeholder="Alternative (optional)" onChange={(e) => onChange((x) => ({ ...x, alternative: e.target.value }))} aria-label="Alternative" />
         </>
       )}
-      {/* Prescriptions like "5 min" or "10 reps" have no − / +; they're typed instead. */}
-      {mode === 'train' && (
-        <div className="ex-fields">
-          {!steppable && <label>Sets × reps<input className="plain mono" value={r.prescription} onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>}
-          <LoadField row={r} onChange={onChange} />
-          <MemoField row={r} onChange={onChange} />
-        </div>
-      )}
-      {!edit && r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
 
+      {/* 4 · Actions: Video and Swap on the left; the destructive one alone on the right. */}
       <div className="ex-actions">
         {video && <a href={video.url} target="_blank" rel="noopener noreferrer">Video</a>}
-        {adjustable && <button type="button" onClick={onSwap}>Swap</button>}
+        {mode !== 'read' && <button type="button" onClick={onSwap}>Swap</button>}
         {edit && (
           <>
             <button type="button" disabled={!canMoveUp} onClick={() => onMove(-1)} aria-label="Move up">↑</button>
             <button type="button" disabled={!canMoveDown} onClick={() => onMove(1)} aria-label="Move down">↓</button>
-            <ConfirmButton className="danger-link" onConfirm={onDelete}>Delete</ConfirmButton>
           </>
         )}
-        {mode === 'train' && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Remove</ConfirmButton>}
         <span className="grow" />
-        {!edit && r.rest && <span className="mono muted small">rest {r.rest}</span>}
+        {edit && <ConfirmButton className="danger-link" onConfirm={onDelete}>Delete</ConfirmButton>}
+        {train && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Remove</ConfirmButton>}
       </div>
     </div>
   )
@@ -261,16 +280,16 @@ function MemoField({ row: r, onChange }: { row: ExerciseRow; onChange: CardProps
   )
 }
 
-function Stepper({ label, value, onStep }: { label: string; value: string; onStep: (delta: number) => void }) {
+function Stepper({ label, value, onStep, less = 'Fewer', more = 'More' }: { label: string; value: string; onStep: (delta: number) => void; less?: string; more?: string }) {
   return (
     <div className="stepper">
-      <button type="button" onClick={() => onStep(-1)} aria-label={`Fewer ${label.toLowerCase()}`}>−</button>
+      <button type="button" onClick={() => onStep(-1)} aria-label={`${less} ${label.toLowerCase()}`}>−</button>
       {/* Ranges like "8–10" or "30–45s" drop a size so they fit beside the buttons. */}
-      <span className={`stepper-value${value.length > 3 ? ' long' : ''}`}>
+      <span className={`stepper-value${value.length > 6 ? ' longer' : value.length > 3 ? ' long' : ''}`}>
         <span className="mono">{value}</span>
         <span className="stepper-label">{label}</span>
       </span>
-      <button type="button" onClick={() => onStep(1)} aria-label={`More ${label.toLowerCase()}`}>+</button>
+      <button type="button" onClick={() => onStep(1)} aria-label={`${more} ${label.toLowerCase()}`}>+</button>
     </div>
   )
 }
