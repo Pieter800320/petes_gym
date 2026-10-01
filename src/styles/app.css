@@ -549,5 +549,3 @@ svg { flex: none; }
 }
 .dial-side svg { width: 20px; height: 20px; }
 .dial-side:active { transform: scale(0.92); }
-/* Once a row snaps open, Delete sits above the sliding line, so a quick tap during the slide still reaches it. */
-.swipe-row.revealed .swipe-actions { z-index: 1; }
