@@ -74,24 +74,33 @@ interface DialProps {
   disabled?: boolean
   /** Stopped clock: dimmed time, label as the action (RESUME). */
   paused?: boolean
+  /** Small round button on the dial's upper-left edge (Pause, Finish now): its own tap target. */
+  side?: { icon: ReactNode; label: string; onClick: () => void }
 }
 
 /** The one round action per tab (Start, New, Add), always in the same spot above the nav. */
-export function Dial({ label, onClick, ariaLabel, time, disabled, paused }: DialProps) {
+export function Dial({ label, onClick, ariaLabel, time, disabled, paused, side }: DialProps) {
   return (
     <div className="dial-dock">
-      {time ? (
-        <button type="button" className={`dial dial-running${paused ? ' dial-paused' : ''}`} onClick={onClick} aria-label={ariaLabel ?? `${label}, ${time}`}>
-          <span className="dial-inner">
-            <span className="dial-time">{time}</span>
-            <span className="dial-sub">{label}</span>
-          </span>
-        </button>
-      ) : (
-        <button type="button" className="dial" onClick={onClick} aria-label={ariaLabel} disabled={disabled}>
-          {label}
-        </button>
-      )}
+      <div className="dial-wrap">
+        {time ? (
+          <button type="button" className={`dial dial-running${paused ? ' dial-paused' : ''}`} onClick={onClick} aria-label={ariaLabel ?? `${label}, ${time}`}>
+            <span className="dial-inner">
+              <span className="dial-time">{time}</span>
+              <span className="dial-sub">{label}</span>
+            </span>
+          </button>
+        ) : (
+          <button type="button" className="dial" onClick={onClick} aria-label={ariaLabel} disabled={disabled}>
+            {label}
+          </button>
+        )}
+        {side && (
+          <button type="button" className="dial-side" onClick={side.onClick} aria-label={side.label} title={side.label}>
+            {side.icon}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

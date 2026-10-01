@@ -537,3 +537,15 @@ svg { flex: none; }
 /* Paused session: grey ring, dimmed frozen time, RESUME in the accent colour. */
 .dial-paused { background: var(--color-border); }
 .dial-paused .dial-time { color: var(--color-text-muted); }
+/* Small button riding the dial's upper-left edge (Pause / Finish now); a ring of background keeps it apart. */
+.dial-wrap { position: relative; display: flex; }
+.dial-side {
+  pointer-events: auto;
+  position: absolute; left: -16px; top: -16px; width: 48px; height: 48px; border-radius: 50%; border: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-accent); color: var(--color-on-accent);
+  box-shadow: 0 0 0 3px var(--color-bg);
+  transition: transform 0.15s var(--ease-standard);
+}
+.dial-side svg { width: 20px; height: 20px; }
+.dial-side:active { transform: scale(0.92); }

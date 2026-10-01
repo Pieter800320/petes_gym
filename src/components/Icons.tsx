@@ -38,3 +38,9 @@ export const IconMore = () => (
 export const IconTrash = () => (
   <svg {...base}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
 )
+export const IconPause = () => (
+  <svg {...base}><path d="M9 6v12M15 6v12" /></svg>
+)
+export const IconStop = () => (
+  <svg {...base}><rect x="7" y="7" width="10" height="10" rx="1.5" /></svg>
+)

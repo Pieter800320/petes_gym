@@ -10,6 +10,7 @@ import { DayList } from '../components/DayList'
 import { PinnedNotes } from '../components/PinnedNotes'
 import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { openNote } from '../components/noteEvents'
+import { IconPause, IconStop } from '../components/Icons'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { activeMs, cancelWorkout, finishWorkout, pauseWorkout, resumeWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
@@ -168,11 +169,6 @@ function TrainProgramme({ stored }: { stored: Programme }) {
             {paused ? 'Paused. The clock is stopped; paused time isn’t counted.' : 'Changes you make now are saved to the programme and listed with this session.'}
           </span>
           <ConfirmButton className="btn-ghost small" onConfirm={() => { cancelWorkout(); toast('Session cancelled, nothing saved') }}>Cancel session</ConfirmButton>
-          {paused ? (
-            <button type="button" className="btn-ghost small" onClick={finish}>Finish now</button>
-          ) : (
-            <button type="button" className="btn-ghost small" onClick={pauseWorkout}>Pause</button>
-          )}
         </div>
       ) : (
         <div className="quiet-links">
@@ -188,7 +184,14 @@ function TrainProgramme({ stored }: { stored: Programme }) {
 
       {running ? (
         paused ? (
-          <Dial label="RESUME" time={formatClock(activeMs(running) / 1000)} paused onClick={resumeWorkout} ariaLabel="Resume session" />
+          <Dial
+            label="RESUME"
+            time={formatClock(activeMs(running) / 1000)}
+            paused
+            onClick={resumeWorkout}
+            ariaLabel="Resume session"
+            side={{ icon: <IconStop />, label: 'Finish now', onClick: finish }}
+          />
         ) : (
           <FinishDial workout={running} onFinish={finish} />
         )
@@ -214,7 +217,15 @@ function FinishDial({ workout, onFinish }: { workout: ActiveWorkout; onFinish: (
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
-  return <Dial label="FINISH" time={formatClock(activeMs(workout, now) / 1000)} onClick={onFinish} ariaLabel="Finish session" />
+  return (
+    <Dial
+      label="FINISH"
+      time={formatClock(activeMs(workout, now) / 1000)}
+      onClick={onFinish}
+      ariaLabel="Finish session"
+      side={{ icon: <IconPause />, label: 'Pause', onClick: pauseWorkout }}
+    />
+  )
 }
 
 /** Keeps the screen awake while a session runs. */
