@@ -53,7 +53,8 @@ const STYLE = `
   tbody tr.group td span { color: var(--ink-faint); margin-left: 8px; letter-spacing: 0.06em; }
   tbody tr.group-note td { background: var(--paper); padding-top: 4px; color: var(--ink-soft); font-size: 0.86rem; }
   td.ex { font-weight: 500; }
-  td.ex a { display: inline-block; margin-left: 6px; padding: 0 5px; border: 1px solid currentColor; border-radius: 4px; font-size: 0.66rem; font-family: 'IBM Plex Mono', monospace; color: var(--accent); text-decoration: none; vertical-align: 1px; }
+  td.ex .video { display: block; margin: 3px 0 1px; line-height: 1; }
+  td.ex a { display: inline-block; padding: 0 5px; border: 1px solid currentColor; border-radius: 4px; font-size: 0.66rem; font-family: 'IBM Plex Mono', monospace; color: var(--accent); text-decoration: none; vertical-align: 1px; }
   td.ex a.search { color: var(--ink-faint); }
   td.sets, td.rest { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
   td.notes { color: var(--ink-soft); }
@@ -107,7 +108,7 @@ export function renderHtml(d: ExportDoc): string {
                 .map(
                   (r) => `
           <tr>
-            <td class="ex">${esc(r.name)}<a href="${esc(r.videoUrl)}" target="_blank" rel="noopener"${r.hasVideo ? '' : ' class="search"'}>▶</a>${r.cue ? `<span class="cue">${esc(r.cue)}</span>` : ''}${r.alternative ? `<span class="alt">${esc(r.alternative)}</span>` : ''}</td>
+            <td class="ex">${esc(r.name)}<span class="video"><a href="${esc(r.videoUrl)}" target="_blank" rel="noopener"${r.hasVideo ? '' : ' class="search"'}>▶</a></span>${r.cue ? `<span class="cue">${esc(r.cue)}</span>` : ''}${r.alternative ? `<span class="alt">${esc(r.alternative)}</span>` : ''}</td>
             <td class="sets">${esc(r.prescription)}</td>
             <td class="rest">${esc(r.rest)}</td>
           </tr>`,

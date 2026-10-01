@@ -163,11 +163,9 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
             children: [
               cell(
                 [
-                  para([
-                    text(r.name, { bold: true, size: 10 }),
-                    text('  '),
-                    new ExternalHyperlink({ link: r.videoUrl, children: [new TextRun({ text: '▶ Video', font: BODY_FONT, size: pt(8), color: r.hasVideo ? ACCENT : FAINT, underline: {} })] }),
-                  ]),
+                  para([text(r.name, { bold: true, size: 10 })]),
+                  // Own line under the name, so every exercise has the link in the same place.
+                  para([new ExternalHyperlink({ link: r.videoUrl, children: [new TextRun({ text: '▶ Video', font: BODY_FONT, size: pt(8), color: r.hasVideo ? ACCENT : FAINT, underline: {} })] })]),
                   ...(r.cue ? [para([text(r.cue, { color: SOFT, size: 9 })])] : []),
                   ...(r.alternative ? [para([text(r.alternative, { color: FAINT, size: 8.5 })])] : []),
                 ],
