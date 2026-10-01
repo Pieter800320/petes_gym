@@ -7,12 +7,12 @@
  *           or own name), remove; tap a section name to add an exercise (changes stick to the programme)
  *   edit  — plus name, cue, alternative, rest, superset, move, delete, section and day titles
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
 import { ExercisePicker } from './ExercisePicker'
 import { findExercise, videoUrl } from '../data/exercises'
 import { move } from '../data/programmeEdits'
-import { estimateSessionMin, isRestSteppable, isSteppable, newRow, newSection, repsLabel, restLabel, setsLabel, stepReps, stepRest, stepSets, withLibraryLink } from '../data/programmeUtils'
+import { canStepReps, estimateSessionMin, isLoadSteppable, isRestSteppable, isSteppable, newRow, newSection, repsLabel, setReps, setSets, setsLabel, stepLoad, stepReps, stepRest, stepSets, typedLoad, typedRest, withLibraryLink } from '../data/programmeUtils'
 import type { ExerciseRow, ProgrammeSection, ProgrammeSession, ProgressionBlock } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
 
@@ -207,21 +207,38 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMov
       {/* 2 · What to do: everything adjusted between sets, in one grid. 3 · Pete's note, full width. */}
       {train && (
         <div className="ex-fields ex-grid">
-          {steppable ? (
-            <>
-              <Stepper label="Sets" value={setsLabel(r.prescription) ?? ''} onStep={(d) => onChange((x) => ({ ...x, prescription: stepSets(x.prescription, d) }))} />
-              <Stepper label="Reps" value={repsLabel(r.prescription) ?? ''} onStep={(d) => onChange((x) => ({ ...x, prescription: stepReps(x.prescription, d) }))} />
-            </>
-          ) : (
-            // Prescriptions like "5 min" or "10 reps" have no − / +; they're typed instead.
-            <label className="span-all">Sets × reps<input className="plain mono" value={r.prescription} onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>
-          )}
-          {isRestSteppable(r.rest) ? (
-            <Stepper label="Rest" less="Shorter" more="Longer" value={restLabel(r.rest)} onStep={(d) => onChange((x) => ({ ...x, rest: stepRest(x.rest, d) }))} />
-          ) : (
-            <label>Rest<input className="plain mono" value={r.rest} onChange={(e) => onChange((x) => ({ ...x, rest: e.target.value }))} /></label>
-          )}
-          <LoadField row={r} onChange={onChange} />
+          {/* All four always show as pills; "—" when empty. Tap the value to type ("AMRAP", "red band"). */}
+          <Stepper
+            label="Sets"
+            value={setsLabel(r.prescription)}
+            onStep={(d) => onChange((x) => ({ ...x, prescription: stepSets(x.prescription, d) }))}
+            typed={{ text: setsLabel(r.prescription), inputMode: 'numeric', onCommit: (t) => onChange((x) => ({ ...x, prescription: setSets(x.prescription, t) })) }}
+          />
+          <Stepper
+            label="Reps"
+            value={repsLabel(r.prescription)}
+            canStep={canStepReps(r.prescription)}
+            onStep={(d) => onChange((x) => ({ ...x, prescription: stepReps(x.prescription, d) }))}
+            typed={{ text: repsLabel(r.prescription), onCommit: (t) => onChange((x) => ({ ...x, prescription: setReps(x.prescription, t) })) }}
+          />
+          <Stepper
+            label="Rest"
+            less="Shorter"
+            more="Longer"
+            value={r.rest.trim()}
+            canStep={isRestSteppable(r.rest)}
+            onStep={(d) => onChange((x) => ({ ...x, rest: stepRest(x.rest, d) }))}
+            typed={{ text: r.rest, onCommit: (t) => onChange((x) => ({ ...x, rest: typedRest(t) })) }}
+          />
+          <Stepper
+            label="Weight"
+            less="Less"
+            more="More"
+            value={(r.load ?? '').trim()}
+            canStep={isLoadSteppable(r.load ?? '')}
+            onStep={(d) => onChange((x) => ({ ...x, load: stepLoad(x.load ?? '', d) }))}
+            typed={{ text: r.load ?? '', onCommit: (t) => onChange((x) => ({ ...x, load: typedLoad(t) })) }}
+          />
           <MemoField row={r} onChange={onChange} />
         </div>
       )}
@@ -230,8 +247,8 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMov
         <>
           {steppable && (
             <div className="steppers">
-              <Stepper label="Sets" value={setsLabel(r.prescription) ?? ''} onStep={(d) => onChange((x) => ({ ...x, prescription: stepSets(x.prescription, d) }))} />
-              <Stepper label="Reps" value={repsLabel(r.prescription) ?? ''} onStep={(d) => onChange((x) => ({ ...x, prescription: stepReps(x.prescription, d) }))} />
+              <Stepper label="Sets" value={setsLabel(r.prescription)} onStep={(d) => onChange((x) => ({ ...x, prescription: stepSets(x.prescription, d) }))} />
+              <Stepper label="Reps" value={repsLabel(r.prescription)} onStep={(d) => onChange((x) => ({ ...x, prescription: stepReps(x.prescription, d) }))} />
             </div>
           )}
           <div className="ex-fields">
@@ -280,16 +297,60 @@ function MemoField({ row: r, onChange }: { row: ExerciseRow; onChange: CardProps
   )
 }
 
-function Stepper({ label, value, onStep, less = 'Fewer', more = 'More' }: { label: string; value: string; onStep: (delta: number) => void; less?: string; more?: string }) {
+interface Typed {
+  /** Text the input starts with. */
+  text: string
+  onCommit: (text: string) => void
+  inputMode?: 'numeric' | 'text'
+}
+
+/**
+ * Pill with − / + around a value. With `typed`, tapping the value turns it into a field (Enter or
+ * tapping away saves, Escape cancels). An empty value shows "—"; words show as typed with − / + off.
+ */
+function Stepper({ label, value, onStep, less = 'Fewer', more = 'More', canStep = true, typed }: { label: string; value: string; onStep: (delta: number) => void; less?: string; more?: string; canStep?: boolean; typed?: Typed }) {
+  const [editing, setEditing] = useState(false)
+  const cancelled = useRef(false)
+  const shown = value || '—'
+  // Ranges like "8–10" or "30–45s" drop a size so they fit beside the buttons.
+  const size = shown.length > 6 ? ' longer' : shown.length > 3 ? ' long' : ''
   return (
     <div className="stepper">
-      <button type="button" onClick={() => onStep(-1)} aria-label={`${less} ${label.toLowerCase()}`}>−</button>
-      {/* Ranges like "8–10" or "30–45s" drop a size so they fit beside the buttons. */}
-      <span className={`stepper-value${value.length > 6 ? ' longer' : value.length > 3 ? ' long' : ''}`}>
-        <span className="mono">{value}</span>
-        <span className="stepper-label">{label}</span>
-      </span>
-      <button type="button" onClick={() => onStep(1)} aria-label={`${more} ${label.toLowerCase()}`}>+</button>
+      <button type="button" disabled={!canStep} onClick={() => onStep(-1)} aria-label={`${less} ${label.toLowerCase()}`}>−</button>
+      {editing && typed ? (
+        <span className="stepper-value">
+          <input
+            className="stepper-input mono"
+            defaultValue={typed.text}
+            inputMode={typed.inputMode ?? 'text'}
+            enterKeyHint="done"
+            autoFocus
+            onFocus={(e) => e.target.select()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+              if (e.key === 'Escape') { cancelled.current = true; e.currentTarget.blur() }
+            }}
+            onBlur={(e) => {
+              if (!cancelled.current) typed.onCommit(e.target.value)
+              cancelled.current = false
+              setEditing(false)
+            }}
+            aria-label={label}
+          />
+          <span className="stepper-label">{label}</span>
+        </span>
+      ) : typed ? (
+        <button type="button" className={`stepper-value${size}`} onClick={() => setEditing(true)} aria-label={`${label}: ${value || 'none'}. Tap to type`}>
+          <span className="mono">{shown}</span>
+          <span className="stepper-label">{label}</span>
+        </button>
+      ) : (
+        <span className={`stepper-value${size}`}>
+          <span className="mono">{shown}</span>
+          <span className="stepper-label">{label}</span>
+        </span>
+      )}
+      <button type="button" disabled={!canStep} onClick={() => onStep(1)} aria-label={`${more} ${label.toLowerCase()}`}>+</button>
     </div>
   )
 }

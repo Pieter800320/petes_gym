@@ -128,20 +128,42 @@ export function formatClock(totalSec: number): string {
 
 // ── − / + steppers for sets and reps ─────────────────────────────────
 
-/** "3–4 × 8–10 /side" → sets 3–4, reps 8–10, suffix " /side". Null when not a sets × reps shape. */
-function splitRx(rx: string) {
-  const m = rx.match(/^\s*(\d+)(?:\s*[–—-]\s*(\d+))?\s*[×x✕*]\s*(\d+)(?:\s*[–—-]\s*(\d+))?(.*)$/i)
-  if (!m) return null
-  return { setsLo: Number(m[1]), setsHi: m[2] ? Number(m[2]) : null, repsLo: Number(m[3]), repsHi: m[4] ? Number(m[4]) : null, suffix: m[5] }
+interface RxParts {
+  /** null when the prescription has no sets part ("10 reps", "30s"). */
+  sets: { lo: number; hi: number | null } | null
+  /** Numeric reps with whatever follows ("s", " /leg", " reps"); null when empty or not a number. */
+  reps: { lo: number; hi: number | null; suffix: string } | null
+  /** Reps that aren't a number ("AMRAP", "max hold"): shown as typed, no − / +. */
+  repsText: string
+}
+
+const NUMBER_RANGE = /^(\d+)(?:\s*[–—-]\s*(\d+))?(.*)$/
+
+/** "3–4 × 8–10 /side" → sets 3–4, reps 8–10 " /side"; "10 reps" → no sets, reps 10 " reps"; "" → neither. */
+function parseRx(rx: string): RxParts {
+  const t = rx.trim()
+  const m = t.match(/^(\d+)(?:\s*[–—-]\s*(\d+))?\s*[×x✕*](.*)$/i)
+  const sets = m ? { lo: Number(m[1]), hi: m[2] ? Number(m[2]) : null } : null
+  const repsPart = (m ? m[3] : t).trim()
+  const r = repsPart.match(NUMBER_RANGE)
+  return { sets, reps: r ? { lo: Number(r[1]), hi: r[2] ? Number(r[2]) : null, suffix: r[3] } : null, repsText: r ? '' : repsPart }
 }
 
 function range(lo: number, hi: number | null): string {
   return hi !== null ? `${lo}–${hi}` : String(lo)
 }
 
-/** True when the prescription can be adjusted with − / + buttons. */
+function formatRx(p: RxParts): string {
+  const reps = p.reps ? `${range(p.reps.lo, p.reps.hi)}${p.reps.suffix}`.trim() : p.repsText
+  if (!p.sets) return reps
+  const sets = range(p.sets.lo, p.sets.hi)
+  return reps ? `${sets} × ${reps}` : `${sets} ×`
+}
+
+/** True for the classic "sets × reps" shape (Create's edit card shows − / + only then). */
 export function isSteppable(rx: string): boolean {
-  return splitRx(rx) !== null
+  const p = parseRx(rx)
+  return p.sets !== null && p.reps !== null
 }
 
 /** Rep steps: seconds and metres move in 5s, everything else in 1s. */
@@ -149,33 +171,60 @@ function repStep(suffix: string): number {
   return /^\s*(s|sec|m\b)/i.test(suffix) ? 5 : 1
 }
 
-/** Adds delta to the sets (both ends of a range). Never goes below 1. */
+/** Adds delta to the sets (both ends of a range). + on no sets starts at 1; − below 1 removes the sets part. */
 export function stepSets(rx: string, delta: number): string {
-  const p = splitRx(rx)
-  if (!p) return rx
-  const lo = Math.max(1, p.setsLo + delta)
-  const hi = p.setsHi !== null ? Math.max(lo, p.setsHi + delta) : null
-  return `${range(lo, hi)} × ${range(p.repsLo, p.repsHi)}${p.suffix}`
+  const p = parseRx(rx)
+  if (!p.sets) return delta > 0 ? formatRx({ ...p, sets: { lo: 1, hi: null } }) : rx
+  const lo = p.sets.lo + delta
+  if (lo < 1) return p.sets.hi === null ? formatRx({ ...p, sets: null }) : rx
+  const hi = p.sets.hi !== null ? Math.max(lo, p.sets.hi + delta) : null
+  return formatRx({ ...p, sets: { lo, hi } })
 }
 
-/** Adds delta steps to the reps (both ends of a range). Never goes below one step. */
+/** Adds delta steps to the reps (both ends of a range). Never below one step; + on no reps starts at 1. */
 export function stepReps(rx: string, delta: number): string {
-  const p = splitRx(rx)
-  if (!p) return rx
-  const step = repStep(p.suffix)
-  const lo = Math.max(step, p.repsLo + delta * step)
-  const hi = p.repsHi !== null ? Math.max(lo, p.repsHi + delta * step) : null
-  return `${range(p.setsLo, p.setsHi)} × ${range(lo, hi)}${p.suffix}`
+  const p = parseRx(rx)
+  if (p.repsText) return rx
+  if (!p.reps) return delta > 0 ? formatRx({ ...p, reps: { lo: 1, hi: null, suffix: '' } }) : rx
+  const step = repStep(p.reps.suffix)
+  const lo = Math.max(step, p.reps.lo + delta * step)
+  const hi = p.reps.hi !== null ? Math.max(lo, p.reps.hi + delta * step) : null
+  return formatRx({ ...p, reps: { ...p.reps, lo, hi } })
 }
 
-export function setsLabel(rx: string): string | null {
-  const p = splitRx(rx)
-  return p ? range(p.setsLo, p.setsHi) : null
+/** False when the reps are words ("AMRAP"): the pill shows them and − / + are off. */
+export function canStepReps(rx: string): boolean {
+  return !parseRx(rx).repsText
 }
 
-export function repsLabel(rx: string): string | null {
-  const p = splitRx(rx)
-  return p ? `${range(p.repsLo, p.repsHi)}${p.suffix}`.trim() : null
+/** "3–4", or "" when there are no sets. */
+export function setsLabel(rx: string): string {
+  const p = parseRx(rx)
+  return p.sets ? range(p.sets.lo, p.sets.hi) : ''
+}
+
+/** "8–10 /leg", "AMRAP", or "" when there are no reps. */
+export function repsLabel(rx: string): string {
+  const p = parseRx(rx)
+  return p.reps ? `${range(p.reps.lo, p.reps.hi)}${p.reps.suffix}`.trim() : p.repsText
+}
+
+/** Sets typed into the pill ("3", "3-4"; empty removes them). Anything else leaves the prescription as it was. */
+export function setSets(rx: string, text: string): string {
+  const t = text.trim()
+  const p = parseRx(rx)
+  if (!t) return formatRx({ ...p, sets: null })
+  const m = t.match(/^(\d+)(?:\s*[–—-]\s*(\d+))?$/)
+  if (!m || Number(m[1]) < 1) return rx
+  return formatRx({ ...p, sets: { lo: Number(m[1]), hi: m[2] ? Number(m[2]) : null } })
+}
+
+/** Reps typed into the pill: a number, a range, "8 /leg", "30s" or words like "AMRAP". */
+export function setReps(rx: string, text: string): string {
+  const p = parseRx(rx)
+  const t = text.trim()
+  const r = t.match(NUMBER_RANGE)
+  return formatRx({ ...p, reps: r ? { lo: Number(r[1]), hi: r[2] ? Number(r[2]) : null, suffix: r[3] } : null, repsText: r ? '' : t })
 }
 
 // ── − / + stepper for rest ───────────────────────────────────────────
@@ -232,4 +281,46 @@ export function stepRest(rest: string, delta: number): string {
 
 export function restLabel(rest: string): string {
   return rest.trim() || '—'
+}
+
+/** Rest typed into the pill: a bare number means seconds ("90" → "90s"). */
+export function typedRest(text: string): string {
+  const t = text.trim()
+  return /^\d+$/.test(t) ? `${t}s` : t
+}
+
+// ── − / + stepper for weight ─────────────────────────────────────────
+
+/** Pieter's choice (2026-10-01): 0.5 kg per tap; 2.5 kg is the fallback if that's too many taps. */
+const LOAD_STEP = 0.5
+
+/** "16 kg" → 16 kg, "35lb" → 35 lb, "" → empty. Null for anything else ("red band", "2 × 16 kg"). */
+function splitLoad(load: string): { value: number; unit: string } | 'empty' | null {
+  const t = load.trim()
+  if (!t || /^[—–-]$/.test(t)) return 'empty'
+  const m = t.match(/^(\d+(?:[.,]\d+)?)\s*(kg|lb|lbs)?$/i)
+  return m ? { value: Number(m[1].replace(',', '.')), unit: (m[2] ?? 'kg').toLowerCase() } : null
+}
+
+function formatLoad(value: number, unit: string): string {
+  return `${Number.isInteger(value) ? value : value.toFixed(1)} ${unit}`
+}
+
+export function isLoadSteppable(load: string): boolean {
+  return splitLoad(load) !== null
+}
+
+/** Moves the weight 0.5 per tap; stepping to 0 clears it. */
+export function stepLoad(load: string, delta: number): string {
+  const p = splitLoad(load)
+  if (p === null) return load
+  if (p === 'empty') return delta > 0 ? formatLoad(LOAD_STEP, 'kg') : ''
+  const next = Math.round((p.value + delta * LOAD_STEP) * 10) / 10
+  return next <= 0 ? '' : formatLoad(next, p.unit)
+}
+
+/** Weight typed into the pill: a bare number means kg ("16" → "16 kg", "16,5" → "16.5 kg"). */
+export function typedLoad(text: string): string {
+  const t = text.trim()
+  return /^\d+(?:[.,]\d+)?$/.test(t) ? formatLoad(Number(t.replace(',', '.')), 'kg') : t
 }

@@ -9,10 +9,11 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.7.5 (2026-10-01). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.7.6 (2026-10-01). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
-    grid of Sets, Reps, Rest (all −/+) and a private Weight (`ExerciseRow.load`); a private note for
+    grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg,
+    Pieter may switch to 2.5; private `ExerciseRow.load`); a private note for
     next time (`ExerciseRow.memo`, dot after the name; both never exported or sent to Claude); actions
     (Video, Swap to a library exercise or your own name, Remove in red on the right). Then the dial
     (Start → clock; ❚❚/▶ on the dial's edge pauses/resumes, paused time not counted; Finish → session recorded

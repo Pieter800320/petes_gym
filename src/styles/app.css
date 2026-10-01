@@ -568,3 +568,9 @@ svg { flex: none; }
 .ex-grid .stepper { min-width: 0; }
 .stepper-value.longer .mono { font-size: 12px; letter-spacing: -0.04em; }
 .ex-card .ex-actions > .danger-link { color: var(--color-danger); }
+/* Pills: the value is a button (tap to type); − / + dim when the value is words; long words ellipsize. */
+.stepper button:disabled { opacity: 0.3; }
+button.stepper-value { justify-content: center; border: 0; background: none; color: inherit; padding: 0 2px; min-height: 48px; border-radius: 12px; }
+button.stepper-value:active { background: var(--color-accent-wash); }
+.stepper-value .mono { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.stepper-input { width: 100%; min-width: 0; height: 28px; padding: 0 4px; border: 0; border-bottom: 1px solid var(--color-accent); border-radius: 4px; background: var(--color-raised); color: var(--color-text); font-size: 15px; text-align: center; outline: none; }
