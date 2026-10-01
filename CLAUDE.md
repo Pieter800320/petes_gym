@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.8.0 (2026-10-01). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.0 (2026-10-01). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -18,7 +18,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     (Video, Swap to a library exercise or your own name, Remove in red on the right). Then the dial
     (Start → clock; ❚❚/▶ on the dial's edge pauses/resumes, paused time not counted; Finish → session recorded
     with mid-session changes; no per-set logging), stats.
-  - M3 Export: HTML + Word in the Sophie house style, EN/DE (German via Claude, cached per programme);
+  - M3 Export: HTML + Word in Swiss Print (see Design below), EN/DE (German via Claude, cached per programme);
     video link on its own line under each exercise.
   - M4 Create: Claude co-author (`src/claude/chat.ts`, tools in `programmeTools.ts`), highlights,
     undo, health strip, attachments, editable Coach Playbook (Settings).
@@ -29,10 +29,10 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - Desktop: swipe-to-delete rows also get a bin button on hover/focus (`SwipeRow`).
   - Haptics (Android): light tick on every tap, strong pulse on Start/Finish and confirmed deletes;
     switch in Settings. iPhones can't vibrate from web apps.
-  - Looks (0.8.0, trial): Settings › Look switches Classic / Swiss Print / Clinic per device
-    (`pg_look_v1`, `data-look` on `<html>`), each in dark and light. Pieter is choosing after testers
-    said Classic looked AI-made; mockups: https://claude.ai/artifact/BffcD8HQ28uQtTyPqTWhuq.
-    Paper surfaces (programme sheet) keep the export type in every look.
+  - Design (0.9.0, Pieter 2026-10-01): **Swiss Print** everywhere — app, programme views (Create sheet,
+    Clients card, programme page) and both exports form one whole. Chosen after testers said the old
+    Oswald/Plex/orange look seemed AI-made; Classic and Clinic were tried in 0.8.0 and removed.
+    Mockups: https://claude.ai/artifact/BffcD8HQ28uQtTyPqTWhuq.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -41,8 +41,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   `Input.dispatchTouchEvent`; one buzz per action); open-card touch targets measured ≥48px at 360 and
   390px. Swipe fix confirmed on Pieter's phone. Swap-with-own-name and the exercise note checked in
   isolation, not yet in the signed-in app.
-  0.8.0: all three looks rendered in dark and light in headless Chrome on a Train fixture built from
-  the real classes (fonts load, Classic unchanged); not yet seen in the signed-in app.
+  0.9.0: Train and programme views rendered dark + light in headless Chrome on fixtures built from the
+  real classes; sample HTML export screenshotted (desktop light, phone dark); sample .docx opened in
+  Word and checked as PDF. Not yet seen in the signed-in app.
 
 ## 1. Stack (fixed)
 
@@ -53,7 +54,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 | Auth | Firebase Auth, Google sign-in | |
 | Hosting | GitHub Pages via `.github/workflows/deploy.yml`, base `/petes_gym/` | Free, deploys on push to `main` |
 | Routing | `HashRouter` | GitHub Pages has no rewrites |
-| Fonts | Oswald / IBM Plex Sans / IBM Plex Mono via `@fontsource` (latin subsets); Schibsted Grotesk (Swiss Print) and Public Sans (Clinic) for the trial looks | Match the Sophie export style; bundled for offline |
+| Fonts | Schibsted Grotesk via `@fontsource` (latin, 400–800); Arial in Word exports | One family for app and HTML export; bundled for offline; Arial is on every client PC |
 
 ## 2. Rules specific to this repo
 
@@ -78,16 +79,20 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   `var EX=`), the master list. Keys follow Falkenburg's `exKey()`. Never invent YouTube links. If there's
   no library video, fall back to a YouTube search URL (`videoUrl()`).
 - **Styling:** tokens only (`src/styles/tokens.css`), no raw hex in components. Dark-first; light mode
-  is a full equal. 48px minimum touch targets. One CTA per screen. Letter case, tracking, heading
-  weight, leaders and control corners are tokens too (`--display-case`, `--label-case`,
-  `--radius-control`…), so every Look can set them; don't hard-code `uppercase` or `50%` in app.css.
+  is a full equal. 48px minimum touch targets. One CTA per screen. Swiss Print: black ink, one red pen
+  (accent), blue ink for Pete's edits and progression tables, square corners (the dial stays round),
+  sentence-case bold headings, small uppercase labels. Letter case, tracking, heading weight and
+  control corners are tokens (`--display-case`, `--label-case`, `--radius-control`…); don't
+  hard-code them in app.css. Tabular figures only on the session clock: Schibsted widens punctuation.
 - **Haptics:** one global click listener (`src/haptics.ts`) covers every button, link and tab. Don't call
   `navigator.vibrate` directly; mark an element `data-haptic="strong"` (session-level actions) or
   `data-haptic="none"` when it calls `haptic()` itself (see `ConfirmButton`).
 - **Sheets:** use `components/Sheet.tsx` (bottom sheet on phone, dialog ≥900px). Keep it the single
   sheet implementation; don't hand-roll another.
-- **Exports** (M3) follow `Sophie_8Week_Program.html` in `Desktop\Pete's Gym` exactly: warm paper, Oswald
-  headings, IBM Plex body, rust accent, no branding.
+- **Exports** (M3) and in-app programme views (`.paper-*`, `.doc`) share Swiss Print: white sheet, thick
+  rule under the masthead and above each later day, red day numbers, ruled section headers, blue
+  progression blocks, no branding. Change one, change all three (`renderHtml.ts`, `renderDocx.ts`,
+  the paper rules in app.css).
 
 ## 3. Delivery checklist
 

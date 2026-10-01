@@ -1,7 +1,7 @@
 /*
  * Format-independent description of an exported programme. Both the HTML and the Word renderer
  * consume this, so they always show the same content in the same order.
- * Layout follows Sophie_8Week_Program.html: masthead (eyebrow, title, stats, personal note),
+ * Layout (Swiss Print, like the app): masthead (eyebrow, title, stats, personal note),
  * then one block per session with a four-column table and any progression tables.
  */
 import { findExercise, videoUrl } from '../data/exercises'

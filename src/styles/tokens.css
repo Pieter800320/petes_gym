@@ -1,60 +1,60 @@
 /*
- * Pete's Gym design tokens — "the app is the training card".
- * Two looks: Paper (warm paper and ink, like the exported programmes) and Ink (the same after dark).
+ * Pete's Gym design tokens — Swiss Print: black ink on white, one red pen, square corners.
+ * Ink (dark) and Paper (light) are full equals; programmes always render as a white printed sheet
+ * (--paper-*), the same as the HTML and Word exports.
  * Components never use raw hex values — only these variables.
  * Bare :root holds Ink (dark). Paper applies when the OS asks for light (unless Ink is forced in
  * Settings) or when Paper is forced.
- * Looks (Settings › Look, data-look on <html>): Classic is the default below; Swiss Print and Clinic
- * at the bottom of this file override colours, fonts, letter case and corners, each in dark and light.
  */
 :root {
   /* Surfaces */
-  --color-bg: #141517;
-  --color-surface: #1E1F22;       /* cards, inputs, sheets */
-  --color-raised: #26272B;        /* stepper buttons, pressed rows */
-  --color-border: #2A2B2F;        /* rules between lines */
-  --color-scrim: rgba(8, 8, 10, 0.62);
+  --color-bg: #121212;
+  --color-surface: #1A1A1A;       /* cards, inputs, sheets */
+  --color-raised: #262626;        /* stepper buttons, pressed rows */
+  --color-border: #333333;        /* rules between lines */
+  --color-scrim: rgba(0, 0, 0, 0.62);
 
   /* Text */
-  --color-text: #ECE8DE;
-  --color-text-muted: #A39E91;
-  --color-faint: #57534C;         /* dotted leaders, decoration only */
+  --color-text: #F0F0EC;
+  --color-text-muted: #A5A5A0;
+  --color-faint: #4A4A48;         /* decoration only */
 
-  /* Accent: one colour for the one main action and for changes */
-  --color-accent: #FF7A45;
-  --color-accent-wash: rgba(255, 122, 69, 0.14);
-  --color-accent-shadow: rgba(255, 122, 69, 0.5);
-  --color-on-accent: #141517;
-  /* Moss: Pete's own edits and progression tables */
-  --color-accent-2: #5FB3A3;
-  --color-accent-2-wash: rgba(95, 179, 163, 0.14);
-  --color-success: #5FB3A3;
-  --color-note: #FF7A45;
-  --color-danger: #FF6B6B;
+  /* Red pen: the one main action and anything changed */
+  --color-accent: #FF4A3D;
+  --color-accent-wash: rgba(255, 74, 61, 0.14);
+  --color-accent-shadow: transparent;
+  --color-on-accent: #121212;
+  /* Blue ink: Pete's own edits and progression tables */
+  --color-accent-2: #7FA8F0;
+  --color-accent-2-wash: rgba(127, 168, 240, 0.14);
+  --color-success: #7FA8F0;
+  --color-note: #FF4A3D;
+  --color-danger: #FF4A3D;
 
-  /* The paper document (client programmes look like what the client receives) */
-  --paper: #F7F4ED;
-  --paper-ink: #1B1D18;
-  --paper-soft: #5B584E;
-  --paper-rule: #E0DACC;
-  --paper-accent: #C6491D;
-  --paper-wash: rgba(198, 73, 29, 0.09);
-  /* The printed document keeps the export's type in every Look. */
-  --paper-font-display: "Oswald", "Arial Narrow", system-ui, sans-serif;
-  --paper-font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --paper-font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  /* The printed sheet (programmes look like what the client receives), in both themes */
+  --paper: #FFFFFF;
+  --paper-ink: #111111;
+  --paper-soft: #5A5A57;
+  --paper-faint: #BDBDB8;
+  --paper-rule: #D8D8D4;
+  --paper-raised: #EFEFEC;
+  --paper-edge: transparent;      /* outline that lifts the sheet off a light background */
+  --paper-accent: #E0241A;
+  --paper-wash: rgba(224, 36, 26, 0.08);
+  --paper-accent-2: #1F4FA0;
+  --paper-accent-2-wash: rgba(31, 79, 160, 0.08);
 
-  /* Type */
-  --font-display: var(--paper-font-display);
-  --font-body: var(--paper-font-body);
-  --font-mono: var(--paper-font-mono);
+  /* Type: one family; numbers (.mono) never use a monospace face */
+  --font-display: "Schibsted Grotesk", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-body: "Schibsted Grotesk", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: var(--font-body);  /* tabular figures only on the session clock: this face also widens punctuation */
   /* Voice: how headings and small labels are set. */
-  --display-case: uppercase;
-  --display-tracking: 0.02em;
-  --display-weight: 600;
+  --display-case: none;
+  --display-tracking: -0.03em;
+  --display-weight: 800;
   --label-case: uppercase;
-  --label-tracking: 0.14em;
-  --leader-color: var(--color-faint);  /* dotted line between exercise and sets × reps */
+  --label-tracking: 0.06em;
+  --leader-color: transparent;    /* no dotted line between exercise and sets × reps */
   --type-xs: 0.75rem;
   --type-sm: 0.875rem;
   --type-md: 1rem;
@@ -69,13 +69,13 @@
   --space-5: 32px;
   --space-6: 48px;
 
-  /* Shape & motion */
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-  --radius-pill: 999px;
-  --radius-control: 50%;          /* day numbers, − / + buttons */
-  --radius-sheet: 26px;
+  /* Shape & motion: square, like print. The dial stays round. */
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-pill: 2px;
+  --radius-control: 0;            /* day numbers, − / + buttons */
+  --radius-sheet: 4px;
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   /* Sheets: fast start, long soft landing, like native bottom sheets. */
   --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
@@ -93,86 +93,6 @@
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --color-bg: #EFECE4;
-    --color-surface: #F8F6F0;
-    --color-raised: #E6E1D5;
-    --color-border: #D9D3C5;
-    --color-scrim: rgba(40, 38, 32, 0.45);
-    --color-text: #1A1B1E;
-    --color-text-muted: #5E5A50;
-    --color-faint: #A8A294;
-    --color-accent: #C4451C;
-    --color-accent-wash: rgba(196, 69, 28, 0.1);
-    --color-accent-shadow: rgba(196, 69, 28, 0.55);
-    --color-on-accent: #FFFFFF;
-    --color-accent-2: #2B6358;
-    --color-accent-2-wash: rgba(43, 99, 88, 0.1);
-    --color-success: #2B6358;
-    --color-note: #C4451C;
-    --color-danger: #B3261E;
-    color-scheme: light;
-  }
-}
-
-:root[data-theme="light"] {
-  --color-bg: #EFECE4;
-  --color-surface: #F8F6F0;
-  --color-raised: #E6E1D5;
-  --color-border: #D9D3C5;
-  --color-scrim: rgba(40, 38, 32, 0.45);
-  --color-text: #1A1B1E;
-  --color-text-muted: #5E5A50;
-  --color-faint: #A8A294;
-  --color-accent: #C4451C;
-  --color-accent-wash: rgba(196, 69, 28, 0.1);
-  --color-accent-shadow: rgba(196, 69, 28, 0.55);
-  --color-on-accent: #FFFFFF;
-  --color-accent-2: #2B6358;
-  --color-accent-2-wash: rgba(43, 99, 88, 0.1);
-  --color-success: #2B6358;
-  --color-note: #C4451C;
-  --color-danger: #B3261E;
-  color-scheme: light;
-}
-
-/* ── Look: Swiss Print — white paper, black ink, one red pen; square corners ── */
-/* --font-mono points at the text face: numbers keep tabular figures (.mono), without monospace. */
-:root[data-look="swiss"] {
-  --font-display: "Schibsted Grotesk", "Helvetica Neue", system-ui, sans-serif;
-  --font-body: "Schibsted Grotesk", "Helvetica Neue", system-ui, sans-serif;
-  --font-mono: "Schibsted Grotesk", "Helvetica Neue", system-ui, sans-serif;
-  --display-case: none;
-  --display-tracking: -0.03em;
-  --display-weight: 800;
-  --label-case: uppercase;
-  --label-tracking: 0.06em;
-  --leader-color: transparent;
-  --radius-sm: 2px;
-  --radius-md: 2px;
-  --radius-lg: 2px;
-  --radius-pill: 2px;
-  --radius-control: 0;
-  --radius-sheet: 4px;
-  --color-bg: #121212;
-  --color-surface: #1A1A1A;
-  --color-raised: #262626;
-  --color-border: #333333;
-  --color-scrim: rgba(0, 0, 0, 0.62);
-  --color-text: #F0F0EC;
-  --color-text-muted: #A5A5A0;
-  --color-faint: #4A4A48;
-  --color-accent: #FF4A3D;
-  --color-accent-wash: rgba(255, 74, 61, 0.14);
-  --color-accent-shadow: transparent;
-  --color-on-accent: #121212;
-  --color-accent-2: #7FA8F0;
-  --color-accent-2-wash: rgba(127, 168, 240, 0.14);
-  --color-success: #7FA8F0;
-  --color-note: #FF4A3D;
-  --color-danger: #FF4A3D;
-}
-@media (prefers-color-scheme: light) {
-  :root[data-look="swiss"]:not([data-theme="dark"]) {
     --color-bg: #FBFBF9;
     --color-surface: #FFFFFF;
     --color-raised: #EFEFEC;
@@ -189,9 +109,12 @@
     --color-success: #1F4FA0;
     --color-note: #E0241A;
     --color-danger: #E0241A;
+    --paper-edge: #D8D8D4;
+    color-scheme: light;
   }
 }
-:root[data-look="swiss"][data-theme="light"] {
+
+:root[data-theme="light"] {
   --color-bg: #FBFBF9;
   --color-surface: #FFFFFF;
   --color-raised: #EFEFEC;
@@ -208,79 +131,6 @@
   --color-success: #1F4FA0;
   --color-note: #E0241A;
   --color-danger: #E0241A;
-}
-
-/* ── Look: Clinic — calm green-grey, deep green accent, soft corners, sentence case ── */
-/* --font-mono points at the text face: numbers keep tabular figures (.mono), without monospace. */
-:root[data-look="clinic"] {
-  --font-display: "Public Sans", "Segoe UI", system-ui, sans-serif;
-  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "Public Sans", "Segoe UI", system-ui, sans-serif;
-  --display-case: none;
-  --display-tracking: -0.015em;
-  --display-weight: 700;
-  --label-case: none;
-  --label-tracking: 0.01em;
-  --leader-color: transparent;
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 20px;
-  --radius-sheet: 28px;
-  --color-bg: #0E1513;
-  --color-surface: #17211D;
-  --color-raised: #22302A;
-  --color-border: #26332D;
-  --color-scrim: rgba(5, 10, 8, 0.62);
-  --color-text: #E7EFEB;
-  --color-text-muted: #98A8A1;
-  --color-faint: #3E4C46;
-  --color-accent: #5BC79B;
-  --color-accent-wash: rgba(91, 199, 155, 0.14);
-  --color-accent-shadow: rgba(91, 199, 155, 0.35);
-  --color-on-accent: #0E1513;
-  --color-accent-2: #8DB7E6;
-  --color-accent-2-wash: rgba(141, 183, 230, 0.14);
-  --color-success: #5BC79B;
-  --color-note: #5BC79B;
-  --color-danger: #F97066;
-}
-@media (prefers-color-scheme: light) {
-  :root[data-look="clinic"]:not([data-theme="dark"]) {
-    --color-bg: #F3F6F4;
-    --color-surface: #FFFFFF;
-    --color-raised: #E8EEEA;
-    --color-border: #DCE4DF;
-    --color-scrim: rgba(19, 32, 27, 0.4);
-    --color-text: #13201B;
-    --color-text-muted: #56645E;
-    --color-faint: #B4C0BA;
-    --color-accent: #1D6B4E;
-    --color-accent-wash: rgba(29, 107, 78, 0.1);
-    --color-accent-shadow: rgba(16, 40, 30, 0.3);
-    --color-on-accent: #FFFFFF;
-    --color-accent-2: #2D5B8A;
-    --color-accent-2-wash: rgba(45, 91, 138, 0.1);
-    --color-success: #1D6B4E;
-    --color-note: #1D6B4E;
-    --color-danger: #B42318;
-  }
-}
-:root[data-look="clinic"][data-theme="light"] {
-  --color-bg: #F3F6F4;
-  --color-surface: #FFFFFF;
-  --color-raised: #E8EEEA;
-  --color-border: #DCE4DF;
-  --color-scrim: rgba(19, 32, 27, 0.4);
-  --color-text: #13201B;
-  --color-text-muted: #56645E;
-  --color-faint: #B4C0BA;
-  --color-accent: #1D6B4E;
-  --color-accent-wash: rgba(29, 107, 78, 0.1);
-  --color-accent-shadow: rgba(16, 40, 30, 0.3);
-  --color-on-accent: #FFFFFF;
-  --color-accent-2: #2D5B8A;
-  --color-accent-2-wash: rgba(45, 91, 138, 0.1);
-  --color-success: #1D6B4E;
-  --color-note: #1D6B4E;
-  --color-danger: #B42318;
+  --paper-edge: #D8D8D4;
+  color-scheme: light;
 }

@@ -34,41 +34,9 @@ export function getTheme(): ThemeSetting {
 export function applyTheme(t: ThemeSetting) {
   if (t === 'system') document.documentElement.removeAttribute('data-theme')
   else document.documentElement.setAttribute('data-theme', t)
-  syncStatusBar()
-}
-
-/** The phone's status bar takes the page colour, so Paper doesn't sit under a black bar. */
-function syncStatusBar() {
+  // The phone's status bar takes the page colour, so Paper doesn't sit under a black bar.
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim()
   if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg)
-}
-
-const LOOK_KEY = 'pg_look_v1'
-
-/** Fonts, colours and corners (tokens.css). Classic is the original look and stays the default. */
-export type LookSetting = 'classic' | 'swiss' | 'clinic'
-
-export function getLook(): LookSetting {
-  const l = read(LOOK_KEY)
-  return l === 'swiss' || l === 'clinic' ? l : 'classic'
-}
-
-export function applyLook(l: LookSetting) {
-  if (l === 'classic') document.documentElement.removeAttribute('data-look')
-  else document.documentElement.setAttribute('data-look', l)
-  syncStatusBar()
-}
-
-export function useLook(): [LookSetting, (l: LookSetting) => void] {
-  const [look, setLookState] = useState<LookSetting>(getLook)
-  return [
-    look,
-    (l) => {
-      write(LOOK_KEY, l === 'classic' ? null : l)
-      applyLook(l)
-      setLookState(l)
-    },
-  ]
 }
 
 export function useTheme(): [ThemeSetting, (t: ThemeSetting) => void] {

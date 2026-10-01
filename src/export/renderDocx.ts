@@ -1,7 +1,7 @@
 /*
- * Editable Word export matching the HTML house style as closely as Word allows.
- * Fonts are ones every client already has (Arial Narrow for headings, Calibri for text), so the
- * document looks right on any PC or Mac without installing Oswald or IBM Plex.
+ * Editable Word export in Swiss Print, matching the HTML as closely as Word allows.
+ * Arial throughout: every PC and Mac has it, so the document looks right without installing
+ * Schibsted Grotesk, and a plain grotesque is what the Swiss style is built on.
  */
 import {
   AlignmentType,
@@ -20,17 +20,14 @@ import {
 } from 'docx'
 import type { ExportBlock, ExportDoc } from './exportModel'
 
-const INK = '1B1D18'
-const SOFT = '5B584E'
-const FAINT = '857F70'
-const ACCENT = 'C6491D'
-const TEAL = '2B6358'
-const RULE = 'D9D4C7'
-const ROW_ALT = 'EFECE5'
-const TEAL_WASH = 'EAF0EE'
-const HEAD_FONT = 'Arial Narrow'
-const BODY_FONT = 'Calibri'
-const MONO_FONT = 'Consolas'
+const INK = '111111'
+const SOFT = '5A5A57'
+const FAINT = '75756F'
+const ACCENT = 'E0241A'
+const BLUE = '1F4FA0'
+const RULE = 'D8D8D4'
+const BLUE_WASH = 'EDF1F8'
+const FONT = 'Arial'
 
 /** Word sizes are half-points. */
 const pt = (n: number) => n * 2
@@ -41,10 +38,9 @@ const DAY_COLUMNS = [6440, 1900, 1300]
 const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
 const line = (color: string, size = 4) => ({ style: BorderStyle.SINGLE, size, color })
 const bottomOnly = (color: string, size = 4): ITableCellBorders => ({ top: none, left: none, right: none, bottom: line(color, size) })
-const noBorders: ITableCellBorders = { top: none, left: none, right: none, bottom: none }
 
 const label = (text: string, color = FAINT) =>
-  new TextRun({ text: text.toUpperCase(), font: BODY_FONT, size: pt(7.5), bold: true, color, characterSpacing: 20 })
+  new TextRun({ text: text.toUpperCase(), font: FONT, size: pt(7.5), bold: true, color, characterSpacing: 10 })
 
 function cell(children: Paragraph[], opts: { borders?: ITableCellBorders; fill?: string; width?: number; span?: number } = {}) {
   return new TableCell({
@@ -58,12 +54,12 @@ function cell(children: Paragraph[], opts: { borders?: ITableCellBorders; fill?:
 }
 
 const para = (runs: (TextRun | ExternalHyperlink)[], spacingAfter = 0) => new Paragraph({ children: runs, spacing: { after: spacingAfter } })
-const text = (t: string, o: { color?: string; bold?: boolean; mono?: boolean; size?: number; italics?: boolean } = {}) =>
-  new TextRun({ text: t, font: o.mono ? MONO_FONT : BODY_FONT, size: pt(o.size ?? 10), color: o.color ?? INK, bold: o.bold, italics: o.italics })
+const text = (t: string, o: { color?: string; bold?: boolean; size?: number; italics?: boolean } = {}) =>
+  new TextRun({ text: t, font: FONT, size: pt(o.size ?? 10), color: o.color ?? INK, bold: o.bold, italics: o.italics })
 
 function blockTable(b: ExportBlock): (Paragraph | Table)[] {
   const out: (Paragraph | Table)[] = [new Paragraph({ spacing: { before: 240 } })]
-  if (b.title) out.push(para([text(b.title, { color: TEAL, bold: true, size: 11 })], 40))
+  if (b.title) out.push(para([text(b.title, { color: BLUE, bold: true, size: 11 })], 40))
   if (b.rule) out.push(para([text(b.rule, { color: SOFT, size: 9.5 })], 120))
   out.push(
     new Table({
@@ -71,12 +67,12 @@ function blockTable(b: ExportBlock): (Paragraph | Table)[] {
       rows: [
         new TableRow({
           tableHeader: true,
-          children: b.columns.map((c) => cell([para([label(c)])], { borders: bottomOnly(TEAL, 8), fill: TEAL_WASH })),
+          children: b.columns.map((c) => cell([para([label(c)])], { borders: { top: line(BLUE, 18), left: none, right: none, bottom: line(BLUE, 8) }, fill: BLUE_WASH })),
         }),
         ...b.rows.map(
           (r) =>
             new TableRow({
-              children: r.map((c, i) => cell([para([text(c, { mono: i === 0, color: i === 0 ? INK : SOFT, size: 9.5 })])], { fill: TEAL_WASH })),
+              children: r.map((c, i) => cell([para([text(c, { bold: i === 0, color: i === 0 ? INK : SOFT, size: 9.5 })])], { fill: BLUE_WASH })),
             }),
         ),
       ],
@@ -92,7 +88,7 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
   children.push(para([label(d.eyebrow, ACCENT)], 120))
   children.push(
     new Paragraph({
-      children: [new TextRun({ text: d.title.toUpperCase(), font: HEAD_FONT, size: pt(24), bold: true, color: INK })],
+      children: [new TextRun({ text: d.title, font: FONT, size: pt(26), bold: true, color: INK, characterSpacing: -10 })],
       spacing: { after: 240 },
     }),
   )
@@ -103,7 +99,7 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
         rows: [
           new TableRow({
             children: d.stats.map((s) =>
-              cell([para([label(s.label)], 60), para([text(s.value, { mono: s.numeric, size: s.numeric ? 11 : 10.5 })])], { borders: noBorders }),
+              cell([para([label(s.label)], 60), para([text(s.value, { bold: s.numeric, size: s.numeric ? 12 : 10.5 })])], { borders: { top: line(INK, 12), left: none, right: none, bottom: none } }),
             ),
           }),
         ],
@@ -124,10 +120,12 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
     children.push(
       new Paragraph({
         pageBreakBefore: index > 0,
+        // Each later day opens its page under a thick rule; day 1 already sits under the masthead rule.
+        border: index > 0 ? { top: line(INK, 18) } : undefined,
         spacing: { before: 200, after: 60 },
         children: [
-          new TextRun({ text: `${s.number}  `, font: HEAD_FONT, size: pt(26), bold: true, color: ACCENT }),
-          new TextRun({ text: s.title.toUpperCase(), font: HEAD_FONT, size: pt(15), color: INK }),
+          new TextRun({ text: `${s.number}  `, font: FONT, size: pt(26), bold: true, color: ACCENT, characterSpacing: -10 }),
+          new TextRun({ text: s.title, font: FONT, size: pt(16), bold: true, color: INK, characterSpacing: -6 }),
         ],
       }),
     )
@@ -140,15 +138,14 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
         children: [hEx, hSets, hRest].map((h, i) => cell([para([label(h)])], { borders: bottomOnly(INK, 12), width: DAY_COLUMNS[i] })),
       }),
     ]
-    let stripe = false
     for (const g of s.groups) {
       if (g.title) {
         rows.push(
           new TableRow({
             children: [
-              cell([para([label(g.title), ...(g.duration ? [new TextRun({ text: `   ${g.duration}`, font: BODY_FONT, size: pt(7.5), color: FAINT })] : [])])], {
+              cell([para([label(g.title, INK), ...(g.duration ? [new TextRun({ text: `   ${g.duration}`, font: FONT, size: pt(7.5), color: FAINT })] : [])])], {
                 span: 3,
-                borders: noBorders,
+                borders: bottomOnly(INK, 8),
               }),
             ],
           }),
@@ -156,8 +153,6 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
       }
       if (g.note) rows.push(new TableRow({ children: [cell([para([text(g.note, { color: SOFT, size: 9.5 })])], { span: 3 })] }))
       for (const r of g.rows) {
-        const fill = stripe ? ROW_ALT : undefined
-        stripe = !stripe
         rows.push(
           new TableRow({
             children: [
@@ -165,14 +160,14 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
                 [
                   para([text(r.name, { bold: true, size: 10 })]),
                   // Own line under the name, so every exercise has the link in the same place.
-                  para([new ExternalHyperlink({ link: r.videoUrl, children: [new TextRun({ text: '▶ Video', font: BODY_FONT, size: pt(8), color: r.hasVideo ? ACCENT : FAINT, underline: {} })] })]),
+                  para([new ExternalHyperlink({ link: r.videoUrl, children: [new TextRun({ text: '▶ VIDEO', font: FONT, size: pt(7.5), bold: true, color: r.hasVideo ? ACCENT : FAINT })] })]),
                   ...(r.cue ? [para([text(r.cue, { color: SOFT, size: 9 })])] : []),
                   ...(r.alternative ? [para([text(r.alternative, { color: FAINT, size: 8.5 })])] : []),
                 ],
-                { fill, width: DAY_COLUMNS[0] },
+                { width: DAY_COLUMNS[0] },
               ),
-              cell([para([text(r.prescription, { mono: true, size: 9.5 })])], { fill, width: DAY_COLUMNS[1] }),
-              cell([para([text(r.rest, { mono: true, size: 9.5 })])], { fill, width: DAY_COLUMNS[2] }),
+              cell([para([text(r.prescription, { bold: true, size: 9.5 })])], { width: DAY_COLUMNS[1] }),
+              cell([para([text(r.rest, { bold: true, size: 9.5 })])], { width: DAY_COLUMNS[2] }),
             ],
           }),
         )
@@ -185,7 +180,7 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
   const doc = new Document({
     creator: "Pete's Gym",
     title: d.documentTitle,
-    styles: { default: { document: { run: { font: BODY_FONT, size: pt(10), color: INK } } } },
+    styles: { default: { document: { run: { font: FONT, size: pt(10), color: INK } } } },
     sections: [
       {
         properties: { page: { margin: { top: 1000, bottom: 1000, left: 1130, right: 1130 } } },

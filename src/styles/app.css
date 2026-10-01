@@ -1,8 +1,7 @@
 /*
- * Pete's Gym — "the app is the training card".
- * Ruled lines, dotted leaders, big Oswald headings, one accent (the Classic look). Colours, fonts,
- * letter case and corners come from tokens.css, so Settings › Look can swap them;
- * paper surfaces (.paper-doc, .paper-card, .sheet.paper) remap the tokens so everything inside
+ * Pete's Gym — Swiss Print: "the app is the training card".
+ * Ruled lines, big tight headings, one red pen. Colours, fonts, letter case and corners come from
+ * tokens.css; paper surfaces (.paper-doc, .paper-card, .sheet.paper) remap the tokens so everything inside
  * them renders as the printed document, in both themes.
  */
 
@@ -37,7 +36,7 @@ svg { flex: none; }
 }
 
 .display { font-family: var(--font-display); text-transform: var(--display-case); letter-spacing: var(--display-tracking); font-weight: var(--display-weight); line-height: 1.1; margin: 0; }
-.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); }
 .muted { color: var(--color-text-muted); }
 .accent { color: var(--color-accent); }
 .small { font-size: var(--type-xs); }
@@ -137,7 +136,7 @@ svg { flex: none; }
 .dial:disabled { opacity: 0.45; box-shadow: none; }
 .dial-running { width: 112px; height: 112px; padding: 5px; background: var(--color-accent); }
 .dial-inner { width: 100%; height: 100%; border-radius: 50%; background: var(--color-bg); color: var(--color-text); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-.dial-time { font-family: var(--font-mono); font-size: 24px; font-weight: 500; letter-spacing: -0.02em; }
+.dial-time { font-family: var(--font-mono); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; } /* steady digits while the clock ticks */
 .dial-sub { font-size: 12px; letter-spacing: 0.16em; color: var(--color-accent); }
 @media (min-width: 900px) { .dial-dock { left: var(--rail-width); } }
 
@@ -210,44 +209,36 @@ svg { flex: none; }
   --color-text: var(--paper-ink);
   --color-text-muted: var(--paper-soft);
   --color-border: var(--paper-rule);
-  --color-faint: #B7B0A1;
-  --color-surface: #FFFFFF;
-  --color-raised: #EFEBE2;
+  --color-faint: var(--paper-faint);
+  --color-surface: var(--paper);
+  --color-raised: var(--paper-raised);
   --color-bg: var(--paper);
   --color-accent: var(--paper-accent);
   --color-accent-wash: var(--paper-wash);
-  --color-on-accent: #FFFFFF;
-  --color-accent-2: #2B6358;
-  --color-accent-2-wash: rgba(43, 99, 88, 0.1);
-  --color-danger: #B3261E;
-  --font-display: var(--paper-font-display);
-  --font-body: var(--paper-font-body);
-  --font-mono: var(--paper-font-mono);
-  --display-case: uppercase;
-  --display-tracking: 0.02em;
-  --display-weight: 600;
-  --label-case: uppercase;
-  --label-tracking: 0.14em;
-  --leader-color: var(--color-faint);
+  --color-on-accent: var(--paper);
+  --color-accent-2: var(--paper-accent-2);
+  --color-accent-2-wash: var(--paper-accent-2-wash);
+  --color-danger: var(--paper-accent);
   background: var(--paper);
   color: var(--paper-ink);
-  font-family: var(--font-body);
 }
-.paper-card { display: flex; flex-direction: column; padding: 18px 18px 6px; border-radius: var(--radius-lg); box-shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.45); }
-.paper-eyebrow { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-accent); }
+.paper-card { display: flex; flex-direction: column; padding: 18px 18px 6px; border-radius: var(--radius-lg); border: 1px solid var(--paper-edge); }
+.paper-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--color-accent); }
 .paper-title { margin-top: 6px; padding: 0 0 8px; border: 0; border-bottom: 2px solid var(--color-text); background: none; text-align: left; font-size: 22px; color: var(--color-text); }
 .paper-days { display: flex; flex-direction: column; }
 .paper-day { display: flex; align-items: baseline; gap: 12px; width: 100%; min-height: 42px; padding: 9px 0; border: 0; border-bottom: 1px solid var(--color-border); background: none; text-align: left; font-size: 15px; font-weight: 500; color: var(--color-text); }
 .paper-day:last-child { border-bottom: 0; }
 .paper-num { font-weight: 700; font-size: 16px; color: var(--color-accent); }
-.paper-doc { display: flex; flex-direction: column; gap: var(--space-2); padding: 22px 20px 18px; border-radius: var(--radius-lg); box-shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.45); }
+.paper-doc { display: flex; flex-direction: column; gap: var(--space-2); padding: 22px 20px 18px; border-radius: var(--radius-lg); border: 1px solid var(--paper-edge); }
 .paper-doc-title { font-size: 28px; line-height: 1.05; overflow-wrap: anywhere; text-wrap: balance; }
 .paper-goal { margin: 0; font-size: 14px; color: var(--color-text-muted); }
 .paper-stats { display: flex; gap: 26px; padding-bottom: 14px; border-bottom: 3px solid var(--color-text); }
 .paper-stats > span { display: flex; flex-direction: column; gap: 2px; }
-.paper-stats > span > span { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); }
-.paper-stats b { font-weight: 400; font-size: 15px; }
+.paper-stats > span > span { font-size: 10px; font-weight: 700; letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--color-text-muted); }
+.paper-stats b { font-weight: 700; font-size: 15px; }
 .paper-doc .day { margin-top: var(--space-4); }
+/* As in the exports: each later day opens under a thick rule (the masthead rule sits above day 1). */
+.paper-doc .day + .day, .doc-day + .doc-day { padding-top: 14px; border-top: 3px solid var(--color-text); }
 
 /* ── Train ────────────────────────────────────────────────────────── */
 .day-picker { display: flex; align-items: center; gap: 8px; }
@@ -259,15 +250,15 @@ svg { flex: none; }
 /* ── The day list: ruled lines with dotted leaders ────────────────── */
 .day { display: flex; flex-direction: column; }
 .day-head { display: flex; align-items: baseline; gap: 14px; padding-bottom: 6px; }
-.day-num { font-family: var(--font-display); font-weight: 700; font-size: 32px; line-height: 1; color: var(--color-accent); flex: none; }
+.day-num { font-family: var(--font-display); font-weight: var(--display-weight); font-size: 32px; letter-spacing: -0.04em; line-height: 1; color: var(--color-accent); flex: none; }
 .day-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.day-title h3 { font-weight: 500; font-size: 19px; overflow-wrap: anywhere; }
+.day-title h3 { font-weight: var(--display-weight); font-size: 20px; overflow-wrap: anywhere; }
 .day-extra { color: var(--color-accent); }
 .day-title p { margin: 2px 0 0; font-size: 13px; color: var(--color-text-muted); }
-.day-title-input { font-family: var(--font-display); font-size: 19px; font-weight: 500; text-transform: var(--display-case); }
+.day-title-input { font-family: var(--font-display); font-size: 20px; font-weight: var(--display-weight); letter-spacing: var(--display-tracking); text-transform: var(--display-case); }
 .day-min { flex: none; font-size: 12px; color: var(--color-text-muted); }
 .day-section { display: flex; flex-direction: column; }
-.day-section .section-label { margin-top: 14px; }
+.day-section .section-label { margin-top: 14px; padding-bottom: 6px; border-bottom: 1px solid var(--color-text); color: var(--color-text); font-weight: 700; }
 .day-section-edit { display: flex; align-items: center; gap: 4px; margin-top: 14px; }
 .section-label-input { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
 .add-line { padding: 10px 0; }
@@ -282,7 +273,7 @@ svg { flex: none; }
 .ex-name { font-size: 16px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
 .ex-ss { font-family: var(--font-mono); font-size: 12px; color: var(--color-accent-2); margin-right: 6px; }
 .ex-dots { flex: 1; min-width: 12px; border-bottom: 1px dotted var(--leader-color); transform: translateY(-4px); }
-.ex-rx { flex: none; white-space: nowrap; font-size: 14px; }
+.ex-rx { flex: none; white-space: nowrap; font-size: 14px; font-weight: 600; }
 .ex-rx.changed { color: var(--color-accent); font-weight: 500; }
 .ex.open { margin: 6px -12px; padding: 0 12px 16px; background: var(--color-surface); }
 .ex.open .ex-line { border-bottom: 0; }
@@ -332,11 +323,11 @@ svg { flex: none; }
 /* ── The programme sheet (paper document) ─────────────────────────── */
 .doc { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .doc-mast { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 3px solid var(--color-text); }
-.doc-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-accent); }
+.doc-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--color-accent); }
 .doc-title { font-family: var(--font-display); font-size: 26px; font-weight: var(--display-weight); line-height: 1.1; text-transform: var(--display-case); field-sizing: content; }
 .doc-goal { font-size: 14px; color: var(--color-text-muted); field-sizing: content; }
 .doc-stats { display: flex; gap: 18px; }
-.doc-stats label { display: flex; flex-direction: column; flex: 1 1 0; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); }
+.doc-stats label { display: flex; flex-direction: column; flex: 1 1 0; font-size: 10px; font-weight: 700; letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--color-text-muted); }
 .doc-stats .plain { font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--color-text); }
 .doc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .doc-details { display: flex; flex-direction: column; gap: var(--space-3); }

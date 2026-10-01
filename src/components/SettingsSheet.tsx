@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { PlaybookSheet } from './PlaybookSheet'
 import { Sheet } from './Sheet'
 import { useAuth } from '../auth/useAuth'
-import { getApiKey, getHaptics, setApiKey, setHaptics, useLook, useTheme, type LookSetting, type ThemeSetting } from '../settings'
+import { getApiKey, getHaptics, setApiKey, setHaptics, useTheme, type ThemeSetting } from '../settings'
 import { canVibrate, haptic } from '../haptics'
 import { formatUsd } from '../claude/client'
 import { useCostLedger, type CostMonth } from '../data/store'
@@ -25,12 +25,6 @@ function CostLine({ label, month }: { label: string; month: CostMonth }) {
   )
 }
 
-const LOOKS: { value: LookSetting; label: string }[] = [
-  { value: 'classic', label: 'Classic' },
-  { value: 'swiss', label: 'Swiss Print' },
-  { value: 'clinic', label: 'Clinic' },
-]
-
 const THEMES: { value: ThemeSetting; label: string }[] = [
   { value: 'system', label: 'System' },
   { value: 'light', label: 'Paper' },
@@ -49,7 +43,6 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [theme, setTheme] = useTheme()
-  const [look, setLook] = useLook()
   const [vibrate, setVibrate] = useState(getHaptics)
   const [key, setKey] = useState(getApiKey)
   const [showKey, setShowKey] = useState(false)
@@ -58,17 +51,6 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="form">
-      <div className="field">
-        <span className="label">Look</span>
-        <div className="chips" role="group" aria-label="Look">
-          {LOOKS.map((l) => (
-            <button type="button" key={l.value} className="chip" aria-pressed={look === l.value} onClick={() => setLook(l.value)}>
-              {l.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="field">
         <span className="label">Theme</span>
         <div className="chips" role="group" aria-label="Theme">

@@ -50,7 +50,7 @@ export function TopBar({ overline, back, actions, noteClientId }: TopBarProps) {
 }
 
 /**
- * Big Oswald heading that steps down in size as the text gets longer, so long names and
+ * Big heading that steps down in size as the text gets longer, so long names and
  * programme titles wrap to two lines instead of overflowing.
  */
 export function BigTitle({ text, sub, accent }: { text: string; sub?: ReactNode; accent?: string }) {
