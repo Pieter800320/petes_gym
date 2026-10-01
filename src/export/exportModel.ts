@@ -22,8 +22,6 @@ export interface ExportOptions {
 export interface ExportRow {
   name: string
   videoUrl: string
-  /** False when the link is a YouTube search rather than a curated video. */
-  hasVideo: boolean
   prescription: string
   /** Short cue shown in small grey text under the exercise name. */
   cue: string
@@ -153,7 +151,6 @@ export function buildExportDoc(p: Programme, o: ExportOptions, t: (s: string) =>
               return {
                 name: (r.superset.trim() ? `${r.superset.trim()} · ` : '') + r.name.trim(),
                 videoUrl: video.url,
-                hasVideo: !video.isSearch,
                 prescription: tr(r.prescription),
                 cue: tr(r.notes),
                 alternative: r.alternative.trim() ? `${L.alternative}: ${tr(r.alternative)}` : '',

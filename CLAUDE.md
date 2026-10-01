@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.0 (2026-10-01). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.1 (2026-10-01). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -19,13 +19,17 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     (Start → clock; ❚❚/▶ on the dial's edge pauses/resumes, paused time not counted; Finish → session recorded
     with mid-session changes; no per-set logging), stats.
   - M3 Export: HTML + Word in Swiss Print (see Design below), EN/DE (German via Claude, cached per programme);
-    video link on its own line under each exercise.
+    video link on its own line under each exercise, always red (a YouTube search link looks the same to
+    the client). Always light, also on a dark-mode phone (bright gyms, printing): Pieter, 2026-10-01.
   - M4 Create: Claude co-author (`src/claude/chat.ts`, tools in `programmeTools.ts`), highlights,
     undo, health strip, attachments, editable Coach Playbook (Settings).
   - M5 Import: old programmes (Word/PDF/HTML/MD/photos) → archived programmes (`/import`), and
     questionnaire answers → client profiles. Hardened in 0.6.3: client matching in
     `src/data/clientMatch.ts` (ambiguous names must be chosen by hand), earlier answers never lost,
     large CSVs read in batches, truncation is an error, unsaved results kept on the device.
+  - Client page box leads with the current programme; else the latest archived/imported one
+    ("Last programme", Make current / Build next block); else the latest draft (Continue in Create).
+    "No programmes yet" only when the client has none (Pieter, 2026-10-01).
   - Desktop: swipe-to-delete rows also get a bin button on hover/focus (`SwipeRow`).
   - Haptics (Android): light tick on every tap, strong pulse on Start/Finish and confirmed deletes;
     switch in Settings. iPhones can't vibrate from web apps.
@@ -43,7 +47,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   isolation, not yet in the signed-in app.
   0.9.0: Train and programme views rendered dark + light in headless Chrome on fixtures built from the
   real classes; sample HTML export screenshotted (desktop light, phone dark); sample .docx opened in
-  Word and checked as PDF. Not yet seen in the signed-in app.
+  Word and checked as PDF. Not yet seen in the signed-in app. 0.9.1: export screenshotted with the
+  phone in dark mode (stays light); client-box selection logic checked on all status combinations (Node).
 
 ## 1. Stack (fixed)
 

@@ -160,7 +160,7 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
                 [
                   para([text(r.name, { bold: true, size: 10 })]),
                   // Own line under the name, so every exercise has the link in the same place.
-                  para([new ExternalHyperlink({ link: r.videoUrl, children: [new TextRun({ text: '▶ VIDEO', font: FONT, size: pt(7.5), bold: true, color: r.hasVideo ? ACCENT : FAINT })] })]),
+                  para([new ExternalHyperlink({ link: r.videoUrl, children: [new TextRun({ text: '▶ VIDEO', font: FONT, size: pt(7.5), bold: true, color: ACCENT })] })]),
                   ...(r.cue ? [para([text(r.cue, { color: SOFT, size: 9 })])] : []),
                   ...(r.alternative ? [para([text(r.alternative, { color: FAINT, size: 8.5 })])] : []),
                 ],

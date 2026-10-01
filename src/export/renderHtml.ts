@@ -1,6 +1,7 @@
 /*
  * Self-contained HTML export in Swiss Print, the app's own design: black ink on white, one red pen,
- * blue ink for progression tables, square corners, Schibsted Grotesk with tabular figures.
+ * blue ink for progression tables, square corners, Schibsted Grotesk.
+ * Always light, also on a phone in dark mode: it is read in bright gyms, printed and forwarded.
  * Structure: masthead, then per day a ruled table with section rows, video links and progression blocks.
  */
 import type { ExportBlock, ExportDoc } from './exportModel'
@@ -12,12 +13,7 @@ const STYLE = `
   :root {
     --paper: #FFFFFF; --ink: #111111; --ink-soft: #5A5A57; --ink-faint: #75756F;
     --rule: #D8D8D4; --accent: #E0241A; --blue: #1F4FA0; --blue-soft: #1F4FA014;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --paper: #121212; --ink: #F0F0EC; --ink-soft: #A5A5A0; --ink-faint: #8A8A85;
-      --rule: #333333; --accent: #FF4A3D; --blue: #7FA8F0; --blue-soft: #7FA8F01f;
-    }
+    color-scheme: only light;
   }
   * { box-sizing: border-box; }
   body { background: var(--paper); color: var(--ink); font-family: 'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif; padding: clamp(20px, 5vw, 56px) 16px 64px; margin: 0; -webkit-font-smoothing: antialiased; }
@@ -30,7 +26,7 @@ const STYLE = `
   .stat { border-top: 2px solid var(--ink); padding-top: 8px; min-width: 7rem; }
   .stat dt { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); font-weight: 700; margin-bottom: 4px; }
   .stat dd { margin: 0; font-size: 1rem; max-width: 46ch; line-height: 1.4; }
-  .stat dd.num { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat dd.num { font-size: 1.25rem; font-weight: 700; }
   .personal-note { margin-top: 24px; }
   .personal-note p { margin: 0 0 12px; font-size: 0.97rem; line-height: 1.55; max-width: 62ch; }
   .personal-note p:last-child { margin-bottom: 0; }
@@ -53,8 +49,7 @@ const STYLE = `
   td.ex { font-weight: 600; }
   td.ex .video { display: block; margin: 4px 0 2px; line-height: 1; }
   td.ex a { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); text-decoration: none; }
-  td.ex a.search { color: var(--ink-faint); }
-  td.sets, td.rest { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; } /* tabular figures on numbers only: this face also widens punctuation */
+  td.sets, td.rest { font-weight: 600; white-space: nowrap; }
   td.notes { color: var(--ink-soft); }
   td.ex .cue { display: block; margin-top: 3px; font-weight: 400; font-size: 0.88rem; color: var(--ink-soft); }
   td.ex .alt { display: block; font-weight: 400; font-size: 0.8rem; color: var(--ink-faint); }
@@ -106,7 +101,7 @@ export function renderHtml(d: ExportDoc): string {
                 .map(
                   (r) => `
           <tr>
-            <td class="ex">${esc(r.name)}<span class="video"><a href="${esc(r.videoUrl)}" target="_blank" rel="noopener"${r.hasVideo ? '' : ' class="search"'}>▶ Video</a></span>${r.cue ? `<span class="cue">${esc(r.cue)}</span>` : ''}${r.alternative ? `<span class="alt">${esc(r.alternative)}</span>` : ''}</td>
+            <td class="ex">${esc(r.name)}<span class="video"><a href="${esc(r.videoUrl)}" target="_blank" rel="noopener">▶ Video</a></span>${r.cue ? `<span class="cue">${esc(r.cue)}</span>` : ''}${r.alternative ? `<span class="alt">${esc(r.alternative)}</span>` : ''}</td>
             <td class="sets">${esc(r.prescription)}</td>
             <td class="rest">${esc(r.rest)}</td>
           </tr>`,
@@ -127,6 +122,7 @@ export function renderHtml(d: ExportDoc): string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light">
 <title>${esc(d.documentTitle)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap">

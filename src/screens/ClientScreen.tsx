@@ -13,6 +13,7 @@ import { BigTitle, TopBar } from '../components/TopBar'
 import { shareProfileLink } from '../components/shareProfileLink'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
+import { activateProgramme, createNextBlock } from '../data/programmeActions'
 import { blankProgramme, sessionRows } from '../data/programmeUtils'
 import { createProgramme, deleteClient, deleteWorkout, useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Note, Programme } from '../data/types'
@@ -27,6 +28,18 @@ const DETAIL_FIELDS = [
 
 const monthYear = (ms: number) => new Date(ms).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
 const dayMonth = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+/** A programme's date: its start date, else when it was made (imports are dated by their file). */
+const programmeDate = (p: Programme) => (p.startDate ? Date.parse(p.startDate) : p.createdAt)
+const newestFirst = (a: Programme, b: Programme) => programmeDate(b) - programmeDate(a)
+
+/**
+ * The programme the client page leads with: the current one; else the latest finished one
+ * (archived or imported); else the latest draft. Null only when the client has no programmes.
+ */
+function featuredProgramme(programmes: Programme[]): Programme | null {
+  const sorted = [...programmes].sort(newestFirst)
+  return sorted.find((p) => p.status === 'active') ?? sorted.find((p) => p.status === 'archived') ?? sorted.find((p) => p.status === 'draft') ?? null
+}
 
 export function ClientScreen() {
   const { id } = useParams()
@@ -58,8 +71,9 @@ export function ClientScreen() {
 
   const self = client.isSelf
   const firstName = client.name.trim().split(/\s+/)[0]
-  const current = programmes.find((p) => p.status === 'active')
-  const earlier = programmes.filter((p) => p !== current)
+  const featured = featuredProgramme(programmes)
+  const current = featured?.status === 'active' ? featured : null
+  const earlier = programmes.filter((p) => p !== featured)
   const details = DETAIL_FIELDS.filter((f) => client[f.key].trim())
   const hours = workouts.reduce((n, w) => n + w.durationSec, 0) / 3600
   const meta = self ? 'Your own training' : [firstLine(client.goals), client.frequency, firstLine(client.injuries)].filter(Boolean).join(' · ')
@@ -76,24 +90,43 @@ export function ClientScreen() {
 
       <PinnedNotes clientId={client.id} />
 
-      {current ? (
-        <CurrentCard programme={current} onOpen={() => navigate(`/programmes/${current.id}`)} />
+      {featured ? (
+        <ProgrammeCard
+          programme={featured}
+          eyebrow={
+            featured.status === 'active'
+              ? `Current · since ${dayMonth(featured.startDate ? Date.parse(featured.startDate) : featured.updatedAt)}`
+              : featured.status === 'archived'
+                ? `Last programme · ${monthYear(programmeDate(featured))}`
+                : `Draft · started ${dayMonth(featured.createdAt)}`
+          }
+          onOpen={() => navigate(featured.status === 'draft' ? `/create/${featured.id}` : `/programmes/${featured.id}`)}
+        />
       ) : (
         <button type="button" className="empty-card" onClick={() => setNewOpen(true)}>
-          <span className="line-title">No current programme</span>
+          <span className="line-title">No programmes yet</span>
           <span className="text-link">+ New programme</span>
         </button>
       )}
 
-      {current && (
+      {featured?.status === 'active' && (
         <div className="button-pair">
           {self ? (
             <Link to="/train" className="btn-cta">Open in Train</Link>
           ) : (
             <button type="button" className="btn-cta" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
           )}
-          <Link to={`/create/${current.id}`} className="btn-outline">Rework with Claude</Link>
+          <Link to={`/create/${featured.id}`} className="btn-outline">Rework with Claude</Link>
         </div>
+      )}
+      {featured?.status === 'archived' && (
+        <div className="button-pair">
+          <button type="button" className="btn-cta" onClick={() => { activateProgramme(user.uid, featured, programmes); toast('Now the current programme') }}>Make current</button>
+          <button type="button" className="btn-outline" onClick={() => navigate(`/create/${createNextBlock(user.uid, featured)}`)}>Build next block</button>
+        </div>
+      )}
+      {featured?.status === 'draft' && (
+        <Link to={`/create/${featured.id}`} className="btn-cta btn-block">Continue in Create</Link>
       )}
 
       {self && workouts.length > 0 && (
@@ -126,11 +159,11 @@ export function ClientScreen() {
         <>
           <div className="section-label">Earlier</div>
           <div className="lines">
-            {earlier.map((p) => (
+            {[...earlier].sort(newestFirst).map((p) => (
               <Link key={p.id} to={p.status === 'draft' ? `/create/${p.id}` : `/programmes/${p.id}`} className="leader-link">
                 <span>{p.title}{p.status === 'draft' && <span className="tag accent">Draft</span>}</span>
                 <span className="ex-dots" aria-hidden="true" />
-                <span className="mono muted small">{monthYear(p.startDate ? Date.parse(p.startDate) : p.createdAt)}</span>
+                <span className="mono muted small">{monthYear(programmeDate(p))}</span>
               </Link>
             ))}
           </div>
@@ -214,11 +247,11 @@ function firstLine(text: string): string {
   return t.length > 40 ? `${t.slice(0, 38)}…` : t
 }
 
-/** The current programme as a small paper card — the document the client has. */
-function CurrentCard({ programme: p, onOpen }: { programme: Programme; onOpen: () => void }) {
+/** The client's lead programme as a small paper card — the document the client has. */
+function ProgrammeCard({ programme: p, eyebrow, onOpen }: { programme: Programme; eyebrow: string; onOpen: () => void }) {
   return (
     <div className="paper-card">
-      <span className="paper-eyebrow">Current · since {dayMonth(p.startDate ? Date.parse(p.startDate) : p.updatedAt)}</span>
+      <span className="paper-eyebrow">{eyebrow}</span>
       <button type="button" className="paper-title display" onClick={onOpen}>{p.title}</button>
       <div className="paper-days">
         {p.sessions.map((s, i) => {
