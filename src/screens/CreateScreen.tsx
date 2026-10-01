@@ -93,7 +93,7 @@ function CreateHome() {
         ))}
         {!loading && !drafts.length && <p className="muted small">Nothing in progress. Tap NEW to start a programme.</p>}
       </div>
-      {drafts.length > 0 && <p className="muted small" style={{ margin: 0 }}>Swipe a draft to the left to delete it.</p>}
+      {drafts.length > 0 && <p className="muted small" style={{ margin: 0 }}><span className="swipe-hint-touch">Swipe a draft to the left to delete it.</span><span className="swipe-hint-pointer">Point at a draft and click the bin to delete it.</span></p>}
 
       <div className="section-label">Exercise library</div>
       <LibraryBrowser />

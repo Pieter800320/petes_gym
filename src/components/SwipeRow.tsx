@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { ConfirmButton } from './ConfirmButton'
+import { IconTrash } from './Icons'
 
 /** How far the line slides to reveal Delete (matches .swipe-actions width). */
 const REVEAL_PX = 96
@@ -8,7 +9,7 @@ const SWIPE_THRESHOLD_PX = 10
 
 /**
  * Swipe a line left to reveal a red Delete button (tap it twice to confirm).
- * A tap still opens the line; a swipe never does.
+ * A tap still opens the line; a swipe never does. With a mouse, a bin button on hover does the same.
  */
 export function SwipeRow({ children, onDelete }: { children: ReactNode; onDelete: () => void }) {
   const [offset, setOffset] = useState(0)
@@ -17,7 +18,7 @@ export function SwipeRow({ children, onDelete }: { children: ReactNode; onDelete
   const swiped = useRef(false)
 
   return (
-    <div className="swipe-row">
+    <div className={`swipe-row${offset !== 0 ? ' open' : ''}`} onKeyDown={(e) => { if (e.key === 'Escape') setOffset(0) }}>
       <div className="swipe-actions" aria-hidden={offset === 0}>
         <ConfirmButton className="swipe-delete" armedLabel="Sure?" onConfirm={onDelete}>Delete</ConfirmButton>
       </div>
@@ -62,6 +63,10 @@ export function SwipeRow({ children, onDelete }: { children: ReactNode; onDelete
       >
         {children}
       </div>
+      {/* Desktop only (see .swipe-reveal): mice and keyboards can't swipe. */}
+      <button type="button" className="swipe-reveal" aria-label="Delete…" title="Delete" onClick={() => setOffset(-REVEAL_PX)}>
+        <IconTrash />
+      </button>
     </div>
   )
 }

@@ -35,3 +35,6 @@ export const IconChevronRight = () => (
 export const IconMore = () => (
   <svg {...base} strokeWidth={2.2}><circle cx="5" cy="12" r="0.8" /><circle cx="12" cy="12" r="0.8" /><circle cx="19" cy="12" r="0.8" /></svg>
 )
+export const IconTrash = () => (
+  <svg {...base}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+)

@@ -116,7 +116,7 @@ export function ClientScreen() {
                   </div>
                 </SwipeRow>
               ))}
-              <p className="muted small">Swipe a session to the left to delete it.</p>
+              <p className="muted small"><span className="swipe-hint-touch">Swipe a session to the left to delete it.</span><span className="swipe-hint-pointer">Point at a session and click the bin to delete it.</span></p>
             </div>
           )}
         </>

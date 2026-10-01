@@ -522,3 +522,15 @@ svg { flex: none; }
 .swipe-delete { flex: 1; border: 0; background: var(--color-danger); color: #FFFFFF; font-weight: 600; font-size: 14px; }
 .swipe-front { position: relative; background: var(--color-bg); touch-action: pan-y; transition: transform 0.2s var(--ease-standard); }
 .swipe-front.dragging { transition: none; }
+/* Mouse and keyboard: a bin button on hover/focus slides the row open, like a swipe does. */
+.swipe-reveal { display: none; }
+.swipe-hint-pointer { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .swipe-reveal { position: absolute; top: 0; right: 0; bottom: 1px; width: 48px; display: flex; align-items: center; justify-content: center; border: 0; background: var(--color-bg); color: var(--color-text-muted); opacity: 0; transition: opacity 0.12s var(--ease-standard); }
+  .swipe-reveal svg { width: 18px; height: 18px; }
+  .swipe-reveal:hover { color: var(--color-danger); }
+  .swipe-row:hover .swipe-reveal, .swipe-reveal:focus-visible { opacity: 1; }
+  .swipe-row.open .swipe-reveal { display: none; }
+  .swipe-hint-touch { display: none; }
+  .swipe-hint-pointer { display: inline; }
+}
