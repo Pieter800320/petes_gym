@@ -549,3 +549,7 @@ svg { flex: none; }
 }
 .dial-side svg { width: 20px; height: 20px; }
 .dial-side:active { transform: scale(0.92); }
+/* Private note for next time: full width in the open card; a small dot on the closed line. */
+.ex-fields label.ex-memo { flex-basis: 100%; }
+.ex-memo textarea { width: 100%; resize: none; field-sizing: content; min-height: 1.6em; font-family: var(--font-body); line-height: 1.4; }
+.ex-memo-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent); align-self: center; }

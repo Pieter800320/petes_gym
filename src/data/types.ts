@@ -115,6 +115,8 @@ export interface ExerciseRow {
   superset: string
   /** The trainee's own working weight ("20 kg", "red band"). Typed in the open card only; not exported or sent to Claude. */
   load?: string
+  /** Pete's private note for next time ("hinge deeper"). Open card only; not exported or sent to Claude. Not the client-facing cue (`notes`). */
+  memo?: string
 }
 
 export interface ProgressionBlock {

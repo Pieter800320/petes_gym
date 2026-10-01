@@ -9,7 +9,6 @@ import { ConfirmButton } from '../components/ConfirmButton'
 import { DayList } from '../components/DayList'
 import { PinnedNotes } from '../components/PinnedNotes'
 import { BigTitle, Dial, TopBar } from '../components/TopBar'
-import { openNote } from '../components/noteEvents'
 import { IconPause, IconPlay } from '../components/Icons'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
@@ -159,7 +158,6 @@ function TrainProgramme({ stored }: { stored: Programme }) {
           hideHeader
           changed={changed}
           onChange={(fn) => change(mapSession(programme, session.id, fn))}
-          onNote={(name) => openNote({ clientId: programme.clientId, text: `${name}: ` })}
         />
       </div>
 

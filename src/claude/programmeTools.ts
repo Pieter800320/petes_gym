@@ -318,11 +318,13 @@ export function runTool(name: string, input: unknown, p: Programme, ctx: ToolCon
           title: sec.title,
           duration: sec.duration,
           note: sec.note,
-          // Claude never sees the weight, so a kept row carries it over unless Claude renamed the exercise.
+          // Claude never sees Pete's weight or note, so a kept row carries them over (the weight only
+          // while the exercise keeps its name: a different exercise needs a different weight).
           rows: sec.rows.map((r) => {
             const prev = r.id ? oldRows.get(r.id) : undefined
             const load = prev?.load && prev.name === r.name ? { load: prev.load } : {}
-            return withLibraryLink({ ...r, ...load, id: keep(r.id), exerciseKey: null })
+            const memo = prev?.memo ? { memo: prev.memo } : {}
+            return withLibraryLink({ ...r, ...load, ...memo, id: keep(r.id), exerciseKey: null })
           }),
         })),
         progressionBlocks: s.progression_blocks.map((b) => toBlock(b, keep)),

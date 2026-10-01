@@ -3,8 +3,8 @@
  * (Back Squat ······ 4 × 5). Tap a line to open it in place. What the open card offers
  * depends on the mode:
  *   read  — cue, alternative, video
- *   train — plus sets/reps − +, swap (library or own name), note, remove; tap a section name to add an exercise
- *           (changes stick to the programme)
+ *   train — plus sets/reps − +, weight and a note for next time (both private), swap (library
+ *           or own name), remove; tap a section name to add an exercise (changes stick to the programme)
  *   edit  — plus name, cue, alternative, rest, superset, move, delete, section and day titles
  */
 import { useState } from 'react'
@@ -28,7 +28,6 @@ interface DayListProps {
   /** Required for train and edit modes. */
   onChange?: (fn: (s: ProgrammeSession) => ProgrammeSession) => void
   /** Train mode: write a quick note about an exercise. */
-  onNote?: (exerciseName: string) => void
   /** Edit mode: open a progression table for editing. */
   onEditBlock?: (blockId: string) => void
   /** Hide the day number and title (Train shows them as the page heading). */
@@ -41,7 +40,7 @@ interface DayListProps {
   changed?: Set<string>
 }
 
-export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock, hideHeader, claude, mine, changed }: DayListProps) {
+export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHeader, claude, mine, changed }: DayListProps) {
   const [openRow, setOpenRow] = useState<string | null>(null)
   const [openBlock, setOpenBlock] = useState<string | null>(null)
   const [swapFor, setSwapFor] = useState<ExerciseRow | null>(null)
@@ -107,6 +106,7 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
                     {r.name || <em className="muted">New exercise</em>}
                   </span>
                   <span className="ex-dots" aria-hidden="true" />
+                  {mode !== 'read' && r.memo?.trim() && <span className="ex-memo-dot" title="Has a note" aria-label="Has a note" />}
                   <span className={`ex-rx mono${changed?.has(r.id) ? ' changed' : ''}`}>{r.prescription}</span>
                 </button>
                 {open && (
@@ -115,7 +115,6 @@ export function DayList({ session: s, index, mode, onChange, onNote, onEditBlock
                     mode={mode}
                     onChange={(fn) => updateRow(sec.id, r.id, fn)}
                     onSwap={() => setSwapFor(r)}
-                    onNote={onNote ? () => onNote(r.name) : undefined}
                     onMove={(d) => updateSection(sec.id, (x) => ({ ...x, rows: move(x.rows, i, d) }))}
                     onDelete={() => { setOpenRow(null); updateSection(sec.id, (x) => ({ ...x, rows: x.rows.filter((y) => y.id !== r.id) })) }}
                     canMoveUp={i > 0}
@@ -177,14 +176,13 @@ interface CardProps {
   mode: DayListMode
   onChange: (fn: (r: ExerciseRow) => ExerciseRow) => void
   onSwap: () => void
-  onNote?: () => void
   onMove: (delta: number) => void
   onDelete: () => void
   canMoveUp: boolean
   canMoveDown: boolean
 }
 
-function ExerciseCard({ row: r, mode, onChange, onSwap, onNote, onMove, onDelete, canMoveUp, canMoveDown }: CardProps) {
+function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMoveUp, canMoveDown }: CardProps) {
   const ex = findExercise(r.exerciseKey ?? r.name)
   const video = r.name ? videoUrl(ex ?? { name: r.name }) : null
   const edit = mode === 'edit'
@@ -213,6 +211,7 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onNote, onMove, onDelete
             <label>Rest<input className="plain mono" value={r.rest} placeholder="90s" onChange={(e) => onChange((x) => ({ ...x, rest: e.target.value }))} /></label>
             <label>Superset<input className="plain mono" value={r.superset} placeholder="A1" onChange={(e) => onChange((x) => ({ ...x, superset: e.target.value }))} /></label>
             <LoadField row={r} onChange={onChange} />
+            <MemoField row={r} onChange={onChange} />
           </div>
           <input className="plain plain-muted" value={r.notes} placeholder="Cue for the client (8 words max)" onChange={(e) => onChange((x) => ({ ...x, notes: e.target.value }))} aria-label="Cue" />
           <input className="plain plain-muted" value={r.alternative} placeholder="Alternative (optional)" onChange={(e) => onChange((x) => ({ ...x, alternative: e.target.value }))} aria-label="Alternative" />
@@ -223,6 +222,7 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onNote, onMove, onDelete
         <div className="ex-fields">
           {!steppable && <label>Sets × reps<input className="plain mono" value={r.prescription} onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>}
           <LoadField row={r} onChange={onChange} />
+          <MemoField row={r} onChange={onChange} />
         </div>
       )}
       {!edit && r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
@@ -230,7 +230,6 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onNote, onMove, onDelete
       <div className="ex-actions">
         {video && <a href={video.url} target="_blank" rel="noopener noreferrer">Video</a>}
         {adjustable && <button type="button" onClick={onSwap}>Swap</button>}
-        {onNote && <button type="button" onClick={onNote}>Note</button>}
         {edit && (
           <>
             <button type="button" disabled={!canMoveUp} onClick={() => onMove(-1)} aria-label="Move up">↑</button>
@@ -250,6 +249,15 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onNote, onMove, onDelete
 function LoadField({ row: r, onChange }: { row: ExerciseRow; onChange: CardProps['onChange'] }) {
   return (
     <label>Weight<input className="plain mono" value={r.load ?? ''} placeholder="20 kg" inputMode="text" onChange={(e) => onChange((x) => ({ ...x, load: e.target.value }))} /></label>
+  )
+}
+
+/** Private note for next time, kept on the exercise; a dot on the closed line shows there is one. */
+function MemoField({ row: r, onChange }: { row: ExerciseRow; onChange: CardProps['onChange'] }) {
+  return (
+    <label className="ex-memo">Note
+      <textarea className="plain" rows={1} value={r.memo ?? ''} placeholder="For next time · only you see this" onChange={(e) => onChange((x) => ({ ...x, memo: e.target.value }))} />
+    </label>
   )
 }
 
