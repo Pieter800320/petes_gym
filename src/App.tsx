@@ -11,6 +11,9 @@ import { UpdateBanner } from './components/UpdateBanner'
 import { ClientScreen } from './screens/ClientScreen'
 import { ClientsScreen } from './screens/ClientsScreen'
 import { CreateScreen } from './screens/CreateScreen'
+import { toast } from './components/toast'
+import { backupIfDue } from './data/backups'
+import { useInvites, watchNotifyUrl } from './data/invites'
 import { DeletedScreen } from './screens/DeletedScreen'
 import { FitnessProfileScreen } from './screens/FitnessProfileScreen'
 import { LoadingScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
@@ -91,6 +94,27 @@ function Shell() {
   }, [user])
   useScrollMemory()
 
+  // The weekly backup, and the address new questionnaire links carry for the email to Pete.
+  useEffect(() => {
+    if (!user) return
+    backupIfDue(user.uid).catch((err) => console.error('Backup failed', err))
+    return watchNotifyUrl(user.uid)
+  }, [user])
+
+  // Questionnaire answers waiting on Clients: a count on the tab, and a word when one arrives.
+  const waitingAnswers = useInvites().filter((i) => i.answeredAt !== null)
+  const announced = useRef(new Set<string>())
+  const openedAt = useRef(0)
+  useEffect(() => { openedAt.current = Date.now() }, [])
+  useEffect(() => {
+    for (const i of waitingAnswers) {
+      if (announced.current.has(i.id)) continue
+      announced.current.add(i.id)
+      // Answers that were already waiting when the app opened are on Clients, not announced.
+      if ((i.answeredAt ?? 0) > openedAt.current) toast(`New answers from ${String(i.answers?.name || i.name || 'a client')}`)
+    }
+  }, [waitingAnswers])
+
   return (
     <div className="shell">
       <nav className="nav" aria-label="Main">
@@ -100,7 +124,10 @@ function Shell() {
         {TABS.map((t) => (
           <NavLink key={t.to} to={t.to} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
             <span className="nav-dot" aria-hidden="true" />
-            {t.label}
+            <span className="nav-label">
+              {t.label}
+              {t.to === '/clients' && waitingAnswers.length > 0 && <span className="nav-count" aria-label={`${waitingAnswers.length} new`}>{waitingAnswers.length}</span>}
+            </span>
           </NavLink>
         ))}
         {/* Desktop: the tab's main action (Start, New, Add) appears here, see Dial. */}

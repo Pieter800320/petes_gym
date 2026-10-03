@@ -34,7 +34,7 @@ function userCollection(uid: string, name: string) {
   return collection(requireDb(), 'users', uid, name)
 }
 
-function reportWriteError(err: unknown) {
+export function reportWriteError(err: unknown) {
   console.error('Firestore write failed', err)
   window.dispatchEvent(new CustomEvent('pg:error', { detail: 'Could not save. Check your connection and try again.' }))
 }
@@ -359,7 +359,7 @@ export function purgeProgramme(uid: string, id: string) {
 // ── Backup ───────────────────────────────────────────────────────────
 
 /** Every collection kept under the account. */
-const BACKUP_COLLECTIONS = ['clients', 'programmes', 'notes', 'workouts', 'chats', 'meta'] as const
+export const BACKUP_COLLECTIONS = ['clients', 'programmes', 'notes', 'workouts', 'chats', 'meta'] as const
 
 /**
  * Everything stored for this account, exactly as it is in the database: { collection: { id: document } }.

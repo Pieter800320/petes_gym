@@ -1,12 +1,15 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { BackupSheet } from './BackupSheet'
 import { IconChevronRight } from './Icons'
+import { NotifySheet } from './NotifySheet'
 import { PlaybookSheet } from './PlaybookSheet'
 import { Sheet } from './Sheet'
 import { useAuth } from '../auth/useAuth'
 import { getApiKey, getHaptics, setApiKey, setHaptics, useTheme, type ThemeSetting } from '../settings'
 import { canVibrate, haptic } from '../haptics'
 import { formatUsd } from '../claude/client'
+import { useNotifyUrl } from '../data/invites'
 import { readAllData, useCostLedger, type CostMonth } from '../data/store'
 import { download } from '../export/share'
 import { toast } from './toast'
@@ -76,6 +79,9 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
   const [playbookOpen, setPlaybookOpen] = useState(false)
   const costs = useCostLedger()
   const [backingUp, setBackingUp] = useState(false)
+  const [backupsOpen, setBackupsOpen] = useState(false)
+  const [notifyOpen, setNotifyOpen] = useState(false)
+  const notifyUrl = useNotifyUrl()
 
   /** One file with everything in the app, to keep somewhere safe. */
   async function backup() {
@@ -157,7 +163,11 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
       </Group>
 
       <Group title="Your data">
-        <ActionRow name={backingUp ? 'Collecting…' : 'Download backup'} note="Everything in one file. Your Anthropic key is not in it." onClick={backup} disabled={backingUp} />
+        <ActionRow name="Backups" note="Made every week, the last three kept. Restore here." onClick={() => setBackupsOpen(true)} />
+        <ActionRow name={backingUp ? 'Collecting…' : 'Download backup'} note="Everything in one file, to keep outside the app. Your Anthropic key is not in it." onClick={backup} disabled={backingUp} />
+        <ActionRow name="Email when answers arrive" note={notifyUrl ? 'On: new questionnaire answers email you' : 'Off. Set up once, about ten minutes'} onClick={() => setNotifyOpen(true)} />
+        <BackupSheet open={backupsOpen} onClose={() => setBackupsOpen(false)} />
+        <NotifySheet open={notifyOpen} onClose={() => setNotifyOpen(false)} />
         <ActionRow name="Import old programmes" note="Word, PDF, HTML or photos" onClick={() => { onDone(); navigate('/import') }} />
         <ActionRow name="Import questionnaire answers" note="Older Fitness Profile responses from Google Forms" onClick={() => { onDone(); navigate('/import-profiles') }} />
       </Group>

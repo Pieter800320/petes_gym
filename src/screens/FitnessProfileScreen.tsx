@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react'
 import { Sheet } from '../components/Sheet'
 import { CONSENT_KEY, NONE, SECTIONS, UI, chosenOptions, isVisible, missingRequired, type Answer, type Answers, type Lang, type Question } from '../data/fitnessProfile'
-import { readInvite, submitAnswers } from '../data/invites'
+import { pingNotify, readInvite, submitAnswers } from '../data/invites'
 import { CONSENT, MIN_AGE, consentRecord, privacyNotice } from '../data/privacy'
 
 /** Answers typed so far are kept on the device, so a reload or a phone call doesn't lose them. */
@@ -39,6 +39,7 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
   const [stage, setStage] = useState<Stage>('loading')
   const [lang, setLang] = useState<Lang>(startLang)
   const [firstName, setFirstName] = useState('')
+  const [notifyUrl, setNotifyUrl] = useState('')
   const [answers, setAnswers] = useState<Answers>(() => loadDraft(token))
   const [consent, setConsent] = useState(false)
   const [sending, setSending] = useState(false)
@@ -52,6 +53,7 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
       if (cancelled) return
       if (!invite) return setStage('gone')
       setFirstName(invite.name.split(/\s+/)[0] ?? '')
+      setNotifyUrl(invite.notifyUrl)
       // The name Pete typed is offered as the first answer; the client can change it.
       setAnswers((a) => (a.name || !invite.name ? a : { ...a, name: invite.name }))
       setStage('form')
@@ -98,6 +100,7 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
       } catch {
         // Nothing to clear.
       }
+      pingNotify(notifyUrl)
       setStage('sent')
       window.scrollTo(0, 0)
     } catch (err) {

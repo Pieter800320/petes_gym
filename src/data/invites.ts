@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react'
 import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
+import { reportWriteError } from './store'
 import { useAuth } from '../auth/useAuth'
 import { requireDb } from '../firebase'
 import type { Answers } from './fitnessProfile'
@@ -22,19 +23,16 @@ export interface Invite {
   /** Set by the client's device when the answers are sent. */
   answeredAt: number | null
   answers?: Answers
+  /** Pete's own script to call when the answers are sent, so he gets an email (see NotifySheet). */
+  notifyUrl?: string
 }
 
 const invitesOf = (uid: string) => collection(requireDb(), 'users', uid, 'invites')
 
-function reportWriteError(err: unknown) {
-  console.error('Firestore write failed', err)
-  window.dispatchEvent(new CustomEvent('pg:error', { detail: 'Could not save. Check your connection and try again.' }))
-}
-
 /** Creates the invite and returns its token. The link works once this has reached the server. */
 function createInvite(uid: string, clientId: string | null, name: string): string {
   const ref = doc(invitesOf(uid))
-  const data: Omit<Invite, 'id'> = { clientId, name: name.trim(), createdAt: Date.now(), answeredAt: null }
+  const data: Omit<Invite, 'id'> = { clientId, name: name.trim(), createdAt: Date.now(), answeredAt: null, ...(isNotifyUrl(notifyUrl) ? { notifyUrl } : {}) }
   setDoc(ref, data).catch(reportWriteError)
   return ref.id
 }
@@ -73,6 +71,42 @@ export function useInvites(): Invite[] {
   return invites
 }
 
+// ── Email when answers arrive ────────────────────────────────────────
+//
+// users/{uid}/meta/settings.notifyUrl is the address of a script in Pete's own Google account that
+// emails him. Each new invite carries it, so the client's page can call it after sending.
+
+const settingsRef = (uid: string) => doc(requireDb(), 'users', uid, 'meta', 'settings')
+/** The saved address, kept current while the app is open (watchNotifyUrl), for new invites. */
+let notifyUrl = ''
+
+/** Only Google's own script addresses are ever called. */
+export const isNotifyUrl = (url: string) => /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url.trim())
+
+export function watchNotifyUrl(uid: string, onChange?: (url: string) => void): () => void {
+  return onSnapshot(settingsRef(uid), (snap) => {
+    notifyUrl = String((snap.data() as { notifyUrl?: string } | undefined)?.notifyUrl ?? '')
+    onChange?.(notifyUrl)
+  }, (err) => console.error(err))
+}
+
+export function useNotifyUrl(): string {
+  const { user } = useAuth()
+  const [url, setUrl] = useState(notifyUrl)
+  useEffect(() => (user ? watchNotifyUrl(user.uid, setUrl) : undefined), [user])
+  return url
+}
+
+export function saveNotifyUrl(uid: string, url: string) {
+  setDoc(settingsRef(uid), { notifyUrl: url.trim() }, { merge: true }).catch(reportWriteError)
+}
+
+/** Calls the script. Nothing is sent with it and nothing comes back; a failure is not the client's concern. */
+export function pingNotify(url: string) {
+  if (!isNotifyUrl(url)) return
+  fetch(url.trim(), { method: 'POST', mode: 'no-cors', keepalive: true }).catch(() => undefined)
+}
+
 // ── The client's side (no account) ───────────────────────────────────
 
 /** How long the form waits for the server before saying the connection failed. */
@@ -82,12 +116,12 @@ const SEND_TIMEOUT_MS = 20_000
  * What the form needs to know about its link. Null when the link is wrong, not active yet, or
  * already used: the rules refuse to show an answered invite to anyone but Pete.
  */
-export async function readInvite(uid: string, token: string): Promise<{ name: string } | null> {
+export async function readInvite(uid: string, token: string): Promise<{ name: string; notifyUrl: string } | null> {
   try {
     const snap = await getDoc(doc(invitesOf(uid), token))
     if (!snap.exists()) return null
     const d = snap.data() as Omit<Invite, 'id'>
-    return d.answeredAt === null ? { name: d.name } : null
+    return d.answeredAt === null ? { name: d.name, notifyUrl: d.notifyUrl ?? '' } : null
   } catch {
     return null
   }

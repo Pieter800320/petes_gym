@@ -17,7 +17,7 @@ export const CONTROLLER = {
 }
 
 /** The date of this wording; saved with every consent, so it is clear what was agreed to. */
-export const PRIVACY_VERSION = '2026-10-03'
+export const PRIVACY_VERSION = '2026-10-04'
 
 /** How long a client's data is kept after the work together ends. */
 const KEEP_YEARS = 2
@@ -66,7 +66,7 @@ export function privacyNotice(lang: Lang): NoticeSection[] {
       {
         title: 'Empfänger',
         paragraphs: [
-          'Google Ireland Ltd. (Firebase / Cloud Firestore): Speicherung deiner Antworten und deines Profils in der Datenbank.',
+          'Google Ireland Ltd. (Firebase / Cloud Firestore): Speicherung deiner Antworten und deines Profils in der Datenbank. Beim Absenden ruft dein Browser außerdem einen Google-Dienst auf, der Pieter per E-Mail benachrichtigt; deine Antworten werden dabei nicht übertragen.',
           'Anthropic PBC, USA (KI-Assistent Claude): Wenn Pieter dein Programm mit Claude entwirft, werden dein Profil mit Namen und Gesundheitsangaben sowie Pieters Notizen dazu an Anthropic übermittelt. Nach den Bedingungen von Anthropic werden diese Daten nicht zum Training der KI verwendet.',
           'GitHub Inc., USA (GitHub Pages): Auslieferung dieser Seite; GitHub erhält dabei deine IP-Adresse, nicht deine Antworten.',
           'Diese Anbieter arbeiten als Auftragsverarbeiter. Sonst gibt Pieter deine Daten an niemanden weiter.',
@@ -78,7 +78,7 @@ export function privacyNotice(lang: Lang): NoticeSection[] {
       },
       {
         title: 'Speicherdauer',
-        paragraphs: [`Deine Daten bleiben gespeichert, solange ihr zusammenarbeitet, und danach noch ${KEEP_YEARS} Jahre, falls du wieder einsteigen möchtest. Dann werden sie gelöscht. Wenn du es verlangst oder deine Einwilligung widerrufst, löscht Pieter sie sofort.`],
+        paragraphs: [`Deine Daten bleiben gespeichert, solange ihr zusammenarbeitet, und danach noch ${KEEP_YEARS} Jahre, falls du wieder einsteigen möchtest. Dann werden sie gelöscht. Wenn du es verlangst oder deine Einwilligung widerrufst, löscht Pieter sie sofort; aus den automatischen Sicherungskopien verschwinden sie spätestens nach vier Wochen.`],
       },
       {
         title: 'Deine Rechte',
@@ -114,7 +114,7 @@ export function privacyNotice(lang: Lang): NoticeSection[] {
     {
       title: 'Recipients',
       paragraphs: [
-        'Google Ireland Ltd. (Firebase / Cloud Firestore): stores your answers and your profile in the database.',
+        'Google Ireland Ltd. (Firebase / Cloud Firestore): stores your answers and your profile in the database. When you send them, your browser also calls a Google service that notifies Pieter by email; your answers are not part of that call.',
         'Anthropic PBC, USA (the AI assistant Claude): when Pieter drafts your programme with Claude, your profile with your name and health information, and Pieter\'s notes on it, are sent to Anthropic. Under Anthropic\'s terms this data is not used to train the AI.',
         'GitHub Inc., USA (GitHub Pages): delivers this page; GitHub receives your IP address, not your answers.',
         'These providers act as processors on Pieter\'s behalf. He passes your data to nobody else.',
@@ -126,7 +126,7 @@ export function privacyNotice(lang: Lang): NoticeSection[] {
     },
     {
       title: 'How long it is kept',
-      paragraphs: [`Your data is kept for as long as you work together and for ${KEEP_YEARS} years afterwards, in case you want to start again. Then it is deleted. If you ask, or withdraw your consent, Pieter deletes it at once.`],
+      paragraphs: [`Your data is kept for as long as you work together and for ${KEEP_YEARS} years afterwards, in case you want to start again. Then it is deleted. If you ask, or withdraw your consent, Pieter deletes it at once; it disappears from the automatic backups within four weeks at the latest.`],
     },
     {
       title: 'Your rights',
