@@ -8,10 +8,12 @@ import { BlockSheet } from './BlockSheet'
 import { ConfirmButton } from './ConfirmButton'
 import { DayList } from './DayList'
 import { Sheet } from './Sheet'
+import { toast } from './toast'
 import type { HealthIssue } from '../data/health'
 import { mapBlock, mapSession } from '../data/programmeEdits'
 import { newProgressionBlock, newSession } from '../data/programmeUtils'
 import type { Programme } from '../data/types'
+import { splitDayTitle } from '../util/dayTitle'
 
 interface ProgrammeSheetProps {
   open: boolean
@@ -35,6 +37,16 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
   const [showIssues, setShowIssues] = useState(false)
   const set = <K extends keyof Programme>(k: K, v: Programme[K]) => onChange({ ...p, [k]: v })
   const blockData = block ? (block.sessionId ? p.sessions.find((s) => s.id === block.sessionId)?.progressionBlocks.find((b) => b.id === block.blockId) : p.progression) ?? null : null
+  /** Moves the open progression to another day, or to the programme as a whole (null). */
+  function moveBlock(target: string | null) {
+    if (!block || !blockData || target === block.sessionId) return
+    const moved = blockData
+    const without = block.sessionId ? mapSession(p, block.sessionId, (s) => ({ ...s, progressionBlocks: s.progressionBlocks.filter((b) => b.id !== moved.id) })) : { ...p, progression: null }
+    onChange(target ? mapSession(without, target, (s) => ({ ...s, progressionBlocks: [...s.progressionBlocks, moved] })) : { ...without, progression: moved })
+    setBlock({ sessionId: target, blockId: moved.id })
+    const day = p.sessions.findIndex((s) => s.id === target)
+    toast(target ? `Moved to day ${day + 1}` : 'Now shown on every day')
+  }
   const warnings = issues.filter((i) => i.level === 'warn').length
   const eyebrow = [clientName, p.durationWeeks ? `${p.durationWeeks}-week training plan` : 'Training plan'].filter(Boolean).join(' · ')
 
@@ -132,6 +144,12 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
           if (block?.sessionId) onChange(mapSession(p, block.sessionId, (s) => ({ ...s, progressionBlocks: s.progressionBlocks.filter((b) => b.id !== id) })))
           else set('progression', null)
           setBlock(null)
+        }}
+        place={{
+          days: p.sessions.map((s, i) => ({ id: s.id, label: `Day ${i + 1} · ${splitDayTitle(s.title, i).main}` })),
+          current: block?.sessionId ?? null,
+          wholeProgrammeFree: !p.progression,
+          onMove: moveBlock,
         }}
       />
     </Sheet>

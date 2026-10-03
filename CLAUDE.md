@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.10 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.11 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -66,6 +66,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     (`BlockLine` in `DayList.tsx`, `.block-table.stacks`). Train also lists the programme-wide
     progression, closed, after the day's own. Desktop: the scrollbar's strip is always reserved
     (`scrollbar-gutter`), so the page no longer shifts when a sheet opens.
+  - 0.9.11 (Pieter, 2026-10-03): a progression belongs on the day its exercise is trained. Claude
+    is told so in Create (`chat.ts`, tool descriptions) and in import (`importProgramme.ts`); the
+    progression edit sheet has "Shown on" (a day, or every day) to move one by hand.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -89,6 +92,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   scroll kept), in the dev and the production build, phone and desktop. Not yet on a real phone.
   0.9.6: five sample exports opened with the network off at 360 and 900px: every part renders in
   Schibsted Grotesk, nothing is fetched. In-app preview checked on phone and desktop sizes.
+  0.9.11: moving a progression between days and to/from "every day" checked in the app (15
+  checks). The new wording in Claude's instructions is NOT tested against the real API (no credits).
   0.9.7: with 40–160 ms added to every listener's first answer, switching tabs went from 4–6
   repaints per tab to one; START no longer disappears on Train. All earlier checks pass again.
 

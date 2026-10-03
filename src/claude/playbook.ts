@@ -49,7 +49,7 @@ export const DEFAULT_PLAYBOOK = `# Coach Playbook — Pete's Gym
 ## 6. Progression (every programme has one)
 - State the method in one line, matched to training age: double progression, load steps, RPE autoregulation, or distance/volume increases for running.
 - Give a clear rule for moving up ("top of the range with clean form, two sessions in a row").
-- Key targets get their own week-by-week progression block (e.g. an 8-week pull-up progression).
+- Key targets get their own week-by-week progression block (e.g. an 8-week pull-up progression), on the day that exercise is trained.
 - Blocks run 4–8 weeks with a lighter or test week built in.
 - For a follow-up programme, read the logs and previous programme; keep what worked, change what stalled, and say which is which.
 

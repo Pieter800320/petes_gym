@@ -2,16 +2,38 @@ import { ConfirmButton } from './ConfirmButton'
 import { Sheet } from './Sheet'
 import type { ProgressionBlock } from '../data/types'
 
-/** Edits a week-by-week progression table (title, rule, cells, rows and columns). */
-export function BlockSheet({ block, onClose, onChange, onDelete }: { block: ProgressionBlock | null; onClose: () => void; onChange: (b: ProgressionBlock) => void; onDelete: (id: string) => void }) {
+/** Value of the "Shown on" choice that stands for the whole programme rather than one day. */
+const WHOLE_PROGRAMME = ''
+
+/** Where a progression can live: on one day, or on the programme as a whole (then it shows on every day). */
+export interface BlockPlace {
+  /** The days of the programme, in order. */
+  days: { id: string; label: string }[]
+  /** The day it is on now; null = the whole programme. */
+  current: string | null
+  /** False when the programme already has a whole-programme progression (there is room for one). */
+  wholeProgrammeFree: boolean
+  onMove: (dayId: string | null) => void
+}
+
+interface BlockSheetProps {
+  block: ProgressionBlock | null
+  onClose: () => void
+  onChange: (b: ProgressionBlock) => void
+  onDelete: (id: string) => void
+  place?: BlockPlace
+}
+
+/** Edits a week-by-week progression table (title, rule, cells, rows and columns) and which day it belongs to. */
+export function BlockSheet({ block, onClose, onChange, onDelete, place }: BlockSheetProps) {
   return (
     <Sheet open={block !== null} onClose={onClose} title="Progression block">
-      {block && <BlockForm block={block} onChange={onChange} onDelete={onDelete} onDone={onClose} />}
+      {block && <BlockForm block={block} onChange={onChange} onDelete={onDelete} onDone={onClose} place={place} />}
     </Sheet>
   )
 }
 
-function BlockForm({ block: b, onChange, onDelete, onDone }: { block: ProgressionBlock; onChange: (b: ProgressionBlock) => void; onDelete: (id: string) => void; onDone: () => void }) {
+function BlockForm({ block: b, onChange, onDelete, onDone, place }: { block: ProgressionBlock; onChange: (b: ProgressionBlock) => void; onDelete: (id: string) => void; onDone: () => void; place?: BlockPlace }) {
   const setCell = (ri: number, ci: number, v: string) =>
     onChange({ ...b, rows: b.rows.map((r, i) => (i === ri ? b.columns.map((_, j) => (j === ci ? v : (r[j] ?? ''))) : r)) })
 
@@ -21,6 +43,17 @@ function BlockForm({ block: b, onChange, onDelete, onDone }: { block: Progressio
         <span className="label">Title</span>
         <input id="block-title" className="input" value={b.title} onChange={(e) => onChange({ ...b, title: e.target.value })} placeholder="Pull-Up Progression — Week by Week" />
       </label>
+      {place && (
+        <label className="field">
+          <span className="label">Shown on</span>
+          <select id="block-place" className="input" value={place.current ?? WHOLE_PROGRAMME} onChange={(e) => place.onMove(e.target.value === WHOLE_PROGRAMME ? null : e.target.value)}>
+            {place.days.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+            <option value={WHOLE_PROGRAMME} disabled={!place.wholeProgrammeFree && place.current !== null}>
+              Every day (whole programme){!place.wholeProgrammeFree && place.current !== null ? ': already has one' : ''}
+            </option>
+          </select>
+        </label>
+      )}
       <label className="field">
         <span className="label">When to move up</span>
         <input id="block-rule" className="input" value={b.rule} onChange={(e) => onChange({ ...b, rule: e.target.value })} placeholder="Top of the rep range, clean form, two sessions in a row." />

@@ -141,7 +141,7 @@ export const PROGRAMME_TOOLS: Anthropic.Beta.BetaTool[] = [
             additionalProperties: false,
           },
         },
-        progression_blocks: { type: 'array', items: blockSchema, description: 'Week-by-week tables attached to this session (e.g. a pull-up progression).' },
+        progression_blocks: { type: 'array', items: blockSchema, description: 'Week-by-week tables for exercises trained in THIS session (e.g. a pull-up progression on the day that has pull-ups). One table per exercise or target, placed on the day that exercise appears; never collect the tables for other days\' exercises here.' },
       },
       required: ['session_id', 'position', 'title', 'focus', 'sections', 'progression_blocks'],
       additionalProperties: false,
@@ -183,7 +183,7 @@ export const PROGRAMME_TOOLS: Anthropic.Beta.BetaTool[] = [
   },
   {
     name: 'set_block_progression',
-    description: 'Set or clear (null) the block-wide week-by-week progression table, e.g. Week 1 "Learn & groove" … Week 6 "Deload + retest".',
+    description: 'Set or clear (null) the block-wide week-by-week progression table, e.g. Week 1 "Learn & groove" … Week 6 "Deload + retest". Only for the plan of the whole programme (it is shown on every day); a progression for one exercise belongs in the progression_blocks of the session where that exercise is trained.',
     input_schema: {
       type: 'object',
       properties: { progression: { anyOf: [blockSchema, { type: 'null' }] } },
