@@ -1,6 +1,7 @@
 /*
  * A programme on its own page: the paper document, the same one the client receives.
- * Reached from a client's page (current or earlier programmes). Two plain actions, the rest in ⋯.
+ * Reached from a client's page (current or earlier programmes). One red button, two text links
+ * (Edit programme, Rework with Claude); the rarer actions are in ⋯.
  */
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -100,19 +101,19 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
         ))}
       </article>
 
-      <div className="button-pair">
-        {isMine ? (
-          <button type="button" className="btn-cta" onClick={trainMine}>{programme.status === 'active' ? 'Open in Train' : 'Make current & train'}</button>
-        ) : (
-          <button type="button" className="btn-cta" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
-        )}
-        <Link to={`/create/${programme.id}`} className="btn-outline" onClick={flush}>Rework with Claude</Link>
+      {/* One red button (what the page is for), then red text links to the tools, as in Train. */}
+      {isMine ? (
+        <button type="button" className="btn-cta btn-block" onClick={trainMine}>{programme.status === 'active' ? 'Open in Train' : 'Make current & train'}</button>
+      ) : (
+        <button type="button" className="btn-cta btn-block" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
+      )}
+      <div className="quiet-links">
+        <button type="button" className="text-link" onClick={() => setEditOpen(true)}>Edit programme ›</button>
+        <Link to={`/create/${programme.id}`} className="text-link" onClick={flush}>Rework with Claude ›</Link>
       </div>
-      <button type="button" className="text-link" onClick={() => setEditOpen(true)}>Edit programme ›</button>
 
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title={programme.title}>
         <div className="lines">
-          <MenuLine title="Edit programme" meta="Days, exercises, goal and notes" onClick={() => { setMoreOpen(false); setEditOpen(true) }} />
           {isMine ? (
             <MenuLine title="Export" meta="HTML or Word, English or German" onClick={() => { setMoreOpen(false); setExportOpen(true) }} />
           ) : (

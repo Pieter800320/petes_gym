@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.15 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.16 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -90,6 +90,13 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     programme ›" and "Rework with Claude ›" in Train. The Edit card groups everything that moves
     the exercise in one labelled row (MOVE: ↑ Up, ↓ Down, To another day…), above Video · Swap …
     Delete.
+  - 0.9.16 (Pieter, 2026-10-03), buttons unified: one red filled button per screen for what the
+    screen is for; anything that leads to another place or tool is a red text link with "›"; no
+    outlined rectangles on pages (`.btn-outline` and `.button-pair` are gone). You page: no
+    buttons. A client's page: "Send to [name]" (archived: "Make current" + "Build next block ›").
+    Programme page: one button, then "Edit programme ›" and "Rework with Claude ›" as in Train;
+    "Edit programme" left the ⋯ menu. Train keeps "+ Exercise": adding one mid-workout is an
+    in-the-moment change; structure lives in Edit programme.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -152,7 +159,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   `var EX=`), the master list. Keys follow Falkenburg's `exKey()`. Never invent YouTube links. If there's
   no library video, fall back to a YouTube search URL (`videoUrl()`).
 - **Styling:** tokens only (`src/styles/tokens.css`), no raw hex in components. Dark-first; light mode
-  is a full equal. 48px minimum touch targets. One CTA per screen (`Dial`: round on the phone, a
+  is a full equal. 48px minimum touch targets. One CTA per screen, other destinations as red text links with "›" (`Dial`: round on the phone, a
   rail button on desktop; give it both `label` and `longLabel`). Swiss Print: black ink, one red pen
   (accent), blue ink for Pete's edits and progression tables, square corners (the dial stays round),
   sentence-case bold headings, small uppercase labels. Letter case, tracking, heading weight and
