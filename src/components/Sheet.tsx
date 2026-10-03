@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { markSheetEntry, sheetMark } from '../util/navHistory'
 
 /** Drag distance (px) past which letting go closes the sheet. */
 const DISMISS_DRAG_PX = 120
@@ -15,8 +16,28 @@ const ANIMATION_MS = 300
  * .sheet-open: page scroll is locked and the nav and round button step aside.
  */
 let mountedSheets = 0
-/** Open sheets, newest last: Escape closes only the top one. */
-const openStack: symbol[] = []
+/** Open sheets, newest last: Escape and the Back button close only the top one. */
+const openSheets: { id: string; close: () => void }[] = []
+const isOpen = (id: string) => openSheets.some((s) => s.id === id)
+
+/*
+ * The phone's Back button closes the open sheet instead of leaving the page. Each open sheet adds
+ * one step to the browser history (same address, marked with the sheet's id). Back removes that
+ * step, and we close the sheet it belonged to. Closing a sheet any other way removes its step again.
+ */
+function onHistoryStep() {
+  const mark = sheetMark()
+  const index = mark ? openSheets.findIndex((s) => s.id === mark.id) : -1
+  // Every sheet above the step we landed on closes (normally just the top one).
+  for (const s of openSheets.slice(index + 1).reverse()) s.close()
+  // A step left behind by a sheet that has since gone (it opened another page as it closed): pass over it.
+  if (mark && index < 0) window.history.back()
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', onHistoryStep)
+  // Reloaded while a sheet was open: drop its step, the sheet itself is gone.
+  if (sheetMark()) window.history.back()
+}
 
 interface SheetProps {
   open: boolean
@@ -61,6 +82,8 @@ export function Sheet({ open, onClose, title, action, tall = false, paper = fals
   useEffect(() => {
     closeRef.current = onClose
   })
+
+  const id = useId()
 
   // Mount synchronously when opened (React's "adjust state on prop change" pattern).
   if (open && !mounted) setMounted(true)
@@ -108,19 +131,43 @@ export function Sheet({ open, onClose, title, action, tall = false, paper = fals
     }
   }, [mounted])
 
+  // Registered before any sheet's history step is taken (layout effects run first), so a sheet
+  // opening in the same moment as another closes can tell that the other one is gone.
+  useLayoutEffect(() => {
+    if (!open) return
+    const me = { id, close: () => closeRef.current() }
+    openSheets.push(me)
+    return () => {
+      openSheets.splice(openSheets.indexOf(me), 1)
+    }
+  }, [open, id])
+
   useEffect(() => {
     if (!open) return
-    const me = Symbol('sheet')
-    openStack.push(me)
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && openStack[openStack.length - 1] === me) closeRef.current()
+      if (e.key === 'Escape' && openSheets[openSheets.length - 1]?.id === id) closeRef.current()
     }
     document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      openStack.splice(openStack.indexOf(me), 1)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, id])
+
+  // The history step for the Back button (see onHistoryStep).
+  useEffect(() => {
+    if (!open) return
+    const mark = sheetMark()
+    if (mark?.id !== id) {
+      // Taking over from a sheet that just closed (menu → Edit profile) reuses its step.
+      const takeOver = mark !== undefined && !isOpen(mark.id)
+      markSheetEntry(id, takeOver ? mark.depth : (mark?.depth ?? 0) + 1, takeOver)
     }
-  }, [open])
+    return () => {
+      // Closed by hand: remove our step, unless Back already did, another sheet took it over, or
+      // the app has moved on to another page. Deferred so those cases have settled.
+      setTimeout(() => {
+        if (!isOpen(id) && sheetMark()?.id === id) window.history.back()
+      }, 0)
+    }
+  }, [open, id])
 
   if (!mounted) return null
 

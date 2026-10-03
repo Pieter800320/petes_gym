@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.4 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.5 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -48,6 +48,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     spelling squiggles, file names use ae/oe/ue/ss.
   - 0.9.4 (Pieter, 2026-10-03): on desktop (≥900px) the dial sits at the foot of the navigation
     rail instead of over the page; toasts sit under the page. Phone layout unchanged.
+  - 0.9.5 (Pieter, 2026-10-03): the phone's Back button closes the open sheet (top one only when
+    stacked) instead of leaving the page. Each open sheet adds one marked step to the history
+    (`Sheet.tsx`, `sheetMark` in `util/navHistory.ts`).
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -66,6 +69,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   Sample exports checked on a 360px phone, desktop, printed PDF and in Word (PDF, 0 spelling flags).
   The production build opens with the server gone (service worker, fonts, both export modules cached).
   Firestore refuses reads and writes without sign-in (HTTP 403). Not yet seen on Pieter's phone.
+  0.9.4–0.9.5: same method. Dial in the rail checked at 1280 and 920px wide (phone unchanged).
+  Sheet + Back: 50 checks (stacked sheets, hand-over, close-then-navigate, delete from a sheet,
+  scroll kept), in the dev and the production build, phone and desktop. Not yet on a real phone.
 
 ## 1. Stack (fixed)
 
@@ -113,7 +119,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   only the fallback). After deleting the thing a page shows, leave with `leaveFor()` rather than
   `navigate()`, so the phone's Back button can't return to it.
 - **Sheets:** use `components/Sheet.tsx` (bottom sheet on phone, dialog ≥900px). Keep it the single
-  sheet implementation; don't hand-roll another.
+  sheet implementation; don't hand-roll another. An open sheet owns a history step (Back closes
+  it), so `navigate(-1)` from inside a sheet only closes the sheet: to leave the page from a
+  sheet use `leaveFor()` or a normal `navigate(path)`.
 - **Exports** (M3) and in-app programme views (`.paper-*`, `.doc`) share Swiss Print: white sheet, thick
   rule under the masthead and above each later day, red day numbers, ruled section headers, blue
   progression blocks, no branding. Change one, change all three (`renderHtml.ts`, `renderDocx.ts`,
