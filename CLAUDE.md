@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.2 (2026-10-01). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.3 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -37,6 +37,15 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     Clients card, programme page) and both exports form one whole. Chosen after testers said the old
     Oswald/Plex/orange look seemed AI-made; Classic and Clinic were tried in 0.8.0 and removed.
     Mockups: https://claude.ai/artifact/BffcD8HQ28uQtTyPqTWhuq.
+  - 0.9.3 (Pieter's list, 2026-10-03): the cue is editable in Train's open card, and swapping to a
+    different exercise clears the old cue and alternative. Back arrows return to the previous screen
+    (`TopBar` + `util/navHistory.ts`; label reads "Back" when that isn't the page above); the Create
+    tab still reopens the last programme, and its arrow then shows the list of drafts. Deleting
+    leaves no dead page in the history (`leaveFor`). Toasts are sized by their text. Swipe rows leave
+    a 12px gap before Delete, and a confirmed touch delete swallows the browser's late click (it used
+    to open the next draft). Exports: fixed columns that fit a phone, no "Day 1 —" after the red
+    number, long words wrap, goal on its own row, Word keeps each day on one page and has no
+    spelling squiggles, file names use ae/oe/ue/ss.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -49,6 +58,12 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   real classes; sample HTML export screenshotted (desktop light, phone dark); sample .docx opened in
   Word and checked as PDF. Not yet seen in the signed-in app. 0.9.1: export screenshotted with the
   phone in dark mode (stays light); client-box selection logic checked on all status combinations (Node).
+  0.9.3: the real app was run in headless Chrome on an in-memory stand-in for Firestore and sign-in
+  (a temporary Vite config that swaps `firebase/firestore`, `src/firebase.ts` and `AuthProvider`):
+  navigation (35 checks), Train cue and swap, swipe/delete/toast with real touch events all pass.
+  Sample exports checked on a 360px phone, desktop, printed PDF and in Word (PDF, 0 spelling flags).
+  The production build opens with the server gone (service worker, fonts, both export modules cached).
+  Firestore refuses reads and writes without sign-in (HTTP 403). Not yet seen on Pieter's phone.
 
 ## 1. Stack (fixed)
 
@@ -92,6 +107,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 - **Haptics:** one global click listener (`src/haptics.ts`) covers every button, link and tab. Don't call
   `navigator.vibrate` directly; mark an element `data-haptic="strong"` (session-level actions) or
   `data-haptic="none"` when it calls `haptic()` itself (see `ConfirmButton`).
+- **Navigation:** back arrows go through `TopBar`'s `back` (it steps back in the history; `to` is
+  only the fallback). After deleting the thing a page shows, leave with `leaveFor()` rather than
+  `navigate()`, so the phone's Back button can't return to it.
 - **Sheets:** use `components/Sheet.tsx` (bottom sheet on phone, dialog ≥900px). Keep it the single
   sheet implementation; don't hand-roll another.
 - **Exports** (M3) and in-app programme views (`.paper-*`, `.doc`) share Swiss Print: white sheet, thick

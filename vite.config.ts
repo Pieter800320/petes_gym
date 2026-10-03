@@ -36,6 +36,9 @@ export default defineConfig({
       workbox: {
         // App shell + fonts precached so the app opens with no signal in the gym.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Workbox silently leaves out files over 2 MB, and the main script is 1.5 MB and growing:
+        // without it the app would not open offline. Keep the limit well above it.
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
       },
     }),
   ],

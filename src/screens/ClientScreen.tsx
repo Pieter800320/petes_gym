@@ -18,6 +18,7 @@ import { blankProgramme, sessionRows } from '../data/programmeUtils'
 import { createProgramme, deleteClient, deleteWorkout, useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Note, Programme } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
+import { leaveFor } from '../util/navHistory'
 
 const DETAIL_FIELDS = [
   { key: 'goals', label: 'Goals' },
@@ -224,7 +225,7 @@ export function ClientScreen() {
             onConfirm={() => {
               deleteClient(user.uid, client.id)
               toast(`${client.name} moved to Recently deleted`)
-              navigate('/clients')
+              leaveFor(navigate, '/clients')
             }}
           >
             Delete {self ? 'my profile' : client.name}

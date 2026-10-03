@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { IconAttach, IconBack, IconPen, IconSend } from '../components/Icons'
 import { openNote } from '../components/noteEvents'
 import { LibraryBrowser } from '../components/LibraryBrowser'
@@ -20,6 +20,7 @@ import { blankProgramme } from '../data/programmeUtils'
 import { createProgramme, saveProgramme, softDeleteProgramme, useClients, useNotes, useProgramme, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Programme } from '../data/types'
 import { getApiKey, getCreateProgrammeId, setCreateProgrammeId } from '../settings'
+import { canGoBack, leaveFor } from '../util/navHistory'
 
 /** Delay before a manual edit is written to Firestore, so typing doesn't write on every key. */
 const AUTOSAVE_MS = 700
@@ -43,15 +44,17 @@ function CreateHome() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const navType = useNavigationType()
   const { data: programmes, loading } = useProgrammes('all')
   const { data: clients } = useClients()
   const [pickOpen, setPickOpen] = useState(false)
   const drafts = programmes.filter((p) => p.status === 'draft')
   const clientName = (id: string) => clients.find((c) => c.id === id)?.name ?? ''
 
-  // Tapping the Create tab reopens the programme Pete was working on; the back arrow in the
-  // chat sets `stay` to show this page instead.
-  const stay = (location.state as { stay?: boolean } | null)?.stay
+  // Tapping the Create tab reopens the programme Pete was working on. Coming back to this page
+  // (the chat's arrow, the phone's Back button) shows the page itself: `stay`, or a step back
+  // through the history (POP).
+  const stay = (location.state as { stay?: boolean } | null)?.stay || navType === 'POP'
   const last = getCreateProgrammeId()
 
   function removeDraft(id: string) {
@@ -69,7 +72,7 @@ function CreateHome() {
     navigate(`/create/${id}`)
   }
 
-  if (!stay && last) return <Navigate to={`/create/${last}`} replace />
+  if (!stay && last) return <Navigate to={`/create/${last}`} replace state={{ fromTab: true }} />
 
   return (
     <div className="screen has-dial">
@@ -91,7 +94,7 @@ function CreateHome() {
             </Link>
           </SwipeRow>
         ))}
-        {!loading && !drafts.length && <p className="muted small">Nothing in progress. Tap NEW to start a programme.</p>}
+        {!loading && !drafts.length && <p className="muted small lines-empty">Nothing in progress. Tap NEW to start a programme.</p>}
       </div>
       {drafts.length > 0 && <p className="muted small" style={{ margin: 0 }}><span className="swipe-hint-touch">Swipe a draft to the left to delete it.</span><span className="swipe-hint-pointer">Point at a draft and click the bin to delete it.</span></p>}
 
@@ -155,6 +158,9 @@ interface Pending {
 function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; chat: ChatDoc | null }) {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  /** Opened by the Create tab itself rather than from another page (see CreateHome). */
+  const fromTab = (location.state as { fromTab?: boolean } | null)?.fromTab
   const playbook = usePlaybook()
   const { data: clients } = useClients()
   const client = clients.find((c) => c.id === stored.clientId)
@@ -311,13 +317,29 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
     softDeleteProgramme(uid, programme.id)
     setCreateProgrammeId(null)
     toast('Draft moved to Recently deleted')
-    navigate('/create', { state: { stay: true } })
+    leaveFor(navigate, '/create', { stay: true })
   }
 
   return (
     <div className="chat-screen">
       <div className="chat-head">
-        <Link to="/create" state={{ stay: true }} className="icon-btn" aria-label="Back to Create"><IconBack /></Link>
+        <Link
+          to="/create"
+          state={{ stay: true }}
+          // Opened by the tab: the list of drafts takes the chat's place, so Back doesn't return to it.
+          replace={fromTab}
+          className="icon-btn"
+          aria-label={fromTab ? 'Back to Create' : 'Back'}
+          onClick={(e) => {
+            // Opened from another page (a client, a programme, Train, the list of drafts): go back there.
+            if (!fromTab && canGoBack()) {
+              e.preventDefault()
+              navigate(-1)
+            }
+          }}
+        >
+          <IconBack />
+        </Link>
         <div className="chat-head-title">
           <span className="display">{client?.isSelf ? 'You' : client?.name ?? 'Client'}</span>
           <span className="muted small">{programme.title}{chatCost(chat) > 0 && ` · ${formatUsd(chatCost(chat))} so far`}</span>

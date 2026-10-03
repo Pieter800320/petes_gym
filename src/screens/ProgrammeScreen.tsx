@@ -17,6 +17,7 @@ import { activateProgramme, copyToSelf, createNextBlock, duplicateProgramme } fr
 import { restoreProgramme, softDeleteProgramme, updateProgrammeFields, useClients, useProgramme, useProgrammes } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { Programme, ProgrammeStatus } from '../data/types'
+import { leaveFor } from '../util/navHistory'
 
 const STATUS_LABEL: Record<ProgrammeStatus, string> = { draft: 'Draft', active: 'Current', archived: 'Archived' }
 
@@ -130,7 +131,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
               flush()
               softDeleteProgramme(uid, programme.id)
               toast('Moved to Recently deleted')
-              navigate(client ? `/clients/${client.id}` : '/clients')
+              leaveFor(navigate, client ? `/clients/${client.id}` : '/clients')
             }}
           >
             Delete programme

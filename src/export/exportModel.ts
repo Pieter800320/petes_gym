@@ -6,6 +6,7 @@
  */
 import { findExercise, videoUrl } from '../data/exercises'
 import type { Programme, ProgressionBlock } from '../data/types'
+import { stripDayPrefix } from '../util/dayTitle'
 
 export type ExportLang = 'en' | 'de'
 export type ExportFormat = 'html' | 'docx'
@@ -91,14 +92,21 @@ const LABELS = {
   },
 }
 
+/** German letters as they are written without umlauts (Müller → Mueller, Straße → Strasse). */
+const GERMAN_LETTERS: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', Ä: 'Ae', Ö: 'Oe', Ü: 'Ue', ß: 'ss' }
+/** Longest file name (without extension) handed to the share sheet. */
+const FILE_BASE_MAX = 80
+
 /** "Sophie", "8-Week Athletic Performance" → "Sophie_8-Week_Athletic_Performance" (safe filename). */
 function fileBaseName(client: string, title: string): string {
   return `${client}_${title}`
+    .replace(/[äöüÄÖÜß]/g, (c) => GERMAN_LETTERS[c])
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^A-Za-z0-9-]+/g, '_')
     .replace(/^_+|_+$/g, '')
-    .slice(0, 80) || 'Programme'
+    .slice(0, FILE_BASE_MAX)
+    .replace(/_+$/, '') || 'Programme'
 }
 
 /**
@@ -114,12 +122,14 @@ export function buildExportDoc(p: Programme, o: ExportOptions, t: (s: string) =>
     rows: b.rows.map((r) => b.columns.map((_, i) => tr(r[i] ?? ''))),
   })
 
-  const title = tr(p.title)
+  const clientName = o.clientName.trim()
+  // Without a name (Pete's own programme) nothing dangles in front: no " — Title" in the heading or the tab.
+  const title = [clientName, tr(p.title)].filter(Boolean).join(' — ') || L.plan(p.durationWeeks)
   return {
     lang: o.lang,
-    documentTitle: `${o.clientName} — ${title}`,
+    documentTitle: title,
     eyebrow: L.plan(p.durationWeeks),
-    title: o.clientName ? `${o.clientName} — ${title}` : title,
+    title,
     stats: [
       { label: L.goal, value: tr(o.goal), numeric: false },
       { label: L.frequency, value: tr(o.frequency), numeric: true },
@@ -136,7 +146,8 @@ export function buildExportDoc(p: Programme, o: ExportOptions, t: (s: string) =>
     alternativeLabel: L.alternative,
     sessions: p.sessions.map((s, i) => ({
       number: String(i + 1).padStart(2, '0'),
-      title: tr(s.title) || `${L.session} ${i + 1}`,
+      // The big red number already counts the days, so "Day 1 — " is not repeated in the title.
+      title: stripDayPrefix(tr(s.title)) || `${L.session} ${i + 1}`,
       focus: tr(s.focus),
       groups: s.sections
         .map((sec) => ({
@@ -161,6 +172,6 @@ export function buildExportDoc(p: Programme, o: ExportOptions, t: (s: string) =>
         .filter((g) => g.rows.length || g.note),
       blocks: s.progressionBlocks.map(block),
     })),
-    fileBase: fileBaseName(o.clientName, p.title),
+    fileBase: fileBaseName(clientName, p.title),
   }
 }

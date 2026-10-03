@@ -3,14 +3,15 @@
  * (Back Squat ······ 4 × 5). Tap a line to open it in place. What the open card offers
  * depends on the mode:
  *   read  — cue, alternative, video
- *   train — plus sets/reps − +, weight and a note for next time (both private), swap (library
- *           or own name), remove; tap a section name to add an exercise (changes stick to the programme)
+ *   train — plus an editable cue, sets/reps − +, weight and a note for next time (both private),
+ *           swap (library or own name; a different exercise clears cue and alternative), remove; tap a section
+ *           name to add an exercise (changes stick to the programme)
  *   edit  — plus name, cue, alternative, rest, superset, move, delete, section and day titles
  */
 import { useRef, useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
 import { ExercisePicker } from './ExercisePicker'
-import { findExercise, videoUrl } from '../data/exercises'
+import { exerciseKey, findExercise, videoUrl } from '../data/exercises'
 import { move } from '../data/programmeEdits'
 import { canStepReps, estimateSessionMin, isLoadSteppable, isRestSteppable, isSteppable, newRow, newSection, repsLabel, setReps, setSets, setsLabel, stepLoad, stepReps, stepRest, stepSets, typedLoad, typedRest, withLibraryLink } from '../data/programmeUtils'
 import type { ExerciseRow, ProgrammeSection, ProgrammeSession, ProgressionBlock } from '../data/types'
@@ -164,7 +165,10 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHe
           const target = swapFor
           if (!target) return
           const sec = s.sections.find((x) => x.rows.some((r) => r.id === target.id))
-          if (sec) updateRow(sec.id, target.id, (r) => ({ ...r, name: e.name, exerciseKey: e.key, load: '' }))
+          // A different exercise: the old cue and "Or: …" alternative no longer fit, so they are
+          // cleared (the cue can be retyped in the open card). Only respelling the same name keeps them.
+          const sameExercise = exerciseKey(e.name) === exerciseKey(target.name)
+          if (sec) updateRow(sec.id, target.id, (r) => ({ ...r, name: e.name, exerciseKey: e.key, load: '', ...(sameExercise ? {} : { notes: '', alternative: '' }) }))
         }}
       />
     </section>
@@ -193,6 +197,12 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMov
     <div className="ex-card">
       {edit ? (
         <input className="plain ex-name-input" list="exercise-names" value={r.name} placeholder="Exercise name" onChange={(e) => onChange((x) => withLibraryLink({ ...x, name: e.target.value }))} aria-label="Exercise name" autoFocus={!r.name} />
+      ) : train ? (
+        // 1 · How to do it. The cue can be typed here: after a swap the old one no longer fits.
+        <div className="ex-how">
+          <textarea className="plain ex-cue-input" rows={1} value={r.notes} placeholder="Add a cue" onChange={(e) => onChange((x) => ({ ...x, notes: e.target.value }))} aria-label="Cue" />
+          {r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
+        </div>
       ) : (
         // 1 · How to do it: read-only, quiet.
         (r.notes || r.alternative || (mode === 'read' && r.rest)) && (

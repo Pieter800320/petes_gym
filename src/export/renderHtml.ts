@@ -9,6 +9,9 @@ import type { ExportBlock, ExportDoc } from './exportModel'
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
+/** ▶ followed by the "text style" selector, so phones draw a plain red triangle and not a coloured emoji button. */
+const VIDEO_MARK = '▶︎'
+
 const STYLE = `
   :root {
     --paper: #FFFFFF; --ink: #111111; --ink-soft: #5A5A57; --ink-faint: #75756F;
@@ -18,7 +21,9 @@ const STYLE = `
   * { box-sizing: border-box; }
   body { background: var(--paper); color: var(--ink); font-family: 'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif; padding: clamp(20px, 5vw, 56px) 16px 64px; margin: 0; -webkit-font-smoothing: antialiased; }
   main { max-width: 780px; margin: 0 auto; }
-  h1, h2 { text-wrap: balance; }
+  /* A long word (German compounds, long names) breaks rather than pushing the page wider than the screen. */
+  h1, h2 { text-wrap: balance; overflow-wrap: break-word; hyphens: auto; }
+  td, th, dd, p, li { overflow-wrap: break-word; }
   header.masthead { border-bottom: 3px solid var(--ink); padding-bottom: 22px; margin-bottom: 28px; }
   .eyebrow { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin: 0 0 10px; }
   h1 { font-size: clamp(2rem, 5.4vw, 3rem); font-weight: 800; letter-spacing: -0.035em; margin: 0 0 20px; line-height: 1.02; }
@@ -27,6 +32,8 @@ const STYLE = `
   .stat dt { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); font-weight: 700; margin-bottom: 4px; }
   .stat dd { margin: 0; font-size: 1rem; max-width: 46ch; line-height: 1.4; }
   .stat dd.num { font-size: 1.25rem; font-weight: 700; }
+  /* The goal is a sentence: it takes its own row, the two figures sit side by side under it at every width. */
+  .stat.wide { flex-basis: 100%; }
   .personal-note { margin-top: 24px; }
   .personal-note p { margin: 0 0 12px; font-size: 0.97rem; line-height: 1.55; max-width: 62ch; }
   .personal-note p:last-child { margin-bottom: 0; }
@@ -37,7 +44,7 @@ const STYLE = `
   section.day:first-of-type { margin-top: 36px; padding-top: 0; border-top: 0; } /* the masthead rule already sits above day 1 */
   .day-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 6px; }
   .day-num { font-size: 2.8rem; font-weight: 800; letter-spacing: -0.04em; color: var(--accent); line-height: 1; flex-shrink: 0; }
-  h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.025em; margin: 0; line-height: 1.15; }
+  h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.025em; margin: 0; line-height: 1.15; min-width: 0; }
   .day-sub { margin: 4px 0 18px; color: var(--ink-soft); font-size: 0.95rem; }
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
@@ -49,19 +56,40 @@ const STYLE = `
   td.ex { font-weight: 600; }
   td.ex .video { display: block; margin: 4px 0 2px; line-height: 1; }
   td.ex a { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); text-decoration: none; }
-  td.sets, td.rest { font-weight: 600; white-space: nowrap; }
+  td.sets, td.rest { font-weight: 600; }
   td.notes { color: var(--ink-soft); }
   td.ex .cue { display: block; margin-top: 3px; font-weight: 400; font-size: 0.88rem; color: var(--ink-soft); }
   td.ex .alt { display: block; font-weight: 400; font-size: 0.8rem; color: var(--ink-faint); }
-  table.day-table td.sets, table.day-table td.rest, table.day-table th:nth-child(2), table.day-table th:nth-child(3) { width: 1%; white-space: nowrap; padding-left: 14px; }
+  /* Fixed columns: Sets and Rest sit in the same place on every day and always fit the screen;
+     a long prescription ("20s hard / 40s easy × 6 rounds") wraps inside its column. */
+  table.day-table { table-layout: fixed; }
+  table.day-table col.c-sets { width: 10.5em; }
+  table.day-table col.c-rest { width: 5.5em; }
+  table.day-table td.sets, table.day-table td.rest, table.day-table th:nth-child(2), table.day-table th:nth-child(3) { padding-left: 14px; }
+  table.day-table td.rest, table.day-table th:nth-child(3) { padding-right: 0; }
   .prog-block { margin-top: 24px; padding: 16px 18px; background: var(--blue-soft); border-top: 3px solid var(--blue); }
   .prog-block h3 { margin: 0 0 3px; font-size: 1rem; color: var(--blue); font-weight: 800; letter-spacing: -0.01em; }
   .prog-block p.lead { margin: 0 0 14px; font-size: 0.88rem; color: var(--ink-soft); }
   .prog-block table thead th { border-bottom-color: var(--blue); }
   .prog-block td { border-bottom-color: var(--rule); }
   .prog-block th, .prog-block td { width: auto !important; }
-  @media (max-width: 520px) { .day-head { gap: 10px; } .day-num { font-size: 2.2rem; } }
-  @media print { body { padding: 0; } section.day { break-inside: avoid-page; } .prog-block { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+  .prog-block td.sets { white-space: nowrap; }
+  @media (max-width: 520px) {
+    .day-head { gap: 10px; } .day-num { font-size: 2.2rem; }
+    table.day-table col.c-sets { width: 7.2em; }
+    table.day-table col.c-rest { width: 4.4em; }
+    table.day-table td.sets, table.day-table td.rest, table.day-table th:nth-child(2), table.day-table th:nth-child(3) { padding-left: 10px; }
+    .prog-block { padding: 14px 14px; }
+    .prog-block table { font-size: 0.86rem; }
+    .prog-block td, .prog-block th { padding-right: 8px; }
+  }
+  @media print {
+    body { padding: 0; }
+    section.day { break-inside: avoid-page; }
+    tr, .prog-block { break-inside: avoid; }
+    .table-wrap { overflow: visible; } /* a scroll box would cut a wide table off on paper */
+    .prog-block { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  }
 `
 
 function renderBlock(b: ExportBlock): string {
@@ -91,6 +119,7 @@ export function renderHtml(d: ExportDoc): string {
     ${s.focus ? `<p class="day-sub">${esc(s.focus)}</p>` : ''}
     <div class="table-wrap">
       <table class="day-table">
+        <colgroup><col><col class="c-sets"><col class="c-rest"></colgroup>
         <thead><tr><th>${esc(hEx)}</th><th>${esc(hSets)}</th><th>${esc(hRest)}</th></tr></thead>
         <tbody>${s.groups
           .map(
@@ -101,7 +130,7 @@ export function renderHtml(d: ExportDoc): string {
                 .map(
                   (r) => `
           <tr>
-            <td class="ex">${esc(r.name)}<span class="video"><a href="${esc(r.videoUrl)}" target="_blank" rel="noopener">▶ Video</a></span>${r.cue ? `<span class="cue">${esc(r.cue)}</span>` : ''}${r.alternative ? `<span class="alt">${esc(r.alternative)}</span>` : ''}</td>
+            <td class="ex">${esc(r.name)}<span class="video"><a href="${esc(r.videoUrl)}" target="_blank" rel="noopener">${VIDEO_MARK} Video</a></span>${r.cue ? `<span class="cue">${esc(r.cue)}</span>` : ''}${r.alternative ? `<span class="alt">${esc(r.alternative)}</span>` : ''}</td>
             <td class="sets">${esc(r.prescription)}</td>
             <td class="rest">${esc(r.rest)}</td>
           </tr>`,
@@ -136,7 +165,7 @@ export function renderHtml(d: ExportDoc): string {
     ${
       d.stats.length
         ? `<dl class="stat-row">${d.stats
-            .map((s) => `<div class="stat"><dt>${esc(s.label)}</dt><dd${s.numeric ? ' class="num"' : ''}>${esc(s.value)}</dd></div>`)
+            .map((s) => `<div class="stat${s.numeric ? '' : ' wide'}"><dt>${esc(s.label)}</dt><dd${s.numeric ? ' class="num"' : ''}>${esc(s.value)}</dd></div>`)
             .join('')}</dl>`
         : ''
     }

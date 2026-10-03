@@ -49,29 +49,33 @@ function cell(children: Paragraph[], opts: { borders?: ITableCellBorders; fill?:
     width: opts.width ? { size: opts.width, type: WidthType.DXA } : undefined,
     borders: opts.borders ?? bottomOnly(RULE),
     shading: opts.fill ? { fill: opts.fill, type: ShadingType.CLEAR, color: 'auto' } : undefined,
-    margins: { top: 80, bottom: 80, left: 100, right: 100 },
+    // Unshaded cells start flush left, so table text lines up with the headings and rules above it.
+    margins: { top: 80, bottom: 80, left: opts.fill ? 100 : 0, right: 140 },
   })
 }
 
-const para = (runs: (TextRun | ExternalHyperlink)[], spacingAfter = 0) => new Paragraph({ children: runs, spacing: { after: spacingAfter } })
+/** keepNext: Word keeps this paragraph on the same page as the one after it. */
+const para = (runs: (TextRun | ExternalHyperlink)[], spacingAfter = 0, keepNext = false) => new Paragraph({ children: runs, spacing: { after: spacingAfter }, keepNext })
 const text = (t: string, o: { color?: string; bold?: boolean; size?: number; italics?: boolean } = {}) =>
   new TextRun({ text: t, font: FONT, size: pt(o.size ?? 10), color: o.color ?? INK, bold: o.bold, italics: o.italics })
 
 function blockTable(b: ExportBlock): (Paragraph | Table)[] {
   const out: (Paragraph | Table)[] = [new Paragraph({ spacing: { before: 240 } })]
-  if (b.title) out.push(para([text(b.title, { color: BLUE, bold: true, size: 11 })], 40))
-  if (b.rule) out.push(para([text(b.rule, { color: SOFT, size: 9.5 })], 120))
+  if (b.title) out.push(para([text(b.title, { color: BLUE, bold: true, size: 11 })], 40, true))
+  if (b.rule) out.push(para([text(b.rule, { color: SOFT, size: 9.5 })], 120, true))
   out.push(
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
           tableHeader: true,
-          children: b.columns.map((c) => cell([para([label(c)])], { borders: { top: line(BLUE, 18), left: none, right: none, bottom: line(BLUE, 8) }, fill: BLUE_WASH })),
+          cantSplit: true,
+          children: b.columns.map((c) => cell([para([label(c)], 0, true)], { borders: { top: line(BLUE, 18), left: none, right: none, bottom: line(BLUE, 8) }, fill: BLUE_WASH })),
         }),
         ...b.rows.map(
           (r) =>
             new TableRow({
+              cantSplit: true,
               children: r.map((c, i) => cell([para([text(c, { bold: i === 0, color: i === 0 ? INK : SOFT, size: 9.5 })])], { fill: BLUE_WASH })),
             }),
         ),
@@ -123,56 +127,69 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
         // Each later day opens its page under a thick rule; day 1 already sits under the masthead rule.
         border: index > 0 ? { top: line(INK, 18) } : undefined,
         spacing: { before: 200, after: 60 },
+        keepNext: true,
         children: [
           new TextRun({ text: `${s.number}  `, font: FONT, size: pt(26), bold: true, color: ACCENT, characterSpacing: -10 }),
           new TextRun({ text: s.title, font: FONT, size: pt(16), bold: true, color: INK, characterSpacing: -6 }),
         ],
       }),
     )
-    if (s.focus) children.push(para([text(s.focus, { color: SOFT, size: 10 })], 200))
+    if (s.focus) children.push(para([text(s.focus, { color: SOFT, size: 10 })], 200, true))
 
     const [hEx, hSets, hRest] = d.columnHeaders
-    const rows: TableRow[] = [
-      new TableRow({
-        tableHeader: true,
-        children: [hEx, hSets, hRest].map((h, i) => cell([para([label(h)])], { borders: bottomOnly(INK, 12), width: DAY_COLUMNS[i] })),
-      }),
+    /*
+     * A day stays on one page whenever it fits: every row is told to stay with the next one (keep),
+     * except the last. Word then moves the whole day to the next page instead of leaving a few
+     * exercises behind. A day longer than a page still breaks, but only between exercises (cantSplit).
+     */
+    const makeRows: ((keep: boolean) => TableRow)[] = [
+      (keep) =>
+        new TableRow({
+          tableHeader: true,
+          cantSplit: true,
+          children: [hEx, hSets, hRest].map((h, i) => cell([para([label(h)], 0, keep)], { borders: bottomOnly(INK, 12), width: DAY_COLUMNS[i] })),
+        }),
     ]
     for (const g of s.groups) {
       if (g.title) {
-        rows.push(
-          new TableRow({
-            children: [
-              cell([para([label(g.title, INK), ...(g.duration ? [new TextRun({ text: `   ${g.duration}`, font: FONT, size: pt(7.5), color: FAINT })] : [])])], {
-                span: 3,
-                borders: bottomOnly(INK, 8),
-              }),
-            ],
-          }),
+        makeRows.push(
+          (keep) =>
+            new TableRow({
+              cantSplit: true,
+              children: [
+                cell([para([label(g.title, INK), ...(g.duration ? [new TextRun({ text: `   ${g.duration}`, font: FONT, size: pt(7.5), color: FAINT })] : [])], 0, keep)], {
+                  span: 3,
+                  borders: bottomOnly(INK, 8),
+                }),
+              ],
+            }),
         )
       }
-      if (g.note) rows.push(new TableRow({ children: [cell([para([text(g.note, { color: SOFT, size: 9.5 })])], { span: 3 })] }))
+      if (g.note) makeRows.push((keep) => new TableRow({ cantSplit: true, children: [cell([para([text(g.note, { color: SOFT, size: 9.5 })], 0, keep)], { span: 3 })] }))
       for (const r of g.rows) {
-        rows.push(
-          new TableRow({
-            children: [
-              cell(
-                [
-                  para([text(r.name, { bold: true, size: 10 })]),
-                  // Own line under the name, so every exercise has the link in the same place.
-                  para([new ExternalHyperlink({ link: r.videoUrl, children: [new TextRun({ text: '▶ VIDEO', font: FONT, size: pt(7.5), bold: true, color: ACCENT })] })]),
-                  ...(r.cue ? [para([text(r.cue, { color: SOFT, size: 9 })])] : []),
-                  ...(r.alternative ? [para([text(r.alternative, { color: FAINT, size: 8.5 })])] : []),
-                ],
-                { width: DAY_COLUMNS[0] },
-              ),
-              cell([para([text(r.prescription, { bold: true, size: 9.5 })])], { width: DAY_COLUMNS[1] }),
-              cell([para([text(r.rest, { bold: true, size: 9.5 })])], { width: DAY_COLUMNS[2] }),
-            ],
-          }),
+        makeRows.push(
+          (keep) =>
+            new TableRow({
+              cantSplit: true,
+              children: [
+                cell(
+                  [
+                    para([text(r.name, { bold: true, size: 10 })], 0, keep),
+                    // Own line under the name, so every exercise has the link in the same place.
+                    para([new ExternalHyperlink({ link: r.videoUrl, children: [new TextRun({ text: '▶ VIDEO', font: FONT, size: pt(7.5), bold: true, color: ACCENT })] })], 0, keep),
+                    ...(r.cue ? [para([text(r.cue, { color: SOFT, size: 9 })], 0, keep)] : []),
+                    ...(r.alternative ? [para([text(r.alternative, { color: FAINT, size: 8.5 })], 0, keep)] : []),
+                  ],
+                  { width: DAY_COLUMNS[0] },
+                ),
+                cell([para([text(r.prescription, { bold: true, size: 9.5 })], 0, keep)], { width: DAY_COLUMNS[1] }),
+                cell([para([text(r.rest, { bold: true, size: 9.5 })], 0, keep)], { width: DAY_COLUMNS[2] }),
+              ],
+            }),
         )
       }
     }
+    const rows = makeRows.map((make, i) => make(i < makeRows.length - 1))
     children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, columnWidths: DAY_COLUMNS, rows }))
     for (const b of s.blocks) children.push(...blockTable(b))
   })
@@ -180,7 +197,8 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
   const doc = new Document({
     creator: "Pete's Gym",
     title: d.documentTitle,
-    styles: { default: { document: { run: { font: FONT, size: pt(10), color: INK } } } },
+    // noProof: no red spelling squiggles under exercise names or German text when the client opens it.
+    styles: { default: { document: { run: { font: FONT, size: pt(10), color: INK, noProof: true, language: { value: d.lang === 'de' ? 'de-DE' : 'en-GB' } } } } },
     sections: [
       {
         properties: { page: { margin: { top: 1000, bottom: 1000, left: 1130, right: 1130 } } },

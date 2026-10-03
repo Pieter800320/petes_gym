@@ -3,8 +3,12 @@ import { ConfirmButton } from './ConfirmButton'
 import { IconTrash } from './Icons'
 import { haptic } from '../haptics'
 
-/** How far the line slides to reveal Delete (matches .swipe-actions width). */
-const REVEAL_PX = 96
+/** Width of the red Delete button (matches .swipe-actions in app.css). */
+const DELETE_WIDTH_PX = 96
+/** Background left showing between the line's last word and the button. */
+const DELETE_GAP_PX = 12
+/** How far the line slides to reveal Delete. */
+const REVEAL_PX = DELETE_WIDTH_PX + DELETE_GAP_PX
 /** Finger travel before a touch counts as a swipe rather than a tap. */
 const SWIPE_THRESHOLD_PX = 10
 

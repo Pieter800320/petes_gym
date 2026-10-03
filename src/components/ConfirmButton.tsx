@@ -9,6 +9,20 @@ const TAP_SLOP_PX = 10
 const CLICK_DEDUPE_MS = 800
 
 /**
+ * The browser sends its click for a tap after we have already acted on the finger lifting. If that
+ * action removed the row, the click lands on whatever slid into its place (the next draft, which
+ * would open). Swallow that one click.
+ */
+function swallowNextClick() {
+  const stop = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  window.addEventListener('click', stop, { capture: true, once: true })
+  setTimeout(() => window.removeEventListener('click', stop, { capture: true }), CLICK_DEDUPE_MS)
+}
+
+/**
  * Destructive button that needs a second tap within 3 s. Avoids a dialog for small deletes.
  * fastTap: react to the finger lifting instead of waiting for the click. Chrome swallows the click
  * of a tap made just after a swipe (it only stops the fling), so a Delete revealed by a swipe needs this.
@@ -24,10 +38,11 @@ export function ConfirmButton({ onConfirm, children, className = 'btn-ghost dang
     return () => clearTimeout(t)
   }, [armed])
 
-  function activate() {
+  function activate(fromTouch = false) {
     if (armed) {
       haptic('strong')
       setArmed(false)
+      if (fromTouch) swallowNextClick()
       onConfirm()
     } else {
       haptic()
@@ -49,7 +64,7 @@ export function ConfirmButton({ onConfirm, children, className = 'btn-ghost dang
         down.current = null
         if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > TAP_SLOP_PX) return
         lastTouchTap.current = Date.now()
-        activate()
+        activate(true)
       }}
       onClick={() => {
         // Already handled on pointer up (keyboard and mouse still come through here).

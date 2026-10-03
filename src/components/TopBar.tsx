@@ -2,11 +2,12 @@ import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { IconBack, IconPen } from './Icons'
 import { openNote } from './noteEvents'
-import { previousIs } from '../util/navHistory'
+import { canGoBack, previousIs } from '../util/navHistory'
 
 interface TopBarProps {
   /** Small mono line on the left (e.g. "TUE 30 SEP"); ignored when `back` is set. */
   overline?: ReactNode
+  /** Back arrow. `to` and `label` name the page above this one; coming from elsewhere, the arrow returns there and reads "Back". */
   back?: { to: string; label?: string; state?: unknown }
   /** Extra icon buttons, placed left of the note pen. */
   actions?: ReactNode
@@ -17,6 +18,10 @@ interface TopBarProps {
 /** Every screen's top line: context on the left, the note pen always in the same top-right spot. */
 export function TopBar({ overline, back, actions, noteClientId }: TopBarProps) {
   const navigate = useNavigate()
+  // The arrow goes to the previous screen, wherever that was; `back.to` is only where it leads when
+  // there is none (the app was opened on this page). A link with state always opens its own target.
+  const stepsBack = Boolean(back) && !back?.state && canGoBack()
+  const label = back && stepsBack && !previousIs(back.to) ? 'Back' : back?.label
   return (
     <div className="topbar">
       {back ? (
@@ -24,17 +29,17 @@ export function TopBar({ overline, back, actions, noteClientId }: TopBarProps) {
           to={back.to}
           state={back.state}
           className="topbar-back"
-          aria-label={back.label ? `Back to ${back.label}` : 'Back'}
+          aria-label={label && label !== 'Back' ? `Back to ${label}` : 'Back'}
           onClick={(e) => {
-            // Came from there: step back instead of stacking another copy of that page.
-            if (!back.state && previousIs(back.to)) {
+            // Step back instead of stacking another page, so the phone's Back button stays in step.
+            if (stepsBack) {
               e.preventDefault()
               navigate(-1)
             }
           }}
         >
           <IconBack />
-          {back.label && <span>{back.label}</span>}
+          {label && <span>{label}</span>}
         </Link>
       ) : (
         <span className="overline">{overline}</span>

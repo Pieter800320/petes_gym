@@ -77,7 +77,8 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
       } else {
         const result = await shareOrDownload(file)
         if (result !== 'cancelled') {
-          toast(result === 'shared' ? 'Programme shared' : `Saved ${file.name}`)
+          // Zero-width spaces let a long file name wrap at its underscores instead of mid-word.
+          toast(result === 'shared' ? 'Programme shared' : `Saved ${file.name.replace(/_/g, '_​')}`)
           onDone()
         }
       }
