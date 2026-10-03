@@ -6,7 +6,7 @@ import { toast } from './toast'
  */
 export async function shareProfileLink(link: string, firstName?: string) {
   const hello = firstName ? `Hi ${firstName}!` : 'Hi!'
-  const text = `${hello} Please fill in this short fitness profile (about 7 minutes). It helps me design the right programme for you:`
+  const text = `${hello} Please fill in this short fitness profile (about 5 minutes, in English or German). It helps me design the right programme for you:`
   if (navigator.share) {
     try {
       await navigator.share({ title: 'Fitness Profile', text, url: link })

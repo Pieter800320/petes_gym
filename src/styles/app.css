@@ -503,6 +503,12 @@ svg { flex: none; }
 .fit-label { font-size: 15px; font-weight: 600; line-height: 1.35; }
 .fit-options { display: flex; flex-direction: column; gap: var(--space-2); margin-top: 2px; }
 .fit-option { min-height: 48px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: none; color: var(--color-text); text-align: left; font-size: 15px; line-height: 1.35; }
+.fit-options.inline { flex-direction: row; flex-wrap: wrap; }
+.fit-options.inline .fit-option { flex: 1 1 0; min-width: 48px; text-align: center; }
+.fit-head-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.fit-lang { display: flex; }
+.fit-lang button { min-height: 48px; padding: 0 10px; border: 0; background: none; color: var(--color-text-muted); font-size: 14px; }
+.fit-lang button[aria-pressed="true"] { color: var(--color-text); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
 .fit-option[aria-pressed="true"] { border-color: var(--color-text); background: var(--color-text); color: var(--color-bg); }
 .fit-consent { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; line-height: 1.45; }
 .fit-consent input { flex: none; width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--color-accent); }

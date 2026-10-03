@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.21 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.22 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -126,13 +126,19 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     note or translations).
   - 0.9.21 (Pieter, 2026-10-03): profile pipeline. The Fitness Profile questionnaire is a page of the
     app (`/fit/:uid/:token`, `FitnessProfileScreen`, shown before the sign-in gate; questions in
-    `data/fitnessProfile.ts`, copied one-to-one from the old Google Form). "Send fitness profile link"
+    `data/fitnessProfile.ts`; redesigned in 0.9.22, see below). "Send fitness profile link"
     creates an invite (`data/invites.ts`, `users/{uid}/invites/{token}`) and shares its personal link;
     an open link for the same person is reused. Answers show on Clients as "New answers from X";
     `AnswersSheet` turns them into a new or updated profile through the same `mergeProfile` as the
     CSV import, with no Claude call, then deletes the invite. Unanswered links can be cancelled on
     Clients. The Google Form link is gone; the CSV import stays for older responses.
     **Needs the invite block in `firestore.rules` published in the Firebase console.**
+  - 0.9.22 (Pieter, 2026-10-03): the questionnaire redesigned and bilingual. English/Deutsch switch
+    (German on a German phone; the choice is remembered on the device). Choices are stored by option
+    id, so the profile is always written in English; typed answers stay as written. Goal, days per
+    week, session length, where they train, injuries and a six-question yes/no health screen are
+    required; a yes asks for details, and "at home" asks for the equipment there (`showIf`). Days
+    and session length are single choices; "No preference" stands alone. German uses "du".
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -160,7 +166,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   filters, hand labels and copy (24), all on the in-memory backend. Claude's labelling call is
   NOT tested against the real API (no credits); it follows translate.ts's pattern.
   0.9.21: send link → fill in → new answers → profile, for an existing and a new client, link
-  reuse, dead link, cancel (34 checks) on the in-memory backend. The database rules for invites are
+  reuse, dead link, cancel (34 checks) on the in-memory backend. 0.9.22: the new form in German
+  and English, dependent questions, required answers, English profile from German answers (36). The database rules for invites are
   NOT tested (no emulator on this PC) and nothing was run against the real Firestore.
   0.9.11: moving a progression between days and to/from "every day" checked in the app (15
   checks). The new wording in Claude's instructions is NOT tested against the real API (no credits).

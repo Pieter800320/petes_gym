@@ -4,11 +4,13 @@
  * turn up in Pete's app under Clients.
  */
 import { useEffect, useState } from 'react'
-import { INTRO, SECTIONS, missingRequired, type Answers, type Question } from '../data/fitnessProfile'
+import { NONE, SECTIONS, UI, chosenOptions, isVisible, missingRequired, type Answer, type Answers, type Lang, type Question } from '../data/fitnessProfile'
 import { readInvite, submitAnswers } from '../data/invites'
 
 /** Answers typed so far are kept on the device, so a reload or a phone call doesn't lose them. */
 const draftKey = (token: string) => `pg_fit_${token}`
+const LANG_KEY = 'pg_fit_lang'
+const LANGS: { id: Lang; name: string }[] = [{ id: 'en', name: 'English' }, { id: 'de', name: 'Deutsch' }]
 
 function loadDraft(token: string): Answers {
   try {
@@ -18,15 +20,28 @@ function loadDraft(token: string): Answers {
   }
 }
 
+/** The language chosen before; else German on a German phone, English otherwise. */
+function startLang(): Lang {
+  try {
+    const saved = localStorage.getItem(LANG_KEY)
+    if (saved === 'en' || saved === 'de') return saved
+  } catch {
+    // Storage blocked: fall through to the phone's language.
+  }
+  return navigator.language.toLowerCase().startsWith('de') ? 'de' : 'en'
+}
+
 type Stage = 'loading' | 'form' | 'gone' | 'sent'
 
 export function FitnessProfileScreen({ uid, token }: { uid: string; token: string }) {
   const [stage, setStage] = useState<Stage>('loading')
+  const [lang, setLang] = useState<Lang>(startLang)
   const [firstName, setFirstName] = useState('')
   const [answers, setAnswers] = useState<Answers>(() => loadDraft(token))
   const [consent, setConsent] = useState(false)
   const [sending, setSending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  const t = UI[lang]
 
   useEffect(() => {
     let cancelled = false
@@ -52,14 +67,25 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
     }
   }, [answers, stage, token])
 
-  const set = (id: string, value: Answers[string]) => setAnswers((a) => ({ ...a, [id]: value }))
-  const missing = missingRequired(answers)
+  function chooseLang(next: Lang) {
+    setLang(next)
+    try {
+      localStorage.setItem(LANG_KEY, next)
+    } catch {
+      // Not remembered; nothing else depends on it.
+    }
+  }
+
+  const set = (id: string, value: Answer) => setAnswers((a) => ({ ...a, [id]: value }))
+  const missing = missingRequired(answers, lang)
 
   async function send() {
-    setError(null)
+    setFailed(false)
     setSending(true)
     try {
-      await submitAnswers(uid, token, answers)
+      // Answers to questions that are no longer shown (a "yes" changed back to "no") stay behind.
+      const visible = new Set(SECTIONS.flatMap((s) => s.questions).filter((q) => isVisible(q, answers)).map((q) => q.id))
+      await submitAnswers(uid, token, Object.fromEntries(Object.entries(answers).filter(([id]) => visible.has(id))))
       try {
         localStorage.removeItem(draftKey(token))
       } catch {
@@ -69,66 +95,75 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
       window.scrollTo(0, 0)
     } catch (err) {
       console.error(err)
-      setError('Your answers could not be sent. Check your internet connection and try again; nothing you typed is lost.')
+      setFailed(true)
     } finally {
       setSending(false)
     }
   }
 
-  if (stage === 'loading') return <div className="center-screen"><span className="label">Loading…</span></div>
+  const langSwitch = (
+    <div className="fit-lang" role="group" aria-label="Language / Sprache">
+      {LANGS.map((l) => <button type="button" key={l.id} aria-pressed={lang === l.id} onClick={() => chooseLang(l.id)}>{l.name}</button>)}
+    </div>
+  )
+
+  if (stage === 'loading') return <div className="center-screen"><span className="label">{t.loading}</span></div>
 
   if (stage === 'gone' || stage === 'sent') {
     return (
       <div className="center-screen">
         <div className="fit-page fit-end">
-          <h1 className="display">{stage === 'sent' ? 'Thank you!' : 'This link can no longer be used'}</h1>
-          <p className="lead">
-            {stage === 'sent'
-              ? 'Your answers are with Pieter. He will use them to design your training programme. You can close this page.'
-              : 'It has either been filled in already or is no longer active. If you still need to send your answers, ask Pieter for a new link.'}
-          </p>
+          {langSwitch}
+          <h1 className="display">{stage === 'sent' ? t.thanksTitle : t.goneTitle}</h1>
+          <p className="lead">{stage === 'sent' ? t.thanksText : t.goneText}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="fit-page">
+    <div className="fit-page" lang={lang}>
       <header className="fit-head">
-        <span className="doc-eyebrow">Fitness profile</span>
-        <h1 className="display">{firstName ? `Hi ${firstName}, my name is Pieter!` : 'Hi, my name is Pieter!'}</h1>
-        <p className="lead">{INTRO}</p>
+        <div className="fit-head-top">
+          <span className="doc-eyebrow">{t.eyebrow}</span>
+          {langSwitch}
+        </div>
+        <h1 className="display">{t.hello(firstName)}</h1>
+        <p className="lead">{t.intro}</p>
       </header>
 
       {SECTIONS.map((section) => (
-        <section key={section.title} className="fit-section">
-          <h2 className="display">{section.title}</h2>
-          {section.questions.map((q) => <Field key={q.id} q={q} value={answers[q.id]} onChange={(v) => set(q.id, v)} />)}
+        <section key={section.title.en} className="fit-section">
+          <h2 className="display">{section.title[lang]}</h2>
+          {section.note && <p className="muted" style={{ margin: 0 }}>{section.note[lang]}</p>}
+          {section.questions.filter((q) => isVisible(q, answers)).map((q) => (
+            <Field key={q.id} q={q} lang={lang} value={answers[q.id]} onChange={(v) => set(q.id, v)} />
+          ))}
         </section>
       ))}
 
       <section className="fit-section">
         <label className="fit-consent">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-          <span>I agree that Pieter stores these answers, including what I wrote about my health, to design my training programme. I can ask him to delete them at any time.</span>
+          <span>{t.consent}</span>
         </label>
-        {error && <div className="banner error">{error}</div>}
+        {failed && <div className="banner error">{t.sendError}</div>}
         <button type="button" className="btn-cta btn-block" disabled={sending || !consent || missing.length > 0} onClick={send}>
-          {sending ? 'Sending…' : 'Send to Pieter'}
+          {sending ? t.sending : t.send}
         </button>
-        {missing.length > 0 && <p className="muted small">Still needed: {missing.join(', ')}.</p>}
+        {missing.length > 0 && <p className="muted small">{t.needed}: {missing.join(', ')}.</p>}
       </section>
     </div>
   )
 }
 
-function Field({ q, value, onChange }: { q: Question; value: Answers[string] | undefined; onChange: (v: Answers[string]) => void }) {
-  const label = <span className="fit-label">{q.label}{q.required && <span className="accent" aria-label="required"> *</span>}</span>
+function Field({ q, lang, value, onChange }: { q: Question; lang: Lang; value: Answer | undefined; onChange: (v: Answer) => void }) {
+  const label = <span className="fit-label">{q.label[lang]}{q.required && <span className="accent" aria-label="required"> *</span>}</span>
 
-  if (q.type === 'text' || q.type === 'long') {
+  if (!q.options) {
     const text = typeof value === 'string' ? value : ''
     return (
-      <label className="field">
+      <label className="field" data-q={q.id}>
         {label}
         {q.type === 'text' ? (
           <input id={`fit-${q.id}`} className="input" value={text} inputMode={q.numeric ? 'numeric' : undefined} onChange={(e) => onChange(e.target.value)} />
@@ -140,18 +175,20 @@ function Field({ q, value, onChange }: { q: Question; value: Answers[string] | u
   }
 
   // Choices: one answer, or any number of them.
-  const chosen = Array.isArray(value) ? value : value ? [value] : []
-  const pick = (option: string) => {
-    if (q.type === 'one') onChange(chosen[0] === option ? '' : option)
-    else onChange(chosen.includes(option) ? chosen.filter((x) => x !== option) : [...chosen, option])
+  const chosen = chosenOptions(q, value)
+  const pick = (id: string) => {
+    if (q.type !== 'many') return onChange(chosen[0] === id ? '' : id)
+    if (chosen.includes(id)) return onChange(chosen.filter((x) => x !== id))
+    // "No preference" stands alone: it replaces the others, and any other choice replaces it.
+    onChange(id === NONE ? [NONE] : [...chosen.filter((x) => x !== NONE), id])
   }
   return (
-    <div className="field" role="group" aria-label={q.label}>
+    <div className="field" role="group" aria-label={q.label[lang]} data-q={q.id}>
       {label}
-      {q.type === 'many' && <span className="muted small">Choose all that apply.</span>}
-      <div className="fit-options">
-        {q.options?.map((option) => (
-          <button type="button" key={option} className="fit-option" aria-pressed={chosen.includes(option)} onClick={() => pick(option)}>{option}</button>
+      {q.type === 'many' && <span className="muted small">{UI[lang].chooseAll}</span>}
+      <div className={q.inline ? 'fit-options inline' : 'fit-options'}>
+        {q.options.map((opt) => (
+          <button type="button" key={opt.id} className="fit-option" aria-pressed={chosen.includes(opt.id)} onClick={() => pick(opt.id)}>{opt.label[lang]}</button>
         ))}
       </div>
     </div>
