@@ -69,11 +69,6 @@ export interface Programme {
   progression: ProgressionBlock | null
   /** Programme this one was progressed from (lineage). */
   parentId: string | null
-  /**
-   * Labels for the programme library ("beginner", "hypertrophy"…), from claude/tagProgrammes.ts or set
-   * by hand there. Absent = not labelled yet; [] = looked at, nothing fitted. Never exported.
-   */
-  tags?: string[]
   /** Cached German translations of client-facing text (see claude/translate.ts). */
   translationsDe?: TranslationPair[]
   /** Set when moved to Recently deleted; null/absent otherwise. */

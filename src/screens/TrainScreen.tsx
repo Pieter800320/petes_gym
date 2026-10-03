@@ -132,7 +132,8 @@ function TrainProgramme({ stored, guestName }: { stored: Programme; guestName?: 
 
   const { main, extra } = splitDayTitle(session.title, index)
   const minutes = estimateSessionMin(session)
-  const status = running && index === runningIndex ? '' : index === upNext && !loading ? ' · up next' : ''
+  // Which day is due, on a line of its own: red when this is it, grey with its number when another day is open.
+  const nextNote = running || loading ? null : index === upNext ? <span className="up-next">Up next</span> : <span className="up-next other">Up next: day {upNext + 1}</span>
 
   function finish() {
     if (!user || !running) return
@@ -154,7 +155,8 @@ function TrainProgramme({ stored, guestName }: { stored: Programme; guestName?: 
       <BigTitle
         text={main}
         accent={extra || undefined}
-        sub={`${programme.title} · Day ${index + 1} of ${programme.sessions.length}${status}`}
+        eyebrow={nextNote}
+        sub={`${programme.title} · Day ${index + 1} of ${programme.sessions.length}`}
       />
 
       <div className="day-picker" role="tablist" aria-label="Days">
@@ -165,7 +167,7 @@ function TrainProgramme({ stored, guestName }: { stored: Programme; guestName?: 
             key={s.id}
             aria-selected={i === index}
             aria-label={`Day ${i + 1}${i === upNext ? ', up next' : ''}`}
-            className={`day-dot${i === index ? ' on' : ''}${i === runningIndex ? ' live' : ''}`}
+            className={`day-dot${i === index ? ' on' : ''}${i === runningIndex ? ' live' : ''}${i === upNext && !running ? ' next' : ''}`}
             onClick={() => setSelected(i)}
           >
             {i + 1}

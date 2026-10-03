@@ -61,11 +61,12 @@ export function TopBar({ overline, back, actions, noteClientId }: TopBarProps) {
  * Big heading that steps down in size as the text gets longer, so long names and
  * programme titles wrap to two lines instead of overflowing.
  */
-export function BigTitle({ text, sub, accent }: { text: string; sub?: ReactNode; accent?: string }) {
+export function BigTitle({ text, sub, accent, eyebrow }: { text: string; sub?: ReactNode; accent?: string; eyebrow?: ReactNode }) {
   const len = text.length
   const size = len <= 14 ? 'xl' : len <= 22 ? 'l' : len <= 34 ? 'm' : 's'
   return (
     <div className="big-title">
+      {eyebrow}
       {sub && <span className="big-title-sub">{sub}</span>}
       <h1 className={`display big-title-text size-${size}`}>{text}</h1>
       {accent && <span className="big-title-accent display">{accent}</span>}

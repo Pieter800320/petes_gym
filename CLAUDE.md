@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.24 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.25 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -117,7 +117,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     client's page. Which programme Train shows is per device (`getTrainProgrammeId` in
     settings.ts; null = Pete's own). "Load in Train" (copying a client's programme to Pete) is
     removed; reuse comes back with the programme library.
-  - 0.9.20 (Pieter, 2026-10-03): programme library (`/library`, from the Create page): every
+  - 0.9.20 (Pieter, 2026-10-03; removed again in 0.9.25): programme library (`/library`, from the Create page): every
     programme of every client, searchable (title, goal, client, exercise) and filterable by days
     per week and by labels. Labels come from Claude (`claude/tagProgrammes.ts`, Haiku, fixed
     vocabulary, cost kind `tags`) or are toggled by hand in the programme's sheet there;
@@ -146,6 +146,12 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     answers (`_consent`) and end up as the last line of the profile's questionnaire text. Under 16
     cannot send. `CONTROLLER` in privacy.ts holds Pieter's name, address and email (public on the
     form). Not legal advice; Pieter should have the text checked.
+  - 0.9.25 (Pieter, 2026-10-03): the programme library is removed completely (screen, Claude
+    labels, `Programme.tags`, `copyProgrammeTo`); a programme can again only be duplicated for
+    the same client. Train: which day is due stands on its own line above the day's title ("Up
+    next" in red; "Up next: day N" in grey when another day is open) and its number in the day
+    picker has a red foot; it left the grey sub line. Settings is four ruled groups of like rows
+    (This device, Claude, Your data, Account): name left, control or chevron right.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

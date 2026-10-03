@@ -52,7 +52,7 @@ export function costUsd(model: string, usage: Usage): number {
   )
 }
 
-export type CostKind = 'create' | 'translate' | 'import' | 'tags'
+export type CostKind = 'create' | 'translate' | 'import'
 
 /** Where spending is recorded (the Firestore ledger); set once the user is signed in (App.tsx). */
 let costSink: ((kind: CostKind, usd: number) => void) | null = null
