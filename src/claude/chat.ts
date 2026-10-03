@@ -57,6 +57,9 @@ function chatRef(uid: string, programmeId: string) {
   return doc(requireDb(), 'users', uid, 'chats', programmeId)
 }
 
+/** Chats as last loaded, so reopening one in Create shows it at once (the listener still updates it). */
+const lastChats = new Map<string, ChatDoc | null>()
+
 export function useChat(programmeId: string | undefined): { chat: ChatDoc | null; loading: boolean } {
   const { user } = useAuth()
   const [state, setState] = useState<{ chat: ChatDoc | null; loading: boolean; forId?: string }>({ chat: null, loading: true })
@@ -64,7 +67,11 @@ export function useChat(programmeId: string | undefined): { chat: ChatDoc | null
     if (!user || !programmeId) return
     return onSnapshot(
       chatRef(user.uid, programmeId),
-      (snap) => setState({ chat: snap.exists() ? (snap.data() as ChatDoc) : null, loading: false, forId: programmeId }),
+      (snap) => {
+        const chat = snap.exists() ? (snap.data() as ChatDoc) : null
+        lastChats.set(`${user.uid}|${programmeId}`, chat)
+        setState({ chat, loading: false, forId: programmeId })
+      },
       (err) => {
         // Show the programme with an empty chat rather than "Loading…" forever.
         console.error(err)
@@ -72,7 +79,9 @@ export function useChat(programmeId: string | undefined): { chat: ChatDoc | null
       },
     )
   }, [user, programmeId])
-  return state.forId === programmeId ? state : { chat: null, loading: true }
+  if (state.forId === programmeId) return state
+  const key = `${user?.uid}|${programmeId}`
+  return lastChats.has(key) ? { chat: lastChats.get(key) ?? null, loading: false } : { chat: null, loading: true }
 }
 
 export function saveChat(uid: string, programmeId: string, chat: ChatDoc) {

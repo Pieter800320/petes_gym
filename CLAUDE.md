@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.6 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.7 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -55,6 +55,10 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     four weights as data: URLs, ~150 KB per file; the extended set only when a name needs it) and
     fetches nothing. Preview shows the exported page in a sheet inside the app (sealed iframe), not
     in a new tab. An out-of-credits reply from Claude is worded plainly.
+  - 0.9.7 (Pieter, 2026-10-03): screens appear complete instead of filling in piece by piece.
+    `store.ts` remembers each live query's last result while the app is open (`lastResults`, also
+    programmes and chats) and shows it at once; listeners still update it. Train keeps a greyed
+    START in place while loading and waits for the session history before choosing the day.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -78,6 +82,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   scroll kept), in the dev and the production build, phone and desktop. Not yet on a real phone.
   0.9.6: five sample exports opened with the network off at 360 and 900px: every part renders in
   Schibsted Grotesk, nothing is fetched. In-app preview checked on phone and desktop sizes.
+  0.9.7: with 40–160 ms added to every listener's first answer, switching tabs went from 4–6
+  repaints per tab to one; START no longer disappears on Train. All earlier checks pass again.
 
 ## 1. Stack (fixed)
 

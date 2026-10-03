@@ -52,11 +52,21 @@ interface QuerySpec {
   orderField?: string
 }
 
+/**
+ * What each live query last returned, kept while the app is open. A screen opened again shows this
+ * at once and complete, instead of starting empty and filling in piece by piece as every listener
+ * answers; the listener still runs and replaces it with anything newer.
+ */
+const lastResults = new Map<string, unknown[]>()
+const NOTHING_YET: never[] = []
+
 /** Live-subscribes to a user collection; re-subscribes when the user or the query changes. */
 function useLiveCollection<T extends { id: string }>(name: string, spec: QuerySpec): LiveQuery<T> {
   const { user } = useAuth()
-  const [state, setState] = useState<LiveQuery<T>>({ data: [], loading: true, error: null })
   const { whereField, whereValue, orderField } = spec
+  /** Identifies the query, so an answer is never shown for a different one (another client's list). */
+  const key = [user?.uid ?? '', name, whereField ?? '', String(whereValue), orderField ?? ''].join('|')
+  const [state, setState] = useState<LiveQuery<T> & { key: string }>({ key: '', data: NOTHING_YET, loading: true, error: null })
 
   useEffect(() => {
     if (!user) return
@@ -66,20 +76,21 @@ function useLiveCollection<T extends { id: string }>(name: string, spec: QuerySp
     return onSnapshot(
       query(userCollection(user.uid, name), ...constraints),
       (snap) => {
-        setState({
-          data: snap.docs.map((d) => ({ ...(d.data() as WithoutId<T>), id: d.id }) as T),
-          loading: false,
-          error: null,
-        })
+        const data = snap.docs.map((d) => ({ ...(d.data() as WithoutId<T>), id: d.id }) as T)
+        lastResults.set(key, data)
+        setState({ key, data, loading: false, error: null })
       },
       (err) => {
         console.error(err)
-        setState((prev) => ({ ...prev, loading: false, error: 'Could not load data. Reopen the app to retry.' }))
+        setState({ key, data: (lastResults.get(key) as T[] | undefined) ?? NOTHING_YET, loading: false, error: 'Could not load data. Reopen the app to retry.' })
       },
     )
-  }, [user, name, whereField, whereValue, orderField])
+  }, [user, name, whereField, whereValue, orderField, key])
 
-  return state
+  if (state.key === key) return state
+  // Not answered yet for this query: show what it returned last time, or nothing while it loads.
+  const remembered = lastResults.get(key) as T[] | undefined
+  return remembered ? { data: remembered, loading: false, error: null } : { data: NOTHING_YET, loading: true, error: null }
 }
 
 // ── Clients ─────────────────────────────────────────────────────────
@@ -193,6 +204,9 @@ export function useProgrammes(clientId: string | 'all', deleted = false) {
   return { ...live, data }
 }
 
+/** Programmes as last seen by useProgramme (see lastResults). */
+const lastProgrammes = new Map<string, Programme | null>()
+
 /** Live single programme. data is null while loading or if it doesn't exist. */
 export function useProgramme(id: string | undefined) {
   const { user } = useAuth()
@@ -202,7 +216,11 @@ export function useProgramme(id: string | undefined) {
     if (!user || !id) return
     return onSnapshot(
       doc(userCollection(user.uid, 'programmes'), id),
-      (snap) => setState({ data: snap.exists() ? decodeProgramme(snap.data() as WithoutId<Programme>, snap.id) : null, loading: false, forId: id }),
+      (snap) => {
+        const data = snap.exists() ? decodeProgramme(snap.data() as WithoutId<Programme>, snap.id) : null
+        lastProgrammes.set(`${user.uid}|${id}`, data)
+        setState({ data, loading: false, forId: id })
+      },
       (err) => {
         console.error(err)
         setState({ data: null, loading: false, forId: id })
@@ -211,7 +229,10 @@ export function useProgramme(id: string | undefined) {
   }, [user, id])
 
   // Ignore a snapshot that belongs to the previously viewed programme.
-  return state.forId === id ? state : { data: null, loading: true }
+  if (state.forId === id) return state
+  // Opened before: show it at once while the listener catches up.
+  const remembered = user && id ? lastProgrammes.get(`${user.uid}|${id}`) : undefined
+  return remembered ? { data: remembered, loading: false } : { data: null, loading: true }
 }
 
 /** createdAt can be set for imported programmes, so history sorts by the original file's date. */

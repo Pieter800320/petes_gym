@@ -40,14 +40,14 @@ export function TrainScreen() {
   const { data: programmes, loading } = useProgrammes(self?.id ?? '__none__')
   const programme = programmes.find((p) => p.status === 'active') ?? null
 
+  if (clientsLoading || (self && loading)) return <TrainLoading />
+
   if (!programme) {
     return (
       <div className="screen">
         <TopBar overline={today()} />
         <BigTitle text="Train" />
-        {clientsLoading || (self && loading) ? (
-          <span className="label">Loading…</span>
-        ) : !self ? (
+        {!self ? (
           <p className="lead">Train is for your own training. Add your profile first: Clients → You.</p>
         ) : (
           <div className="stack">
@@ -61,6 +61,18 @@ export function TrainScreen() {
 
   // Keyed so the day selection resets when the current programme changes.
   return <TrainProgramme key={programme.id} stored={programme} />
+}
+
+/** Shown while the programme loads: START keeps its place (greyed out) instead of popping in later. */
+function TrainLoading() {
+  return (
+    <div className="screen has-dial">
+      <TopBar overline={today()} />
+      <BigTitle text="Train" />
+      <span className="label">Loading…</span>
+      <Dial label="START" disabled ariaLabel="Loading" onClick={() => undefined} />
+    </div>
+  )
 }
 
 function TrainProgramme({ stored }: { stored: Programme }) {
@@ -92,6 +104,9 @@ function TrainProgramme({ stored }: { stored: Programme }) {
     )
   }, [running, session])
 
+  // Which day is "up next" depends on the sessions done so far: wait for them rather than showing
+  // day 1 and then jumping. A running session names its own day, so it shows straight away.
+  if (loading && !running) return <TrainLoading />
   if (!session || !user) return <p className="lead">This programme has no days yet.</p>
 
   const { main, extra } = splitDayTitle(session.title, index)
