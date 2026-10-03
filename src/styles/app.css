@@ -20,6 +20,10 @@ body {
 }
 /* An app, not a web page: no pull-to-refresh or bounce revealing the browser behind. */
 html { overscroll-behavior-y: none; }
+/* Desktop: the scrollbar's strip is always kept free. Otherwise the page jumps sideways by half a
+   scrollbar whenever one comes or goes: opening a sheet (which locks scrolling), or moving between
+   a long page and a short one. Phones draw scrollbars over the page, so nothing changes there. */
+html { scrollbar-gutter: stable; }
 /* Long-press on a button doesn't select its text or pop the link menu; no double-tap zoom delay. */
 button, a, .nav, .dial-dock, .day-picker { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
 /* Quick press feedback on every tappable line. */
@@ -306,8 +310,30 @@ svg { flex: none; }
 .stepper-label { font-size: 10px; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
 .block-line { margin-top: var(--space-2); border-top: 1px dashed var(--color-border); }
 .block-line .ex-name { color: var(--color-accent-2); }
-.block-body { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: var(--space-2); font-size: var(--type-sm); }
-.block-body p { margin: 0; }
+/* An open progression: a blue panel under its line, like the progression blocks in the exports. */
+.block-line.open .ex-line { border-bottom: 0; }
+.block-body { container-type: inline-size; display: flex; flex-direction: column; gap: 14px; margin-bottom: var(--space-2); padding: 16px 16px 8px; background: var(--color-accent-2-wash); border-top: 3px solid var(--color-accent-2); font-size: var(--type-sm); }
+.block-rule { margin: 0; max-width: 62ch; line-height: 1.45; color: var(--color-text-muted); }
+.block-table { width: 100%; border-collapse: collapse; }
+.block-table th { padding: 0 14px 8px 0; border-bottom: 2px solid var(--color-accent-2); text-align: left; vertical-align: bottom; font-size: 10px; font-weight: 700; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
+.block-table td { padding: 10px 14px 10px 0; border-bottom: 1px solid var(--color-border); vertical-align: top; line-height: 1.4; }
+.block-table tr:last-child td { border-bottom: 0; }
+.block-table th:last-child, .block-table td:last-child { padding-right: 0; }
+.block-table td:first-child { font-weight: 700; white-space: nowrap; }
+/* Narrow panel, many columns: one block per row. Its first value ("1–2") is the heading with its
+   column name in blue; every other value sits beside its column name. */
+@container (max-width: 520px) {
+  .block-table.stacks thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .block-table.stacks, .block-table.stacks tbody { display: block; }
+  .block-table.stacks tr { display: block; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
+  .block-table.stacks tr:first-child { padding-top: 0; }
+  .block-table.stacks tr:last-child { border-bottom: 0; }
+  .block-table.stacks td { display: grid; grid-template-columns: 7em minmax(0, 1fr); column-gap: 12px; padding: 3px 0; border: 0; white-space: normal; }
+  .block-table.stacks td::before { content: attr(data-label); padding-top: 3px; font-size: 10px; font-weight: 700; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); overflow-wrap: anywhere; }
+  .block-table.stacks td:first-child { display: block; padding-bottom: 6px; font-size: 15px; }
+  .block-table.stacks td:first-child::before { display: inline; margin-right: 8px; color: var(--color-accent-2); }
+  .block-table.stacks td:empty { display: none; }
+}
 .table-scroll { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-size: var(--type-sm); }
 .data-table th { text-align: left; font-family: var(--font-mono); font-size: 10px; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); padding: 0 var(--space-2) var(--space-1); border-bottom: 1px solid var(--color-border); }

@@ -172,6 +172,7 @@ function TrainProgramme({ stored }: { stored: Programme }) {
           mode="train"
           hideHeader
           changed={changed}
+          programmeBlock={programme.progression}
           onChange={(fn) => change(mapSession(programme, session.id, fn))}
         />
       </div>

@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.9 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.10 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -61,6 +61,11 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     `store.ts` remembers each live query's last result while the app is open (`lastResults`, also
     programmes and chats) and shows it at once; listeners still update it. Train keeps a greyed
     START in place while loading and waits for the session history before choosing the day.
+  - 0.9.10 (Pieter, 2026-10-03): an open progression is a blue panel (rule, then the table) like
+    the export's; tables with more than three columns become one block per row on a narrow screen
+    (`BlockLine` in `DayList.tsx`, `.block-table.stacks`). Train also lists the programme-wide
+    progression, closed, after the day's own. Desktop: the scrollbar's strip is always reserved
+    (`scrollbar-gutter`), so the page no longer shifts when a sheet opens.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

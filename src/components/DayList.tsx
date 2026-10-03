@@ -39,9 +39,11 @@ interface DayListProps {
   mine?: Set<string>
   /** Rows changed during the running session (numbers in the accent colour). */
   changed?: Set<string>
+  /** The programme-wide progression ("How the 8 weeks build"), listed after the day's own. Read-only. */
+  programmeBlock?: ProgressionBlock | null
 }
 
-export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHeader, claude, mine, changed }: DayListProps) {
+export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHeader, claude, mine, changed, programmeBlock }: DayListProps) {
   const [openRow, setOpenRow] = useState<string | null>(null)
   const [openBlock, setOpenBlock] = useState<string | null>(null)
   const [swapFor, setSwapFor] = useState<ExerciseRow | null>(null)
@@ -143,6 +145,9 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHe
       {s.progressionBlocks.map((b) => (
         <BlockLine key={b.id} block={b} open={openBlock === b.id} onToggle={() => (edit && onEditBlock ? onEditBlock(b.id) : setOpenBlock(openBlock === b.id ? null : b.id))} />
       ))}
+      {programmeBlock && (
+        <BlockLine block={programmeBlock} fallbackTitle="Week by week" open={openBlock === programmeBlock.id} onToggle={() => setOpenBlock(openBlock === programmeBlock.id ? null : programmeBlock.id)} />
+      )}
 
       {edit && (
         <button type="button" className="text-link add-line" onClick={() => onChange?.((x) => ({ ...x, sections: [...x.sections, newSection({ title: 'New section' })] }))}>
@@ -365,23 +370,39 @@ function Stepper({ label, value, onStep, less = 'Fewer', more = 'More', canStep 
   )
 }
 
-function BlockLine({ block: b, open, onToggle }: { block: ProgressionBlock; open: boolean; onToggle: () => void }) {
+/** A table with more columns than this is laid out row by row on a narrow screen (see .block-table.stacks). */
+const MAX_COLUMNS_SIDE_BY_SIDE = 3
+
+/**
+ * A progression: one closed line (title in blue) that opens to a blue panel with the rule and the
+ * week-by-week table, the same look as in the exports. Wide tables turn into one block per row on
+ * a phone, each value beside its column name, instead of five squeezed columns.
+ */
+function BlockLine({ block: b, open, onToggle, fallbackTitle = 'Progression' }: { block: ProgressionBlock; open: boolean; onToggle: () => void; fallbackTitle?: string }) {
+  const stacks = b.columns.length > MAX_COLUMNS_SIDE_BY_SIDE
   return (
     <div className={`block-line${open ? ' open' : ''}`}>
       <button type="button" className="ex-line" onClick={onToggle} aria-expanded={open}>
-        <span className="ex-name">{b.title || 'Progression'}</span>
+        <span className="ex-name">{b.title || fallbackTitle}</span>
         <span className="ex-dots" aria-hidden="true" />
         <span className="ex-rx">{open ? '−' : '›'}</span>
       </button>
       {open && (
         <div className="block-body">
-          {b.rule && <p className="muted">{b.rule}</p>}
-          <div className="table-scroll">
-            <table className="data-table">
-              <thead><tr>{b.columns.map((c, i) => <th key={i}>{c}</th>)}</tr></thead>
-              <tbody>{b.rows.map((r, i) => <tr key={i}>{b.columns.map((_, j) => <td key={j}>{r[j] ?? ''}</td>)}</tr>)}</tbody>
+          {b.rule && <p className="block-rule">{b.rule}</p>}
+          {b.rows.length > 0 && (
+            <table className={`block-table${stacks ? ' stacks' : ''}`}>
+              <thead><tr>{b.columns.map((c, i) => <th key={i} scope="col">{c}</th>)}</tr></thead>
+              <tbody>
+                {b.rows.map((r, i) => (
+                  <tr key={i}>
+                    {/* data-label: the column name shown beside the value when the table is stacked. */}
+                    {b.columns.map((c, j) => <td key={j} data-label={c}>{r[j] ?? ''}</td>)}
+                  </tr>
+                ))}
+              </tbody>
             </table>
-          </div>
+          )}
         </div>
       )}
     </div>
