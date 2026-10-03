@@ -14,7 +14,7 @@ import { ExercisePicker } from './ExercisePicker'
 import { IconMore } from './Icons'
 import { Sheet } from './Sheet'
 import { exerciseKey, findExercise, videoUrl } from '../data/exercises'
-import { move } from '../data/programmeEdits'
+import { move, moveRowInSession } from '../data/programmeEdits'
 import { canStepReps, estimateSessionMin, isLoadSteppable, isRestSteppable, newRow, newSection, repsLabel, setReps, setSets, setsLabel, stepLoad, stepReps, stepRest, stepSets, typedLoad, typedRest } from '../data/programmeUtils'
 import type { ExerciseRow, ProgrammeSection, ProgrammeSession, ProgressionBlock } from '../data/types'
 import { splitDayTitle, stripDayPrefix } from '../util/dayTitle'
@@ -33,6 +33,8 @@ interface DayListProps {
   /** Train mode: write a quick note about an exercise. */
   /** Edit mode: open a progression table for editing. */
   onEditBlock?: (blockId: string) => void
+  /** Edit mode: ask which other day an exercise should move to (the programme sheet owns the days). */
+  onMoveRowToDay?: (row: ExerciseRow) => void
   /** Edit mode: open this day's ⋯ menu (move, duplicate, delete), which the programme sheet owns. */
   onDayMenu?: () => void
   /** Hide the day number and title (Train shows them as the page heading). */
@@ -47,7 +49,7 @@ interface DayListProps {
   programmeBlock?: ProgressionBlock | null
 }
 
-export function DayList({ session: s, index, mode, onChange, onEditBlock, onDayMenu, hideHeader, claude, mine, changed, programmeBlock }: DayListProps) {
+export function DayList({ session: s, index, mode, onChange, onEditBlock, onDayMenu, onMoveRowToDay, hideHeader, claude, mine, changed, programmeBlock }: DayListProps) {
   /** Edit: the section whose ⋯ menu is open. */
   const [sectionMenu, setSectionMenu] = useState<string | null>(null)
   const [openRow, setOpenRow] = useState<string | null>(null)
@@ -90,7 +92,7 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, onDayM
         </header>
       )}
 
-      {s.sections.map((sec) => (
+      {s.sections.map((sec, secIndex) => (
         <div key={sec.id} className="day-section">
           {edit ? (
             <>
@@ -134,10 +136,12 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, onDayM
                     mode={mode}
                     onChange={(fn) => updateRow(sec.id, r.id, fn)}
                     onSwap={() => setSwapFor(r)}
-                    onMove={(d) => updateSection(sec.id, (x) => ({ ...x, rows: move(x.rows, i, d) }))}
+                    onMove={(d) => onChange?.((x) => moveRowInSession(x, secIndex, i, d))}
+                    onMoveToDay={onMoveRowToDay ? () => onMoveRowToDay(r) : undefined}
                     onDelete={() => { setOpenRow(null); updateSection(sec.id, (x) => ({ ...x, rows: x.rows.filter((y) => y.id !== r.id) })) }}
-                    canMoveUp={i > 0}
-                    canMoveDown={i < sec.rows.length - 1}
+                    // The arrows carry an exercise over a section's edge into the next section.
+                    canMoveUp={i > 0 || secIndex > 0}
+                    canMoveDown={i < sec.rows.length - 1 || secIndex < s.sections.length - 1}
                   />
                 )}
               </div>
@@ -203,7 +207,9 @@ interface CardProps {
   mode: DayListMode
   onChange: (fn: (r: ExerciseRow) => ExerciseRow) => void
   onSwap: () => void
-  onMove: (delta: number) => void
+  onMove: (delta: 1 | -1) => void
+  /** Edit, when the programme has other days. */
+  onMoveToDay?: () => void
   onDelete: () => void
   canMoveUp: boolean
   canMoveDown: boolean
@@ -215,7 +221,7 @@ interface CardProps {
  * Edit adds what only building a programme needs: an editable alternative, the superset label,
  * moving the line up or down, and Delete. The name is changed with Swap (library or your own).
  */
-function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMoveUp, canMoveDown }: CardProps) {
+function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onMoveToDay, onDelete, canMoveUp, canMoveDown }: CardProps) {
   const ex = findExercise(r.exerciseKey ?? r.name)
   const video = r.name ? videoUrl(ex ?? { name: r.name }) : null
   const edit = mode === 'edit'
@@ -284,6 +290,8 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMov
           <MemoField row={r} onChange={onChange} />
         </div>
       )}
+
+      {edit && onMoveToDay && <button type="button" className="text-link quiet ex-move-day" onClick={onMoveToDay}>Move to another day…</button>}
 
       {/* 4 · Actions: Video and Swap on the left; the destructive one alone on the right. */}
       <div className="ex-actions">

@@ -27,6 +27,57 @@ export function mapBlock(s: ProgrammeSession, blockId: string, fn: (b: Progressi
   return { ...s, progressionBlocks: s.progressionBlocks.map((b) => (b.id === blockId ? fn(b) : b)) }
 }
 
+/**
+ * Moves an exercise one place up or down the day. At the edge of its section it crosses into the
+ * neighbouring one (end of the section above, start of the section below).
+ */
+export function moveRowInSession(s: ProgrammeSession, sectionIndex: number, rowIndex: number, delta: 1 | -1): ProgrammeSession {
+  const sec = s.sections[sectionIndex]
+  const target = rowIndex + delta
+  if (target >= 0 && target < sec.rows.length) {
+    return { ...s, sections: s.sections.map((x, k) => (k === sectionIndex ? { ...x, rows: move(x.rows, rowIndex, delta) } : x)) }
+  }
+  const other = sectionIndex + delta
+  if (other < 0 || other >= s.sections.length) return s
+  const row = sec.rows[rowIndex]
+  return {
+    ...s,
+    sections: s.sections.map((x, k) =>
+      k === sectionIndex ? { ...x, rows: x.rows.filter((r) => r.id !== row.id) } : k === other ? { ...x, rows: delta < 0 ? [...x.rows, row] : [row, ...x.rows] } : x,
+    ),
+  }
+}
+
+/**
+ * Moves an exercise to another day: into that day's section of the same name ("Main set" →
+ * "Main set") when there is one, otherwise into its last section. Returns the programme and the
+ * name of the section it landed in.
+ */
+export function moveRowToSession(p: Programme, rowId: string, targetSessionId: string): { programme: Programme; section: string } | null {
+  const from = locateRow(p, rowId)
+  const target = p.sessions.find((s) => s.id === targetSessionId)
+  if (!from || !target || from.session.id === targetSessionId) return null
+  const row = from.section.rows[from.index]
+  const name = from.section.title.trim().toLowerCase()
+  const landing = target.sections.find((x) => name && x.title.trim().toLowerCase() === name) ?? target.sections[target.sections.length - 1]
+  if (!landing) return null
+  const without = mapSession(p, from.session.id, (s) => mapSection(s, from.section.id, (x) => ({ ...x, rows: x.rows.filter((r) => r.id !== rowId) })))
+  return {
+    programme: mapSession(without, targetSessionId, (s) => mapSection(s, landing.id, (x) => ({ ...x, rows: [...x.rows, row] }))),
+    section: landing.title,
+  }
+}
+
+/** What a programme holds, to tell a delete from any other edit. */
+export function programmeCounts(p: Programme): { days: number; sections: number; exercises: number; progressions: number } {
+  return {
+    days: p.sessions.length,
+    sections: p.sessions.reduce((n, s) => n + s.sections.length, 0),
+    exercises: p.sessions.reduce((n, s) => n + s.sections.reduce((m, x) => m + x.rows.length, 0), 0),
+    progressions: p.sessions.reduce((n, s) => n + s.progressionBlocks.length, 0) + (p.progression ? 1 : 0),
+  }
+}
+
 /** One of the tables a combined progression splits into, and the day it names (if any). */
 export interface SplitPart {
   block: ProgressionBlock

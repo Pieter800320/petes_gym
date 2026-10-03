@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.13 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.14 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -81,8 +81,11 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     lives in ⋯ menus per day (move up/down, duplicate, delete) and per section (move up/down,
     delete) and names what goes with it; section length and note are editable (the note now shows
     in Train and on the programme page too); day titles wrap and drop "Day 1 —". Reached from
-    Train ("Edit programme ›") and from a link on the programme page. Step 2, not built: moving an
-    exercise across sections and days, and Undo after a delete.
+    Train ("Edit programme ›") and from a link on the programme page.
+  - 0.9.14, step 2: the card's ↑ ↓ carry an exercise over a section's edge; "Move to another
+    day…" puts it in the other day's section of the same name, else its last section
+    (`moveRowInSession`, `moveRowToSession`); after any delete in the sheet a bar offers Undo for
+    10 s or until the next edit (`ProgrammeSheet` compares `programmeCounts` before and after).
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

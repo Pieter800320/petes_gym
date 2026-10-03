@@ -10,9 +10,9 @@ import { DayList } from './DayList'
 import { Sheet } from './Sheet'
 import { toast } from './toast'
 import type { HealthIssue } from '../data/health'
-import { cloneSession, mapBlock, mapSession, move, splitBlockByColumn } from '../data/programmeEdits'
+import { cloneSession, mapBlock, mapSession, move, moveRowToSession, programmeCounts, splitBlockByColumn } from '../data/programmeEdits'
 import { newProgressionBlock, newSession, sessionRows } from '../data/programmeUtils'
-import type { Programme } from '../data/types'
+import type { ExerciseRow, Programme } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
 
 /** " and its 3 exercises": what a delete takes with it. */
@@ -37,6 +37,19 @@ interface ProgrammeSheetProps {
 
 /** A little longer than the autosave delay of the screens that host this sheet (700 ms). */
 const SAVED_AFTER_MS = 1000
+/** How long "… deleted · Undo" stays on offer. */
+const UNDO_MS = 10_000
+
+/** "Section deleted" etc. when `after` holds less than `before`; null for any other edit. */
+function deletedWhat(before: Programme, after: Programme): string | null {
+  const a = programmeCounts(before)
+  const b = programmeCounts(after)
+  if (b.days < a.days) return 'Day deleted'
+  if (b.sections < a.sections) return 'Section deleted'
+  if (b.exercises < a.exercises) return 'Exercise deleted'
+  if (b.progressions < a.progressions) return 'Progression deleted'
+  return null
+}
 
 export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChange: save, locked = false, claude, mine, issues = [], onConfirm, onDelete }: ProgrammeSheetProps) {
   const [block, setBlock] = useState<{ sessionId: string | null; blockId: string } | null>(null)
@@ -47,8 +60,19 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
   const [saveNote, setSaveNote] = useState<'' | 'Saving…' | 'Saved'>('')
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(saveTimer.current), [])
-  /** Every edit goes through here, so the "Saved" note follows it. */
+  /** The programme as it was just before the last delete, on offer for a few seconds. */
+  const [undo, setUndo] = useState<{ before: Programme; what: string } | null>(null)
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(undoTimer.current), [])
+  /** An exercise waiting for a day to move to. */
+  const [moveRow, setMoveRow] = useState<ExerciseRow | null>(null)
+  /** Every edit goes through here, so the "Saved" note and Undo follow it. */
   const onChange = (next: Programme) => {
+    // A delete can be taken back until the next edit, or until the offer times out.
+    const what = deletedWhat(p, next)
+    clearTimeout(undoTimer.current)
+    setUndo(what ? { before: p, what } : null)
+    if (what) undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS)
     save(next)
     setSaveNote('Saving…')
     clearTimeout(saveTimer.current)
@@ -102,6 +126,26 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
         </span>
       }
     >
+      {undo && (
+        <div className="undo-slot">
+          <div className="undo-bar" role="status">
+            <span>{undo.what}</span>
+            <button
+              type="button"
+              onClick={() => {
+                // Straight to save(): putting it back is not itself something to undo.
+                save(undo.before)
+                clearTimeout(undoTimer.current)
+                setUndo(null)
+                setSaveNote('Saved')
+                toast('Put back')
+              }}
+            >
+              Undo
+            </button>
+          </div>
+        </div>
+      )}
       <fieldset className="doc" disabled={locked}>
         {locked && <div className="banner">Claude is working. Editing is paused until it's done.</div>}
 
@@ -158,6 +202,7 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
               onChange={(fn) => onChange(mapSession(p, s.id, fn))}
               onEditBlock={(blockId) => setBlock({ sessionId: s.id, blockId })}
               onDayMenu={() => setDayMenu(s.id)}
+              onMoveRowToDay={p.sessions.length > 1 ? setMoveRow : undefined}
               claude={claude}
               mine={mine}
             />
@@ -217,6 +262,37 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
                 Delete day {menuIndex + 1}{exerciseCount(sessionRows(menuDay).length)}
               </ConfirmButton>
             )}
+          </div>
+        )}
+      </Sheet>
+
+      {/* Which day an exercise should move to. */}
+      <Sheet open={moveRow !== null} onClose={() => setMoveRow(null)} title={moveRow ? `Move ${moveRow.name || 'exercise'} to…` : 'Move to…'}>
+        {moveRow && (
+          <div className="lines">
+            {p.sessions.map((s, i) => {
+              const here = s.sections.some((x) => x.rows.some((r) => r.id === moveRow.id))
+              return (
+                <button
+                  type="button"
+                  key={s.id}
+                  className="line-link"
+                  disabled={here}
+                  onClick={() => {
+                    const moved = moveRowToSession(p, moveRow.id, s.id)
+                    if (!moved) return
+                    onChange(moved.programme)
+                    setMoveRow(null)
+                    toast(`Moved to day ${i + 1}${moved.section ? ` · ${moved.section}` : ''}`)
+                  }}
+                >
+                  <span className="grow">
+                    <span className="line-title">Day {i + 1} · {splitDayTitle(s.title, i).main}</span>
+                    <span className="line-meta">{here ? 'It is on this day now' : `${sessionRows(s).length} exercises`}</span>
+                  </span>
+                </button>
+              )
+            })}
           </div>
         )}
       </Sheet>

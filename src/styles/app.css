@@ -378,6 +378,11 @@ svg { flex: none; }
    Red is kept for deleting, which lives in the ⋯ menus, away from the add lines. */
 .doc .plain { border-bottom-color: var(--color-border); border-radius: 0; }
 .doc .add-line, .doc .doc-day-actions .text-link { color: var(--color-text); }
+/* "Section deleted · Undo": floats at the top of the sheet's page without pushing it down. */
+.undo-slot { position: sticky; top: 0; z-index: 3; height: 0; }
+.undo-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 48px; padding: 0 6px 0 var(--space-3); border-radius: var(--radius-md); background: var(--color-text); color: var(--color-bg); font-size: var(--type-sm); font-weight: 500; box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.5); }
+.undo-bar button { min-height: 44px; padding: 0 var(--space-3); border: 0; background: none; color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.ex-move-day { margin: -6px 0; }
 .sheet-done { display: inline-flex; align-items: center; gap: var(--space-3); }
 .sheet-done .text-link { min-height: 44px; padding: 0 0 0 var(--space-2); font-size: 15px; }
 .line-link:disabled { opacity: 0.4; }
