@@ -108,6 +108,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
         )}
         <Link to={`/create/${programme.id}`} className="btn-outline" onClick={flush}>Rework with Claude</Link>
       </div>
+      <button type="button" className="text-link" onClick={() => setEditOpen(true)}>Edit programme ›</button>
 
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title={programme.title}>
         <div className="lines">

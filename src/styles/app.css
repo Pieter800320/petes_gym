@@ -265,11 +265,21 @@ svg { flex: none; }
 .day-title h3 { font-weight: var(--display-weight); font-size: 20px; overflow-wrap: anywhere; }
 .day-extra { color: var(--color-accent); }
 .day-title p { margin: 2px 0 0; font-size: 13px; color: var(--color-text-muted); }
-.day-title-input { font-family: var(--font-display); font-size: 20px; font-weight: var(--display-weight); letter-spacing: var(--display-tracking); text-transform: var(--display-case); }
+.day-title-input { font-family: var(--font-display); font-size: 20px; font-weight: var(--display-weight); letter-spacing: var(--display-tracking); text-transform: var(--display-case); line-height: 1.15; field-sizing: content; overflow-wrap: anywhere; }
 .day-min { flex: none; font-size: 12px; color: var(--color-text-muted); }
 .day-section { display: flex; flex-direction: column; }
 .day-section .section-label { margin-top: 14px; padding-bottom: 6px; border-bottom: 1px solid var(--color-text); color: var(--color-text); font-weight: 700; }
-.day-section-edit { display: flex; align-items: center; gap: 4px; margin-top: 14px; }
+.day-section-edit { display: flex; align-items: center; gap: var(--space-2); margin-top: 14px; }
+.day-section-edit .icon-btn { flex: none; margin-right: -10px; }
+/* Name takes the row; the length is a short field at its right. (.plain sets width: 100%, hence the specificity.) */
+.day-section-edit .section-label-input { flex: 1 1 auto; width: auto; min-width: 0; margin: 0; color: var(--color-text); font-weight: 700; }
+.day-section-edit .section-duration-input { flex: 0 0 6em; width: 6em; color: var(--color-text-muted); font-weight: 500; }
+.day-section-edit .section-label-input:first-child { margin-left: -6px; }
+.section-note, .section-note-input { font-size: 13px; line-height: 1.4; color: var(--color-text-muted); }
+.section-note { margin: 6px 0 2px; }
+.section-note-input { field-sizing: content; font-family: var(--font-body); }
+.day-head .icon-btn { flex: none; align-self: flex-start; margin: -4px -10px 0 0; }
+.day-focus-input { field-sizing: content; font-family: var(--font-body); line-height: 1.4; }
 .section-label-input { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
 .add-line { padding: 10px 0; }
 
@@ -364,6 +374,13 @@ svg { flex: none; }
 .doc-details summary { cursor: pointer; padding: 6px 0; font-size: 14px; font-weight: 600; }
 .doc-day { margin-top: var(--space-4); }
 .doc-day-actions { display: flex; align-items: center; gap: var(--space-3); }
+/* Edit programme: what can be typed into is underlined, so it reads as editable; adding is in ink.
+   Red is kept for deleting, which lives in the ⋯ menus, away from the add lines. */
+.doc .plain { border-bottom-color: var(--color-border); border-radius: 0; }
+.doc .add-line, .doc .doc-day-actions .text-link { color: var(--color-text); }
+.sheet-done { display: inline-flex; align-items: center; gap: var(--space-3); }
+.sheet-done .text-link { min-height: 44px; padding: 0 0 0 var(--space-2); font-size: 15px; }
+.line-link:disabled { opacity: 0.4; }
 .issue-list { margin: 0; padding-left: 1.1em; font-size: var(--type-sm); display: flex; flex-direction: column; gap: 2px; }
 .issue-list li.warn { color: var(--color-danger); }
 .issue-list li.info { color: var(--color-text-muted); }

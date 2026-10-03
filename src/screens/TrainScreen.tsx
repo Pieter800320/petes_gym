@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { DayList } from '../components/DayList'
 import { PinnedNotes } from '../components/PinnedNotes'
+import { ProgrammeSheet } from '../components/ProgrammeSheet'
 import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { IconPause, IconPlay } from '../components/Icons'
 import { toast } from '../components/toast'
@@ -87,6 +88,8 @@ function TrainProgramme({ stored }: { stored: Programme }) {
   const index = Math.min(selected ?? (runningIndex >= 0 ? runningIndex : upNext), programme.sessions.length - 1)
   const session = programme.sessions[index]
   const swipe = useRef<{ x: number; y: number } | null>(null)
+  /** The larger edits (days, sections, progressions): the same sheet as on the programme page. */
+  const [editOpen, setEditOpen] = useState(false)
   const paused = Boolean(running?.pausedAt)
   useWakeLock(Boolean(running) && !paused)
 
@@ -192,9 +195,12 @@ function TrainProgramme({ stored }: { stored: Programme }) {
               <ConfirmButton className="btn-ghost small" armedLabel="Tap again to end it" onConfirm={() => { cancelWorkout(); toast('Earlier session ended, nothing saved') }}>End that session</ConfirmButton>
             </>
           )}
-          <Link to={`/create/${programme.id}`} className="text-link" onClick={flush}>Rework with Claude ›</Link>
+          <button type="button" className="text-link" onClick={() => setEditOpen(true)}>Edit programme ›</button>
+          <Link to={`/create/${programme.id}`} className="text-link quiet" onClick={flush}>Rework with Claude ›</Link>
         </div>
       )}
+
+      <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} clientName="You" onChange={change} />
 
       {running ? (
         <FinishDial workout={running} onFinish={finish} />

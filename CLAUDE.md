@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.12 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.13 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -74,6 +74,15 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     changed with Swap, and "+ Exercise" opens the picker. A progression with a column per
     exercise can be split into one table per column (`splitBlockByColumn`); a heading that names
     a day ("Snatch (Day 3)") puts its table on that day.
+  - 0.9.13 (Pieter, 2026-10-03), Edit programme step 1. Division of labour: Train adjusts today's
+    session; Edit programme does all of that plus structure. The sheet is titled "Edit
+    programme" with Done and a Saving…/Saved note; editable text is underlined; add lines are in
+    ink and in order (+ Exercise, + Section, progressions, + Progression for this day); deleting
+    lives in ⋯ menus per day (move up/down, duplicate, delete) and per section (move up/down,
+    delete) and names what goes with it; section length and note are editable (the note now shows
+    in Train and on the programme page too); day titles wrap and drop "Day 1 —". Reached from
+    Train ("Edit programme ›") and from a link on the programme page. Step 2, not built: moving an
+    exercise across sections and days, and Undo after a delete.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

@@ -11,11 +11,13 @@
 import { useRef, useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
 import { ExercisePicker } from './ExercisePicker'
+import { IconMore } from './Icons'
+import { Sheet } from './Sheet'
 import { exerciseKey, findExercise, videoUrl } from '../data/exercises'
 import { move } from '../data/programmeEdits'
 import { canStepReps, estimateSessionMin, isLoadSteppable, isRestSteppable, newRow, newSection, repsLabel, setReps, setSets, setsLabel, stepLoad, stepReps, stepRest, stepSets, typedLoad, typedRest } from '../data/programmeUtils'
 import type { ExerciseRow, ProgrammeSection, ProgrammeSession, ProgressionBlock } from '../data/types'
-import { splitDayTitle } from '../util/dayTitle'
+import { splitDayTitle, stripDayPrefix } from '../util/dayTitle'
 
 export type DayListMode = 'read' | 'train' | 'edit'
 
@@ -31,6 +33,8 @@ interface DayListProps {
   /** Train mode: write a quick note about an exercise. */
   /** Edit mode: open a progression table for editing. */
   onEditBlock?: (blockId: string) => void
+  /** Edit mode: open this day's ⋯ menu (move, duplicate, delete), which the programme sheet owns. */
+  onDayMenu?: () => void
   /** Hide the day number and title (Train shows them as the page heading). */
   hideHeader?: boolean
   /** Rows Claude changed in its last reply (highlighted). */
@@ -43,7 +47,9 @@ interface DayListProps {
   programmeBlock?: ProgressionBlock | null
 }
 
-export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHeader, claude, mine, changed, programmeBlock }: DayListProps) {
+export function DayList({ session: s, index, mode, onChange, onEditBlock, onDayMenu, hideHeader, claude, mine, changed, programmeBlock }: DayListProps) {
+  /** Edit: the section whose ⋯ menu is open. */
+  const [sectionMenu, setSectionMenu] = useState<string | null>(null)
   const [openRow, setOpenRow] = useState<string | null>(null)
   const [openBlock, setOpenBlock] = useState<string | null>(null)
   const [swapFor, setSwapFor] = useState<ExerciseRow | null>(null)
@@ -67,8 +73,9 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHe
           <span className="day-num">{String(index + 1).padStart(2, '0')}</span>
           {edit ? (
             <div className="day-title">
-              <input className="plain day-title-input" value={s.title} placeholder={`Day ${index + 1}`} onChange={(e) => onChange?.((x) => ({ ...x, title: e.target.value }))} aria-label="Day title" />
-              <input className="plain plain-muted" value={s.focus} placeholder="Focus (one line)" onChange={(e) => onChange?.((x) => ({ ...x, focus: e.target.value }))} aria-label="Day focus" />
+              {/* The red number already says which day it is, so "Day 1 — " is not shown again; long titles wrap. */}
+              <textarea className="plain day-title-input" rows={1} value={stripDayPrefix(s.title)} placeholder={`Name of day ${index + 1}`} onChange={(e) => onChange?.((x) => ({ ...x, title: e.target.value.replace(/\n/g, ' ') }))} aria-label="Day title" />
+              <textarea className="plain plain-muted day-focus-input" rows={1} value={s.focus} placeholder="Focus of the day (one line)" onChange={(e) => onChange?.((x) => ({ ...x, focus: e.target.value.replace(/\n/g, ' ') }))} aria-label="Day focus" />
             </div>
           ) : (
             <div className="day-title">
@@ -77,18 +84,25 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHe
             </div>
           )}
           {minutes > 0 && <span className="day-min mono">~{minutes} min</span>}
+          {edit && onDayMenu && (
+            <button type="button" className="icon-btn" aria-label={`Day ${index + 1}: move, duplicate or delete`} onClick={onDayMenu}><IconMore /></button>
+          )}
         </header>
       )}
 
       {s.sections.map((sec) => (
         <div key={sec.id} className="day-section">
           {edit ? (
-            <div className="day-section-edit">
-              <input className="plain section-label-input" value={sec.title} placeholder="Section (optional)" onChange={(e) => updateSection(sec.id, (x) => ({ ...x, title: e.target.value }))} aria-label="Section title" />
-              {s.sections.length > 1 && (
-                <ConfirmButton className="btn-ghost danger small" label="Delete section" onConfirm={() => onChange?.((x) => ({ ...x, sections: x.sections.filter((y) => y.id !== sec.id) }))}>✕</ConfirmButton>
-              )}
-            </div>
+            <>
+              <div className="day-section-edit">
+                <input className="plain section-label-input" value={sec.title} placeholder="Section name (e.g. Warm-up)" onChange={(e) => updateSection(sec.id, (x) => ({ ...x, title: e.target.value }))} aria-label="Section name" />
+                <input className="plain section-label-input section-duration-input" value={sec.duration} placeholder="15 min" onChange={(e) => updateSection(sec.id, (x) => ({ ...x, duration: e.target.value }))} aria-label="Section length" />
+                {s.sections.length > 1 && (
+                  <button type="button" className="icon-btn" aria-label={`${sec.title || 'Section'}: move or delete`} onClick={() => setSectionMenu(sec.id)}><IconMore /></button>
+                )}
+              </div>
+              <textarea className="plain section-note-input" rows={1} value={sec.note} placeholder="Note for this section (the client sees it)" onChange={(e) => updateSection(sec.id, (x) => ({ ...x, note: e.target.value }))} aria-label="Section note" />
+            </>
           ) : train && sec.title ? (
             <button type="button" className="section-label section-toggle" onClick={() => setAddOpen(addOpen === sec.id ? null : sec.id)} aria-expanded={addOpen === sec.id}>
               {sec.title}{sec.duration ? ` · ${sec.duration}` : ''}
@@ -97,6 +111,8 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHe
           ) : (
             sec.title && <div className="section-label">{sec.title}{sec.duration ? ` · ${sec.duration}` : ''}</div>
           )}
+          {/* The section's note, as the client reads it in the export. */}
+          {!edit && sec.note && <p className="section-note">{sec.note}</p>}
 
           {sec.rows.map((r, i) => {
             const open = openRow === r.id
@@ -142,6 +158,12 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHe
         </div>
       ))}
 
+      {edit && (
+        <button type="button" className="text-link add-line" onClick={() => onChange?.((x) => ({ ...x, sections: [...x.sections, newSection()] }))}>
+          + Section
+        </button>
+      )}
+
       {s.progressionBlocks.map((b) => (
         <BlockLine key={b.id} block={b} open={openBlock === b.id} onToggle={() => (edit && onEditBlock ? onEditBlock(b.id) : setOpenBlock(openBlock === b.id ? null : b.id))} />
       ))}
@@ -149,11 +171,7 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHe
         <BlockLine block={programmeBlock} fallbackTitle="Week by week" open={openBlock === programmeBlock.id} onToggle={() => setOpenBlock(openBlock === programmeBlock.id ? null : programmeBlock.id)} />
       )}
 
-      {edit && (
-        <button type="button" className="text-link add-line" onClick={() => onChange?.((x) => ({ ...x, sections: [...x.sections, newSection({ title: 'New section' })] }))}>
-          + Section
-        </button>
-      )}
+      {edit && <SectionMenu session={s} sectionId={sectionMenu} onClose={() => setSectionMenu(null)} onChange={(fn) => onChange?.(fn)} />}
 
       <ExercisePicker
         open={swapFor !== null || addTo !== null}
@@ -388,5 +406,35 @@ function BlockLine({ block: b, open, onToggle, fallbackTitle = 'Progression' }: 
         </div>
       )}
     </div>
+  )
+}
+
+/** A section's ⋯ menu in Edit: where it sits in the day, and deleting it with its exercises. */
+function SectionMenu({ session: s, sectionId, onClose, onChange }: { session: ProgrammeSession; sectionId: string | null; onClose: () => void; onChange: (fn: (s: ProgrammeSession) => ProgrammeSession) => void }) {
+  const i = s.sections.findIndex((x) => x.id === sectionId)
+  const sec = i >= 0 ? s.sections[i] : null
+  const count = sec?.rows.length ?? 0
+  return (
+    <Sheet open={sec !== null} onClose={onClose} title={sec?.title || 'Section'}>
+      {sec && (
+        <div className="lines">
+          <button type="button" className="line-link" disabled={i === 0} onClick={() => onChange((x) => ({ ...x, sections: move(x.sections, i, -1) }))}>
+            <span className="grow"><span className="line-title">Move up</span><span className="line-meta">{i > 0 ? `Above ${s.sections[i - 1].title || 'the section before it'}` : 'Already first'}</span></span>
+          </button>
+          <button type="button" className="line-link" disabled={i === s.sections.length - 1} onClick={() => onChange((x) => ({ ...x, sections: move(x.sections, i, 1) }))}>
+            <span className="grow"><span className="line-title">Move down</span><span className="line-meta">{i < s.sections.length - 1 ? `Below ${s.sections[i + 1].title || 'the section after it'}` : 'Already last'}</span></span>
+          </button>
+          <ConfirmButton
+            className="danger-link"
+            onConfirm={() => {
+              onChange((x) => ({ ...x, sections: x.sections.filter((y) => y.id !== sec.id) }))
+              onClose()
+            }}
+          >
+            Delete section{count ? ` and its ${count} exercise${count === 1 ? '' : 's'}` : ''}
+          </ConfirmButton>
+        </div>
+      )}
+    </Sheet>
   )
 }

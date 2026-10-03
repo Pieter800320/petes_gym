@@ -3,17 +3,20 @@
  * Every line can be edited in place (tap it). Used by Create (the Programme bar) and the
  * programme page (Edit programme).
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BlockSheet } from './BlockSheet'
 import { ConfirmButton } from './ConfirmButton'
 import { DayList } from './DayList'
 import { Sheet } from './Sheet'
 import { toast } from './toast'
 import type { HealthIssue } from '../data/health'
-import { mapBlock, mapSession, splitBlockByColumn } from '../data/programmeEdits'
-import { newProgressionBlock, newSession } from '../data/programmeUtils'
+import { cloneSession, mapBlock, mapSession, move, splitBlockByColumn } from '../data/programmeEdits'
+import { newProgressionBlock, newSession, sessionRows } from '../data/programmeUtils'
 import type { Programme } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
+
+/** " and its 3 exercises": what a delete takes with it. */
+const exerciseCount = (n: number) => (n ? ` and its ${n} exercise${n === 1 ? '' : 's'}` : '')
 
 interface ProgrammeSheetProps {
   open: boolean
@@ -32,10 +35,28 @@ interface ProgrammeSheetProps {
   onDelete?: () => void
 }
 
-export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChange, locked = false, claude, mine, issues = [], onConfirm, onDelete }: ProgrammeSheetProps) {
+/** A little longer than the autosave delay of the screens that host this sheet (700 ms). */
+const SAVED_AFTER_MS = 1000
+
+export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChange: save, locked = false, claude, mine, issues = [], onConfirm, onDelete }: ProgrammeSheetProps) {
   const [block, setBlock] = useState<{ sessionId: string | null; blockId: string } | null>(null)
   const [showIssues, setShowIssues] = useState(false)
+  /** The day whose ⋯ menu is open. */
+  const [dayMenu, setDayMenu] = useState<string | null>(null)
+  /** Shown beside Done after an edit: changes save by themselves, this says so. */
+  const [saveNote, setSaveNote] = useState<'' | 'Saving…' | 'Saved'>('')
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(saveTimer.current), [])
+  /** Every edit goes through here, so the "Saved" note follows it. */
+  const onChange = (next: Programme) => {
+    save(next)
+    setSaveNote('Saving…')
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => setSaveNote('Saved'), SAVED_AFTER_MS)
+  }
   const set = <K extends keyof Programme>(k: K, v: Programme[K]) => onChange({ ...p, [k]: v })
+  const menuIndex = p.sessions.findIndex((s) => s.id === dayMenu)
+  const menuDay = menuIndex >= 0 ? p.sessions[menuIndex] : null
   const blockData = block ? (block.sessionId ? p.sessions.find((s) => s.id === block.sessionId)?.progressionBlocks.find((b) => b.id === block.blockId) : p.progression) ?? null : null
   /** Moves the open progression to another day, or to the programme as a whole (null). */
   function moveBlock(target: string | null) {
@@ -68,7 +89,19 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
   const eyebrow = [clientName, p.durationWeeks ? `${p.durationWeeks}-week training plan` : 'Training plan'].filter(Boolean).join(' · ')
 
   return (
-    <Sheet open={open} onClose={onClose} title="Programme" tall paper>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Edit programme"
+      tall
+      paper
+      action={
+        <span className="sheet-done">
+          {saveNote && <span className="muted small" role="status">{saveNote}</span>}
+          <button type="button" className="text-link" onClick={onClose}>Done</button>
+        </span>
+      }
+    >
       <fieldset className="doc" disabled={locked}>
         {locked && <div className="banner">Claude is working. Editing is paused until it's done.</div>}
 
@@ -98,7 +131,7 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
                 } else setBlock({ sessionId: null, blockId: p.progression.id })
               }}
             >
-              {p.progression ? 'Week by week' : '+ Week by week'}
+              {p.progression ? 'Progression for the whole programme' : '+ Progression for the whole programme'}
             </button>
           </div>
           {showIssues && <ul className="issue-list">{issues.map((i, k) => <li key={k} className={i.level}>{i.text}</li>)}</ul>}
@@ -124,16 +157,14 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
               mode="edit"
               onChange={(fn) => onChange(mapSession(p, s.id, fn))}
               onEditBlock={(blockId) => setBlock({ sessionId: s.id, blockId })}
+              onDayMenu={() => setDayMenu(s.id)}
               claude={claude}
               mine={mine}
             />
             <div className="doc-day-actions">
               <button type="button" className="text-link" onClick={() => { const b = newProgressionBlock({ title: 'Progression' }); onChange(mapSession(p, s.id, (x) => ({ ...x, progressionBlocks: [...x.progressionBlocks, b] }))); setBlock({ sessionId: s.id, blockId: b.id }) }}>
-                + Progression table
+                + Progression for this day
               </button>
-              {p.sessions.length > 1 && (
-                <ConfirmButton className="danger-link" onConfirm={() => onChange({ ...p, sessions: p.sessions.filter((x) => x.id !== s.id) })}>Delete day</ConfirmButton>
-              )}
             </div>
           </div>
         ))}
@@ -152,6 +183,43 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
           {onDelete && <ConfirmButton className="danger-link center" onConfirm={onDelete}>Delete draft</ConfirmButton>}
         </div>
       )}
+
+      {/* A day's ⋯ menu: where it sits, a copy of it, and deleting it (kept away from the add lines). */}
+      <Sheet open={menuDay !== null} onClose={() => setDayMenu(null)} title={menuDay ? `Day ${menuIndex + 1} · ${splitDayTitle(menuDay.title, menuIndex).main}` : 'Day'}>
+        {menuDay && (
+          <div className="lines">
+            <button type="button" className="line-link" disabled={menuIndex === 0} onClick={() => onChange({ ...p, sessions: move(p.sessions, menuIndex, -1) })}>
+              <span className="grow"><span className="line-title">Move up</span><span className="line-meta">{menuIndex === 0 ? 'Already first' : `Becomes day ${menuIndex}`}</span></span>
+            </button>
+            <button type="button" className="line-link" disabled={menuIndex === p.sessions.length - 1} onClick={() => onChange({ ...p, sessions: move(p.sessions, menuIndex, 1) })}>
+              <span className="grow"><span className="line-title">Move down</span><span className="line-meta">{menuIndex === p.sessions.length - 1 ? 'Already last' : `Becomes day ${menuIndex + 2}`}</span></span>
+            </button>
+            <button
+              type="button"
+              className="line-link"
+              onClick={() => {
+                onChange({ ...p, sessions: [...p.sessions.slice(0, menuIndex + 1), cloneSession(menuDay), ...p.sessions.slice(menuIndex + 1)] })
+                setDayMenu(null)
+                toast(`Day ${menuIndex + 1} copied as day ${menuIndex + 2}`)
+              }}
+            >
+              <span className="grow"><span className="line-title">Duplicate</span><span className="line-meta">A copy right after it</span></span>
+            </button>
+            {p.sessions.length > 1 && (
+              <ConfirmButton
+                className="danger-link"
+                onConfirm={() => {
+                  onChange({ ...p, sessions: p.sessions.filter((x) => x.id !== menuDay.id) })
+                  setDayMenu(null)
+                  toast(`Day ${menuIndex + 1} deleted`)
+                }}
+              >
+                Delete day {menuIndex + 1}{exerciseCount(sessionRows(menuDay).length)}
+              </ConfirmButton>
+            )}
+          </div>
+        )}
+      </Sheet>
 
       <BlockSheet
         block={blockData}
