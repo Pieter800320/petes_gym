@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.22 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.23 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -139,6 +139,12 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     week, session length, where they train, injuries and a six-question yes/no health screen are
     required; a yes asks for details, and "at home" asks for the equipment there (`showIf`). Days
     and session length are single choices; "No preference" stands alone. German uses "du".
+  - 0.9.23 (Pieter, 2026-10-03): DSGVO. The questionnaire ends with a framed explicit consent
+    (Art. 9(2)(a), Art. 7) and a "Privacy notice ›" link to the full Art. 13 notice in a sheet, EN/DE,
+    all in `data/privacy.ts`. The time, notice version and language of each consent travel with the
+    answers (`_consent`) and end up as the last line of the profile's questionnaire text. Under 16
+    cannot send. **`CONTROLLER` in privacy.ts (Pieter's name, address, email) must be filled in
+    before the form goes to clients.** Not legal advice; Pieter should have the text checked.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -167,7 +173,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   NOT tested against the real API (no credits); it follows translate.ts's pattern.
   0.9.21: send link → fill in → new answers → profile, for an existing and a new client, link
   reuse, dead link, cancel (34 checks) on the in-memory backend. 0.9.22: the new form in German
-  and English, dependent questions, required answers, English profile from German answers (36). The database rules for invites are
+  and English, dependent questions, required answers, English profile from German answers (36).
+  0.9.23: consent box, notice in both languages, age limit, proof of consent in the profile (9). The database rules for invites are
   NOT tested (no emulator on this PC) and nothing was run against the real Firestore.
   0.9.11: moving a progression between days and to/from "every day" checked in the app (15
   checks). The new wording in Claude's instructions is NOT tested against the real API (no credits).
@@ -202,6 +209,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   rules let a link holder `get` one unanswered invite and set its `answers`/`answeredAt` once, nothing
   more. `submitAnswers` is the one awaited write (the client must know it arrived). A change to the
   rules is live only after Pieter publishes `firestore.rules` in the console.
+- **Privacy texts must stay true** (`data/privacy.ts`). Whenever client data starts going somewhere
+  new (another provider, another Claude feature, analytics), or the storage period changes, update
+  the notice and the consent and set `PRIVACY_VERSION` to the new date.
 - **Avoid composite indexes.** Don't combine `where()` with `orderBy()` on another field; filter in
   Firestore, sort on the device (see `useNotes`).
 - **The Anthropic API key never leaves the device.** It lives in localStorage (`src/settings.ts`).

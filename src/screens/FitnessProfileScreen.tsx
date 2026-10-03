@@ -4,8 +4,10 @@
  * turn up in Pete's app under Clients.
  */
 import { useEffect, useState } from 'react'
-import { NONE, SECTIONS, UI, chosenOptions, isVisible, missingRequired, type Answer, type Answers, type Lang, type Question } from '../data/fitnessProfile'
+import { Sheet } from '../components/Sheet'
+import { CONSENT_KEY, NONE, SECTIONS, UI, chosenOptions, isVisible, missingRequired, type Answer, type Answers, type Lang, type Question } from '../data/fitnessProfile'
 import { readInvite, submitAnswers } from '../data/invites'
+import { CONSENT, MIN_AGE, consentRecord, privacyNotice } from '../data/privacy'
 
 /** Answers typed so far are kept on the device, so a reload or a phone call doesn't lose them. */
 const draftKey = (token: string) => `pg_fit_${token}`
@@ -41,6 +43,7 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
   const [consent, setConsent] = useState(false)
   const [sending, setSending] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [noticeOpen, setNoticeOpen] = useState(false)
   const t = UI[lang]
 
   useEffect(() => {
@@ -78,6 +81,8 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
 
   const set = (id: string, value: Answer) => setAnswers((a) => ({ ...a, [id]: value }))
   const missing = missingRequired(answers, lang)
+  // Below this age a parent has to consent, which a link can't establish.
+  const tooYoung = Number.parseInt(String(answers.age ?? ''), 10) < MIN_AGE
 
   async function send() {
     setFailed(false)
@@ -85,7 +90,9 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
     try {
       // Answers to questions that are no longer shown (a "yes" changed back to "no") stay behind.
       const visible = new Set(SECTIONS.flatMap((s) => s.questions).filter((q) => isVisible(q, answers)).map((q) => q.id))
-      await submitAnswers(uid, token, Object.fromEntries(Object.entries(answers).filter(([id]) => visible.has(id))))
+      const kept = Object.fromEntries(Object.entries(answers).filter(([id]) => visible.has(id)))
+      // Proof of consent (Art. 7(1) DSGVO): when, to which wording, in which language.
+      await submitAnswers(uid, token, { ...kept, [CONSENT_KEY]: consentRecord(lang, Date.now()) })
       try {
         localStorage.removeItem(draftKey(token))
       } catch {
@@ -143,16 +150,31 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
       ))}
 
       <section className="fit-section">
-        <label className="fit-consent">
-          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-          <span>{t.consent}</span>
-        </label>
+        <div className="fit-consent-box">
+          <label className="fit-consent">
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+            <span>{CONSENT[lang]}</span>
+          </label>
+          <button type="button" className="text-link" onClick={() => setNoticeOpen(true)}>{t.privacy} ›</button>
+        </div>
+        {tooYoung && <div className="banner error">{t.under(MIN_AGE)}</div>}
         {failed && <div className="banner error">{t.sendError}</div>}
-        <button type="button" className="btn-cta btn-block" disabled={sending || !consent || missing.length > 0} onClick={send}>
+        <button type="button" className="btn-cta btn-block" disabled={sending || !consent || tooYoung || missing.length > 0} onClick={send}>
           {sending ? t.sending : t.send}
         </button>
         {missing.length > 0 && <p className="muted small">{t.needed}: {missing.join(', ')}.</p>}
       </section>
+
+      <Sheet open={noticeOpen} onClose={() => setNoticeOpen(false)} title={t.privacy} tall>
+        <div className="fit-notice" lang={lang}>
+          {privacyNotice(lang).map((s) => (
+            <section key={s.title}>
+              <h3 className="label">{s.title}</h3>
+              {s.paragraphs.filter(Boolean).map((text) => <p key={text} className="prose">{text}</p>)}
+            </section>
+          ))}
+        </div>
+      </Sheet>
     </div>
   )
 }

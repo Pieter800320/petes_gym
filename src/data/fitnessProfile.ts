@@ -10,6 +10,9 @@ import type { ParsedProfile } from '../claude/importProfiles'
 export type Lang = 'en' | 'de'
 type L = Record<Lang, string>
 
+/** Where the proof of consent travels with the answers (see privacy.ts); not a question. */
+export const CONSENT_KEY = '_consent'
+
 /** A typed answer, one chosen option id, or the chosen ids of a "choose all" question. */
 export type Answer = string | string[]
 export type Answers = Record<string, Answer>
@@ -164,7 +167,7 @@ export const SECTIONS: Section[] = [
 
 /** Everything the page says besides the questions. */
 export const UI: Record<Lang, {
-  eyebrow: string; hello: (firstName: string) => string; intro: string; chooseAll: string; consent: string; send: string; sending: string
+  eyebrow: string; hello: (firstName: string) => string; intro: string; chooseAll: string; privacy: string; under: (age: number) => string; send: string; sending: string
   needed: string; sendError: string; loading: string; thanksTitle: string; thanksText: string; goneTitle: string; goneText: string
 }> = {
   en: {
@@ -172,7 +175,8 @@ export const UI: Record<Lang, {
     hello: (n) => (n ? `Hi ${n}, my name is Pieter!` : 'Hi, my name is Pieter!'),
     intro: 'This short questionnaire takes about 5 minutes. It helps me understand your goals, your routine and your limits, so I can design the right training programme for you. Please answer honestly; there are no right or wrong answers.',
     chooseAll: 'Choose all that apply.',
-    consent: 'I agree that Pieter stores these answers, including what I wrote about my health, to design my training programme. I can ask him to delete them at any time.',
+    privacy: 'Privacy notice',
+    under: (n) => `This questionnaire is for people aged ${n} and over. If you are younger, please ask a parent to contact Pieter.`,
     send: 'Send to Pieter',
     sending: 'Sending…',
     needed: 'Still needed',
@@ -188,7 +192,8 @@ export const UI: Record<Lang, {
     hello: (n) => (n ? `Hallo ${n}, ich bin Pieter!` : 'Hallo, ich bin Pieter!'),
     intro: 'Dieser kurze Fragebogen dauert etwa 5 Minuten. Er hilft mir, deine Ziele, deinen Alltag und deine Grenzen zu verstehen, damit ich das passende Trainingsprogramm für dich erstellen kann. Bitte antworte ehrlich; es gibt keine richtigen oder falschen Antworten.',
     chooseAll: 'Wähle alles, was zutrifft.',
-    consent: 'Ich bin damit einverstanden, dass Pieter diese Antworten, auch meine Angaben zur Gesundheit, speichert, um mein Trainingsprogramm zu erstellen. Ich kann ihn jederzeit bitten, sie zu löschen.',
+    privacy: 'Datenschutzhinweise',
+    under: (n) => `Dieser Fragebogen richtet sich an Personen ab ${n} Jahren. Wenn du jünger bist, bitte deine Eltern, sich bei Pieter zu melden.`,
     send: 'An Pieter senden',
     sending: 'Wird gesendet…',
     needed: 'Es fehlt noch',
@@ -286,6 +291,6 @@ export function answersToProfile(a: Answers, answeredAt: number): ParsedProfile 
     equipment,
     background,
     success_markers: '',
-    questionnaire: ALL_QUESTIONS.filter((q) => isVisible(q, a) && isAnswered(q, a)).map((q) => `${q.label.en}${/[?.)]$/.test(q.label.en) ? '' : ':'} ${q.options ? labels(q.id).join(', ') : typed(a, q.id)}`).join('\n'),
+    questionnaire: [...ALL_QUESTIONS.filter((q) => isVisible(q, a) && isAnswered(q, a)).map((q) => `${q.label.en}${/[?.)]$/.test(q.label.en) ? '' : ':'} ${q.options ? labels(q.id).join(', ') : typed(a, q.id)}`), line('Consent given', typed(a, CONSENT_KEY))].filter(Boolean).join('\n'),
   }
 }

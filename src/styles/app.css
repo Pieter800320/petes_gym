@@ -510,6 +510,13 @@ svg { flex: none; }
 .fit-lang button { min-height: 48px; padding: 0 10px; border: 0; background: none; color: var(--color-text-muted); font-size: 14px; }
 .fit-lang button[aria-pressed="true"] { color: var(--color-text); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
 .fit-option[aria-pressed="true"] { border-color: var(--color-text); background: var(--color-text); color: var(--color-bg); }
+/* The consent stands apart from the questions (Art. 7(2) DSGVO). */
+.fit-consent-box { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 2px solid var(--color-text); }
+.fit-consent-box .text-link { margin-left: 34px; }
+.fit-notice { display: flex; flex-direction: column; gap: var(--space-4); }
+.fit-notice section { display: flex; flex-direction: column; gap: var(--space-2); }
+.fit-notice h3 { margin: 0; }
+.fit-notice .prose { font-size: 15px; line-height: 1.5; }
 .fit-consent { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; line-height: 1.45; }
 .fit-consent input { flex: none; width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--color-accent); }
 .answers-line { border-left: 2px solid var(--color-accent); padding-left: 12px; }
