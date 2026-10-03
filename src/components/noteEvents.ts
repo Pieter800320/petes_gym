@@ -9,6 +9,17 @@ export interface NoteRequest {
 }
 
 const EVENT = 'pg:open-note'
+const SETTINGS_EVENT = 'pg:open-settings'
+
+/** The gear in the top bar of the three tabs asks the shell (which owns the one SettingsSheet) to open it. */
+export function openSettings() {
+  window.dispatchEvent(new Event(SETTINGS_EVENT))
+}
+
+export function onOpenSettings(handler: () => void): () => void {
+  window.addEventListener(SETTINGS_EVENT, handler)
+  return () => window.removeEventListener(SETTINGS_EVENT, handler)
+}
 
 export function openNote(request: NoteRequest = {}) {
   window.dispatchEvent(new CustomEvent<NoteRequest>(EVENT, { detail: request }))

@@ -3,7 +3,8 @@ import { NavLink, Navigate, Route, Routes, useLocation, useMatch, useNavigationT
 import { useAuth } from './auth/useAuth'
 import { isFirebaseConfigured } from './firebase'
 import { NoteSheet } from './components/NoteSheet'
-import { onOpenNote, type NoteRequest } from './components/noteEvents'
+import { onOpenNote, onOpenSettings, type NoteRequest } from './components/noteEvents'
+import { SettingsSheet } from './components/SettingsSheet'
 import { Snackbar } from './components/Snackbar'
 import { RAIL_ACTION_ID } from './components/TopBar'
 import { UpdateBanner } from './components/UpdateBanner'
@@ -71,7 +72,9 @@ function Shell() {
   const { data: openProgramme } = useProgramme(createMatch?.params.id ?? programmeMatch?.params.id)
   const pageClient = clientMatch?.params.id ?? openProgramme?.clientId ?? null
 
+  const [settingsOpen, setSettingsOpen] = useState(false)
   useEffect(() => onOpenNote(setNote), [])
+  useEffect(() => onOpenSettings(() => setSettingsOpen(true)), [])
   const { user } = useAuth()
   // Every Claude response adds its cost to the ledger (Settings shows the totals).
   useEffect(() => {
@@ -122,6 +125,7 @@ function Shell() {
         defaultClientId={note?.clientId !== undefined ? note.clientId : pageClient}
         initialText={note?.text ?? ''}
       />
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <Snackbar />
       <UpdateBanner />
       {/* Library names for every exercise-name field (autocomplete). */}

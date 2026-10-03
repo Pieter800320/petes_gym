@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
-import { IconBack, IconPen } from './Icons'
-import { openNote } from './noteEvents'
+import { IconBack, IconPen, IconSettings } from './Icons'
+import { openNote, openSettings } from './noteEvents'
 import { canGoBack, previousIs } from '../util/navHistory'
 
 interface TopBarProps {
@@ -16,7 +16,7 @@ interface TopBarProps {
   noteClientId?: string | null
 }
 
-/** Every screen's top line: context on the left, the note pen always in the same top-right spot. */
+/** Every screen's top line: context on the left, the note pen always in the same top-right spot (the gear beside it on the three tabs). */
 export function TopBar({ overline, back, actions, noteClientId }: TopBarProps) {
   const navigate = useNavigate()
   // The arrow goes to the previous screen, wherever that was; `back.to` is only where it leads when
@@ -47,6 +47,8 @@ export function TopBar({ overline, back, actions, noteClientId }: TopBarProps) {
       )}
       <span className="topbar-actions">
         {actions}
+        {/* Settings: on the three tabs' own pages (no back arrow), always in this spot. */}
+        {!back && <button type="button" className="icon-btn" aria-label="Settings" onClick={openSettings}><IconSettings /></button>}
         <button type="button" className="icon-btn" aria-label="Quick note" onClick={() => openNote(noteClientId === undefined ? {} : { clientId: noteClientId })}>
           <IconPen />
         </button>

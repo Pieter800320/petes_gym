@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.17 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.18 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -106,6 +106,11 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     Edit programme, the card on a client's page) now follow the theme: dark in dark mode
     (`--paper-*` in tokens.css); exports and Preview stay white. The read-only exercise card on
     the programme page shows Cue / Alternative / Rest as labelled lines and a red "▶ Video".
+  - 0.9.18 (Pieter, 2026-10-03): Settings opens from a gear in the top bar of the three tabs
+    (beside the note pen; `openSettings()` in noteEvents.ts, the shell owns the one
+    SettingsSheet); it is no longer on the You page. Settings → Download backup saves one JSON
+    file with every collection (`readAllData` in store.ts); the API key is never in it. There is
+    no restore in the app yet.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

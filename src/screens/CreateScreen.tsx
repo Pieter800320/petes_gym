@@ -79,7 +79,7 @@ function CreateHome() {
       <TopBar overline="WITH CLAUDE" />
       <BigTitle text="Create" />
 
-      {!getApiKey() && <p className="lead">Add your Anthropic API key first: Clients → You → Settings.</p>}
+      {!getApiKey() && <p className="lead">Add your Anthropic API key first: Settings (the gear at the top right).</p>}
 
       <div className="section-label">In progress</div>
       <div className="lines">

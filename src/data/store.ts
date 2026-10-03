@@ -356,6 +356,25 @@ export function purgeProgramme(uid: string, id: string) {
   batch.commit().catch(reportWriteError)
 }
 
+// ── Backup ───────────────────────────────────────────────────────────
+
+/** Every collection kept under the account. */
+const BACKUP_COLLECTIONS = ['clients', 'programmes', 'notes', 'workouts', 'chats', 'meta'] as const
+
+/**
+ * Everything stored for this account, exactly as it is in the database: { collection: { id: document } }.
+ * Read from the server when online, otherwise from what the device has stored. The Anthropic API key
+ * is not part of it: it never leaves the device's own settings.
+ */
+export async function readAllData(uid: string): Promise<Record<string, Record<string, unknown>>> {
+  const out: Record<string, Record<string, unknown>> = {}
+  for (const name of BACKUP_COLLECTIONS) {
+    const snap = await getDocs(userCollection(uid, name))
+    out[name] = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))
+  }
+  return out
+}
+
 // ── Claude spending ──────────────────────────────────────────────────
 //
 // One document, users/{uid}/meta/costs: { "2026-09": { create: 1.23, translate: 0.04, import: 0.10 } }.

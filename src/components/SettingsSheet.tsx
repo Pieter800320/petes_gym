@@ -6,7 +6,9 @@ import { useAuth } from '../auth/useAuth'
 import { getApiKey, getHaptics, setApiKey, setHaptics, useTheme, type ThemeSetting } from '../settings'
 import { canVibrate, haptic } from '../haptics'
 import { formatUsd } from '../claude/client'
-import { useCostLedger, type CostMonth } from '../data/store'
+import { readAllData, useCostLedger, type CostMonth } from '../data/store'
+import { download } from '../export/share'
+import { toast } from './toast'
 
 const COST_LABELS = { create: 'Create', translate: 'German exports', import: 'Imports' } as const
 
@@ -48,6 +50,26 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
   const [showKey, setShowKey] = useState(false)
   const [playbookOpen, setPlaybookOpen] = useState(false)
   const costs = useCostLedger()
+  const [backingUp, setBackingUp] = useState(false)
+
+  /** One file with everything in the app, to keep somewhere safe. */
+  async function backup() {
+    if (!user) return
+    setBackingUp(true)
+    try {
+      const data = await readAllData(user.uid)
+      const day = new Date().toISOString().slice(0, 10)
+      const body = JSON.stringify({ app: "Pete's Gym", version: __APP_VERSION__, exportedAt: new Date().toISOString(), account: user.email, data }, null, 1)
+      download(new File([body], `petes-gym-backup-${day}.json`, { type: 'application/json' }))
+      const count = (name: string) => Object.keys(data[name] ?? {}).length
+      toast(`Backup saved: ${count('clients')} clients, ${count('programmes')} programmes`)
+    } catch (err) {
+      console.error(err)
+      toast('Could not make the backup. Try again.')
+    } finally {
+      setBackingUp(false)
+    }
+  }
 
   return (
     <div className="form">
@@ -139,6 +161,16 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
             </div>
           </button>
         </div>
+      </div>
+
+      <div className="field">
+        <span className="label">Backup</span>
+        <button type="button" className="btn-acc" style={{ alignSelf: 'flex-start' }} disabled={backingUp} onClick={backup}>
+          {backingUp ? 'Collecting…' : 'Download backup'}
+        </button>
+        <span className="muted" style={{ fontSize: 'var(--type-sm)' }}>
+          One file with everything: clients, programmes, notes, sessions, Claude chats and your Playbook. Keep it somewhere safe (Drive, email to yourself). Your Anthropic key is not in it.
+        </span>
       </div>
 
       <div className="field">

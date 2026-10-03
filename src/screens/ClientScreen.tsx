@@ -3,10 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ClientSheet } from '../components/ClientSheet'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { ExportSheet } from '../components/ExportSheet'
-import { IconChevronRight, IconMore } from '../components/Icons'
+import { IconMore } from '../components/Icons'
 import { NoteSheet } from '../components/NoteSheet'
 import { PinnedNotes } from '../components/PinnedNotes'
-import { SettingsSheet } from '../components/SettingsSheet'
 import { Sheet } from '../components/Sheet'
 import { SwipeRow } from '../components/SwipeRow'
 import { BigTitle, TopBar } from '../components/TopBar'
@@ -54,7 +53,6 @@ export function ClientScreen() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [newOpen, setNewOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [noteSheet, setNoteSheet] = useState<Note | null>(null)
   const [showSessions, setShowSessions] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
@@ -206,13 +204,6 @@ export function ClientScreen() {
         </div>
       )}
 
-      {self && (
-        <button type="button" className="line-link" onClick={() => setSettingsOpen(true)}>
-          <span className="grow"><span className="line-title">Settings</span><span className="line-meta">Theme, Claude key, Coach Playbook, imports</span></span>
-          <IconChevronRight />
-        </button>
-      )}
-
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={self ? 'You' : client.name}>
         <div className="lines">
           <MenuLine title="Edit profile" meta="Goals, injuries, equipment, background" onClick={() => { setMenuOpen(false); setEditing(true) }} />
@@ -235,7 +226,6 @@ export function ClientScreen() {
       <ClientSheet open={editing} onClose={() => setEditing(false)} client={client} />
       <NoteSheet open={noteSheet !== null} onClose={() => setNoteSheet(null)} note={noteSheet ?? undefined} defaultClientId={client.id} />
       {current && <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} programme={current} client={client} />}
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
