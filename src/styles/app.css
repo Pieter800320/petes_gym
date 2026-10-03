@@ -138,7 +138,12 @@ svg { flex: none; }
 .dial-inner { width: 100%; height: 100%; border-radius: 50%; background: var(--color-bg); color: var(--color-text); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .dial-time { font-family: var(--font-mono); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; } /* steady digits while the clock ticks */
 .dial-sub { font-size: 12px; letter-spacing: 0.16em; color: var(--color-accent); }
-@media (min-width: 900px) { .dial-dock { left: var(--rail-width); } }
+/* Desktop: the dial sits at the foot of the navigation rail, so it never covers the page.
+   It stacks above the rail (z-index) and the page needs no room kept free for it. */
+@media (min-width: 900px) {
+  .dial-dock { right: auto; width: var(--rail-width); z-index: 31; }
+  .screen.has-dial { padding-bottom: 0; }
+}
 
 /* ── Buttons and links ────────────────────────────────────────────── */
 .btn-cta, .btn-outline, .btn-acc, .btn-ghost {
@@ -474,7 +479,7 @@ svg { flex: none; }
 /* While a sheet is on screen, the bottom-pinned nav and round button step aside (see Sheet.tsx). */
 .sheet-open body { overflow: hidden; }
 .sheet-open .nav, .sheet-open .dial-dock { visibility: hidden; }
-@media (min-width: 900px) { .sheet-open .nav { visibility: visible; } }
+@media (min-width: 900px) { .sheet-open .nav, .sheet-open .dial-dock { visibility: visible; } }
 /* Typing on a phone: the keyboard takes the bottom of the screen, so the nav and round button
    step aside and the chat composer sits right on top of the keyboard. */
 @media (max-width: 899px) {
@@ -515,6 +520,8 @@ svg { flex: none; }
   animation: snack-in 0.22s var(--ease-sheet);
 }
 .snackbar.leaving { animation: snack-out 0.18s var(--ease-standard) forwards; }
+/* Desktop: centred under the page (right of the rail), near the bottom edge; the dial is in the rail. */
+@media (min-width: 900px) { .snackbar { left: calc(var(--rail-width) + var(--space-3)); bottom: var(--space-4); } }
 @keyframes snack-in { from { opacity: 0; transform: translateY(12px); } }
 @keyframes snack-out { to { opacity: 0; transform: translateY(6px); } }
 .update-banner {

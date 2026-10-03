@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.3 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.4 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -46,6 +46,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     to open the next draft). Exports: fixed columns that fit a phone, no "Day 1 —" after the red
     number, long words wrap, goal on its own row, Word keeps each day on one page and has no
     spelling squiggles, file names use ae/oe/ue/ss.
+  - 0.9.4 (Pieter, 2026-10-03): on desktop (≥900px) the dial sits at the foot of the navigation
+    rail instead of over the page; toasts sit under the page. Phone layout unchanged.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
