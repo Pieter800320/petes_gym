@@ -142,7 +142,6 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
       {SECTIONS.map((section) => (
         <section key={section.title.en} className="fit-section">
           <h2 className="display">{section.title[lang]}</h2>
-          {section.note && <p className="muted" style={{ margin: 0 }}>{section.note[lang]}</p>}
           {section.questions.filter((q) => isVisible(q, answers)).map((q) => (
             <Field key={q.id} q={q} lang={lang} value={answers[q.id]} onChange={(v) => set(q.id, v)} />
           ))}

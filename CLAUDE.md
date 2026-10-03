@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.23 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.24 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -136,8 +136,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - 0.9.22 (Pieter, 2026-10-03): the questionnaire redesigned and bilingual. English/Deutsch switch
     (German on a German phone; the choice is remembered on the device). Choices are stored by option
     id, so the profile is always written in English; typed answers stay as written. Goal, days per
-    week, session length, where they train, injuries and a six-question yes/no health screen are
-    required; a yes asks for details, and "at home" asks for the equipment there (`showIf`). Days
+    week, session length, where they train and one open question on injuries, pain or medical
+    conditions are required ("at home" also asks for the equipment there, `showIf`). A six-question
+    yes/no health screen was built here and removed in 0.9.24 (Pieter: only the open question). Days
     and session length are single choices; "No preference" stands alone. German uses "du".
   - 0.9.23 (Pieter, 2026-10-03): DSGVO. The questionnaire ends with a framed explicit consent
     (Art. 9(2)(a), Art. 7) and a "Privacy notice ›" link to the full Art. 13 notice in a sheet, EN/DE,

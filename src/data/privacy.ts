@@ -26,8 +26,8 @@ const KEEP_YEARS = 2
 export const MIN_AGE = 16
 
 export const CONSENT: Record<Lang, string> = {
-  en: 'I expressly agree that Pieter stores and uses my answers, including the information about my health (injuries, pain, medication and the health questions), to design and adjust my training programme. To do this he uses Google (database) and the AI assistant Claude from Anthropic, which may process the data in the USA. I can withdraw this consent at any time with effect for the future by sending Pieter a message; he will then delete my data.',
-  de: 'Ich willige ausdrücklich ein, dass Pieter meine Antworten, einschließlich der Angaben zu meiner Gesundheit (Verletzungen, Schmerzen, Medikamente und die Gesundheitsfragen), speichert und nutzt, um mein Trainingsprogramm zu erstellen und anzupassen. Dafür nutzt er Google (Datenbank) und den KI-Assistenten Claude von Anthropic, die die Daten auch in den USA verarbeiten können. Ich kann diese Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen, indem ich Pieter eine Nachricht schicke; er löscht dann meine Daten.',
+  en: 'I expressly agree that Pieter stores and uses my answers, including the information about my health (injuries, pain and medical conditions), to design and adjust my training programme. To do this he uses Google (database) and the AI assistant Claude from Anthropic, which may process the data in the USA. I can withdraw this consent at any time with effect for the future by sending Pieter a message; he will then delete my data.',
+  de: 'Ich willige ausdrücklich ein, dass Pieter meine Antworten, einschließlich der Angaben zu meiner Gesundheit (Verletzungen, Schmerzen und Erkrankungen), speichert und nutzt, um mein Trainingsprogramm zu erstellen und anzupassen. Dafür nutzt er Google (Datenbank) und den KI-Assistenten Claude von Anthropic, die die Daten auch in den USA verarbeiten können. Ich kann diese Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen, indem ich Pieter eine Nachricht schicke; er löscht dann meine Daten.',
 }
 
 /** The line saved with the answers as proof of consent (Art. 7(1)). */
@@ -50,7 +50,7 @@ export function privacyNotice(lang: Lang): NoticeSection[] {
       {
         title: 'Welche Daten',
         paragraphs: [
-          'Deine Antworten in diesem Fragebogen: Name, Alter, Geschlecht, Trainingsziele, Trainingsalltag, Ausstattung, Lebensstil sowie Angaben zu deiner Gesundheit (Verletzungen, Schmerzen, Medikamente und die Gesundheitsfragen).',
+          'Deine Antworten in diesem Fragebogen: Name, Alter, Geschlecht, Trainingsziele, Trainingsalltag, Ausstattung, Lebensstil sowie Angaben zu deiner Gesundheit (Verletzungen, Schmerzen und Erkrankungen).',
           'Beim Öffnen der Seite verarbeiten die technischen Anbieter deine IP-Adresse, um die Seite auszuliefern.',
           'Bis zum Absenden werden deine Antworten und die gewählte Sprache nur auf deinem Gerät gespeichert, damit beim Neuladen nichts verloren geht. Es gibt keine Cookies, keine Werbung und kein Tracking.',
         ],
@@ -98,7 +98,7 @@ export function privacyNotice(lang: Lang): NoticeSection[] {
     {
       title: 'Which data',
       paragraphs: [
-        'Your answers in this questionnaire: name, age, sex, training goals, current training, equipment, lifestyle, and information about your health (injuries, pain, medication and the health questions).',
+        'Your answers in this questionnaire: name, age, sex, training goals, current training, equipment, lifestyle, and information about your health (injuries, pain and medical conditions).',
         'When you open the page, the technical providers process your IP address in order to deliver it.',
         'Until you send them, your answers and the chosen language are stored only on your device, so that nothing is lost if the page reloads. There are no cookies, no advertising and no tracking.',
       ],

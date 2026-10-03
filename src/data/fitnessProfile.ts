@@ -27,8 +27,8 @@ export interface Question {
   label: L
   /** A short name for the "still needed" list, when the label is a whole sentence. */
   short?: L
-  /** text: one line · long: a paragraph · one: choose one · many: choose any · yesno: yes or no */
-  type: 'text' | 'long' | 'one' | 'many' | 'yesno'
+  /** text: one line · long: a paragraph · one: choose one · many: choose any */
+  type: 'text' | 'long' | 'one' | 'many'
   options?: Option[]
   required?: boolean
   numeric?: boolean
@@ -40,25 +40,13 @@ export interface Question {
 
 export interface Section {
   title: L
-  note?: L
   questions: Question[]
 }
 
 const o = (id: string, en: string, de: string): Option => ({ id, label: { en, de } })
-const YES_NO = [o('yes', 'Yes', 'Ja'), o('no', 'No', 'Nein')]
 /** In a "choose any" question, this option stands alone ("no preference"). */
 export const NONE = 'none'
 
-/** The health screen: a yes on any of these asks for details. */
-const HEALTH: { id: string; en: string; de: string; note: string }[] = [
-  { id: 'heart', en: 'Do you have a heart condition or high blood pressure?', de: 'Hast du eine Herzerkrankung oder Bluthochdruck?', note: 'Heart condition or high blood pressure' },
-  { id: 'chest', en: 'Do you get chest pain, dizziness or faintness during physical activity?', de: 'Hast du bei körperlicher Belastung Brustschmerzen, Schwindel oder Ohnmachtsgefühle?', note: 'Chest pain, dizziness or faintness on exertion' },
-  { id: 'meds', en: 'Do you take medication regularly?', de: 'Nimmst du regelmäßig Medikamente?', note: 'Regular medication' },
-  { id: 'pregnant', en: 'Are you pregnant, or have you given birth in the last 12 months?', de: 'Bist du schwanger oder hast du in den letzten 12 Monaten entbunden?', note: 'Pregnant or gave birth in the last 12 months' },
-  { id: 'surgery', en: 'Have you had surgery in the last 12 months?', de: 'Wurdest du in den letzten 12 Monaten operiert?', note: 'Surgery in the last 12 months' },
-  { id: 'doctor', en: 'Has a doctor ever advised you to limit physical activity?', de: 'Hat dir eine Ärztin oder ein Arzt schon einmal geraten, dich körperlich zu schonen?', note: 'A doctor advised limiting physical activity' },
-]
-const anyHealthYes = (a: Answers) => HEALTH.some((h) => a[h.id] === 'yes')
 const trainsAtHome = (a: Answers) => a.where === 'home' || a.where === 'both'
 
 export const SECTIONS: Section[] = [
@@ -138,14 +126,8 @@ export const SECTIONS: Section[] = [
   },
   {
     title: { en: 'Health', de: 'Gesundheit' },
-    note: {
-      en: 'These questions help me train you safely. If you answer yes to any of them, please check with your doctor before we start.',
-      de: 'Diese Fragen helfen mir, dich sicher zu trainieren. Wenn du eine davon mit Ja beantwortest, sprich bitte vor dem Start mit deiner Ärztin oder deinem Arzt.',
-    },
     questions: [
-      ...HEALTH.map((h): Question => ({ id: h.id, label: { en: h.en, de: h.de }, short: { en: 'the health questions', de: 'die Gesundheitsfragen' }, type: 'yesno', inline: true, required: true, options: YES_NO })),
-      { id: 'health_details', label: { en: 'You answered yes above. Please tell me more.', de: 'Du hast oben mit Ja geantwortet. Bitte erzähl mir mehr dazu.' }, short: { en: 'Details on your yes answers', de: 'Details zu deinen Ja-Antworten' }, type: 'long', required: true, showIf: anyHealthYes },
-      { id: 'injuries', label: { en: 'Do you have any injuries or pain, now or recurring? Write "none" if not.', de: 'Hast du Verletzungen oder Schmerzen, aktuell oder immer wieder? Schreib „keine“, wenn nicht.' }, short: { en: 'Injuries or pain', de: 'Verletzungen oder Schmerzen' }, type: 'long', required: true },
+      { id: 'injuries', label: { en: 'Do you have any injuries, pain or medical conditions I should know about? Write "none" if not.', de: 'Hast du Verletzungen, Schmerzen oder Erkrankungen, von denen ich wissen sollte? Schreib „keine“, wenn nicht.' }, short: { en: 'Injuries, pain or medical conditions', de: 'Verletzungen, Schmerzen oder Erkrankungen' }, type: 'long', required: true },
     ],
   },
   {
@@ -259,9 +241,6 @@ export function answersToProfile(a: Answers, answeredAt: number): ParsedProfile 
     line('Also does', typed(a, 'sports_other')),
   ])
 
-  const yes = HEALTH.filter((h) => a[h.id] === 'yes').map((h) => h.note)
-  const injuries = [typed(a, 'injuries'), yes.length ? `Health screen, answered yes: ${yes.join('; ')}.` : '', line('Details', isVisible(question('health_details')!, a) ? typed(a, 'health_details') : '')].filter(Boolean).join('\n')
-
   const prefers = chosenOptions(question('prefers')!, a.prefers)
   const equipment = sentence([
     WHERE[one('where')] ?? '',
@@ -285,7 +264,7 @@ export function answersToProfile(a: Answers, answeredAt: number): ParsedProfile 
     name: typed(a, 'name'),
     date: new Date(answeredAt).toISOString().slice(0, 10),
     goals,
-    injuries,
+    injuries: typed(a, 'injuries'),
     frequency: days ? `${days}× / week` : '',
     session_length: LENGTH[one('length')] ?? '',
     equipment,
