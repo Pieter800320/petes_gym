@@ -476,6 +476,9 @@ svg { flex: none; }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: 0 var(--gutter) var(--space-2); }
 .sheet-head h2 { font-size: 24px; }
 .sheet-body { overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2) var(--gutter) var(--space-4); }
+/* Export preview: the exported page fills the sheet and scrolls by itself. */
+.sheet-body:has(> .preview-frame) { flex: 1; min-height: 0; display: flex; padding: 0; overflow: hidden; }
+.preview-frame { flex: 1; width: 100%; border: 0; background: var(--paper); }
 /* While a sheet is on screen, the bottom-pinned nav and round button step aside (see Sheet.tsx). */
 .sheet-open body { overflow: hidden; }
 .sheet-open .nav, .sheet-open .dial-dock { visibility: hidden; }

@@ -1,9 +1,10 @@
 /*
- * Self-contained HTML export in Swiss Print, the app's own design: black ink on white, one red pen,
+ * Self-contained HTML export (the font is built in; nothing is fetched when it is opened) in Swiss Print, the app's own design: black ink on white, one red pen,
  * blue ink for progression tables, square corners, Schibsted Grotesk.
  * Always light, also on a phone in dark mode: it is read in bright gyms, printed and forwarded.
  * Structure: masthead, then per day a ruled table with section rows, video links and progression blocks.
  */
+import { embeddedFontCss } from './exportFonts'
 import type { ExportBlock, ExportDoc } from './exportModel'
 
 const esc = (s: string) =>
@@ -51,7 +52,7 @@ const STYLE = `
   thead th { text-align: left; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); font-weight: 700; padding: 0 10px 8px 0; border-bottom: 2px solid var(--ink); }
   tbody td { padding: 12px 10px 12px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
   tbody tr.group td { padding: 22px 10px 6px 0; border-bottom: 1px solid var(--ink); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); font-weight: 700; }
-  tbody tr.group td span { color: var(--ink-faint); margin-left: 10px; font-weight: 500; }
+  tbody tr.group td span { color: var(--ink-faint); margin-left: 10px; font-weight: 400; }
   tbody tr.group-note td { padding-top: 6px; color: var(--ink-soft); font-size: 0.88rem; }
   td.ex { font-weight: 600; }
   td.ex .video { display: block; margin: 4px 0 2px; line-height: 1; }
@@ -146,19 +147,7 @@ export function renderHtml(d: ExportDoc): string {
     )
     .join('')
 
-  return `<!DOCTYPE html>
-<html lang="${d.lang}">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="only light">
-<title>${esc(d.documentTitle)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap">
-<style>${STYLE}</style>
-</head>
-<body>
-<main>
+  const body = `<main>
   <header class="masthead">
     <p class="eyebrow">${esc(d.eyebrow)}</p>
     <h1>${esc(d.title)}</h1>
@@ -174,7 +163,21 @@ export function renderHtml(d: ExportDoc): string {
     ${d.blockProgression ? renderBlock(d.blockProgression) : ''}
   </header>
   ${sessions}
-</main>
+</main>`
+
+  return `<!DOCTYPE html>
+<html lang="${d.lang}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light">
+<title>${esc(d.documentTitle)}</title>
+<style>
+${embeddedFontCss(body)}
+${STYLE}</style>
+</head>
+<body>
+${body}
 </body>
 </html>
 `

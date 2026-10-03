@@ -97,6 +97,8 @@ export function describeClaudeError(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) return 'Your Anthropic API key was rejected. Check it in Settings.'
   if (err instanceof Anthropic.RateLimitError) return 'Claude is rate-limited right now. Wait a minute and try again.'
   if (err instanceof Anthropic.APIConnectionError) return 'Could not reach Claude. Check your internet connection.'
+  // Out of credit arrives as a rejected request; say so plainly instead of showing the raw reply.
+  if (err instanceof Anthropic.APIError && /credit balance/i.test(err.message)) return 'Your Anthropic account is out of credits. Add credits at console.anthropic.com (Billing), then try again.'
   if (err instanceof Anthropic.BadRequestError) return `Claude rejected the request: ${err.message}`
   if (err instanceof Anthropic.APIError) return `Claude returned an error (${err.status}). Try again.`
   if (err instanceof Error) return err.message

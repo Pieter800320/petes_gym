@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.5 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.6 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -51,6 +51,10 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - 0.9.5 (Pieter, 2026-10-03): the phone's Back button closes the open sheet (top one only when
     stacked) instead of leaving the page. Each open sheet adds one marked step to the history
     (`Sheet.tsx`, `sheetMark` in `util/navHistory.ts`).
+  - 0.9.6 (Pieter, 2026-10-03): the HTML export carries its own font (`export/exportFonts.ts`,
+    four weights as data: URLs, ~150 KB per file; the extended set only when a name needs it) and
+    fetches nothing. Preview shows the exported page in a sheet inside the app (sealed iframe), not
+    in a new tab. An out-of-credits reply from Claude is worded plainly.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -72,6 +76,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   0.9.4–0.9.5: same method. Dial in the rail checked at 1280 and 920px wide (phone unchanged).
   Sheet + Back: 50 checks (stacked sheets, hand-over, close-then-navigate, delete from a sheet,
   scroll kept), in the dev and the production build, phone and desktop. Not yet on a real phone.
+  0.9.6: five sample exports opened with the network off at 360 and 900px: every part renders in
+  Schibsted Grotesk, nothing is fetched. In-app preview checked on phone and desktop sizes.
 
 ## 1. Stack (fixed)
 
@@ -82,7 +88,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 | Auth | Firebase Auth, Google sign-in | |
 | Hosting | GitHub Pages via `.github/workflows/deploy.yml`, base `/petes_gym/` | Free, deploys on push to `main` |
 | Routing | `HashRouter` | GitHub Pages has no rewrites |
-| Fonts | Schibsted Grotesk via `@fontsource` (latin, 400–800); Arial in Word exports | One family for app and HTML export; bundled for offline; Arial is on every client PC |
+| Fonts | Schibsted Grotesk via `@fontsource` (latin, 400–800), also embedded in each HTML export; Arial in Word exports | One family for app and HTML export; bundled for offline; the export fetches nothing; Arial is on every client PC |
 
 ## 2. Rules specific to this repo
 

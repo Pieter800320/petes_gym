@@ -7,7 +7,7 @@ import { clientFacingStrings, translateToGerman } from '../claude/translate'
 import { updateProgrammeFields } from '../data/store'
 import type { Client, Programme } from '../data/types'
 import { buildExportDoc, type ExportFormat, type ExportLang, type ExportOptions } from '../export/exportModel'
-import { reserveTab, shareOrDownload } from '../export/share'
+import { shareOrDownload } from '../export/share'
 
 const MIME: Record<ExportFormat, string> = {
   html: 'text/html',
@@ -42,6 +42,8 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
   const [format, setFormat] = useState<ExportFormat>('html')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** The built page, shown in a sheet inside the app (no new tab, so it also works in the installed app). */
+  const [preview, setPreview] = useState<string | null>(null)
   const set = <K extends keyof ExportOptions>(k: K, v: ExportOptions[K]) => setOpts((o) => ({ ...o, [k]: v }))
 
   async function buildFile(): Promise<File> {
@@ -69,11 +71,10 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
     setError(null)
     // The personal note belongs to the programme, so keep what was written here.
     if (user && opts.personalNote !== p.personalNote) updateProgrammeFields(user.uid, p.id, { personalNote: opts.personalNote })
-    const tab = action === 'preview' ? reserveTab() : null
     try {
       const file = await buildFile()
-      if (tab) {
-        tab.show(file)
+      if (action === 'preview') {
+        setPreview(await file.text())
       } else {
         const result = await shareOrDownload(file)
         if (result !== 'cancelled') {
@@ -84,7 +85,6 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
       }
     } catch (err) {
       console.error(err)
-      tab?.close()
       setError(describeClaudeError(err))
     } finally {
       setBusy(null)
@@ -151,8 +151,13 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
         {busy ?? 'Share'}
       </button>
       {format === 'html' && (
-        <button type="button" className="btn-ghost" disabled={busy !== null} onClick={() => run('preview')}>Preview in browser</button>
+        <button type="button" className="btn-ghost" disabled={busy !== null} onClick={() => run('preview')}>Preview</button>
       )}
+
+      <Sheet open={preview !== null} onClose={() => setPreview(null)} title="Preview" tall>
+        {/* The exported page exactly as the client gets it. No scripts run; video links open in a new tab. */}
+        {preview !== null && <iframe className="preview-frame" title="Programme preview" srcDoc={preview} sandbox="allow-popups allow-popups-to-escape-sandbox" />}
+      </Sheet>
     </div>
   )
 }
