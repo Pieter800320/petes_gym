@@ -12,6 +12,7 @@ import { BigTitle, TopBar } from '../components/TopBar'
 import { shareProfileLink } from '../components/shareProfileLink'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
+import { linkFor, useInvites } from '../data/invites'
 import { activateProgramme, createNextBlock } from '../data/programmeActions'
 import { blankProgramme, sessionRows } from '../data/programmeUtils'
 import { createProgramme, deleteClient, deleteWorkout, useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
@@ -51,6 +52,7 @@ export function ClientScreen() {
   const { data: workouts } = useWorkouts(id ? { clientId: id } : null)
   const [editing, setEditing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const invites = useInvites()
   const [newOpen, setNewOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [noteSheet, setNoteSheet] = useState<Note | null>(null)
@@ -208,7 +210,7 @@ export function ClientScreen() {
         <div className="lines">
           <MenuLine title="Edit profile" meta="Goals, injuries, equipment, background" onClick={() => { setMenuOpen(false); setEditing(true) }} />
           <MenuLine title="New programme" meta="With Claude, or blank" onClick={() => { setMenuOpen(false); setNewOpen(true) }} />
-          {!self && <MenuLine title="Send fitness profile link" meta={`WhatsApp ${firstName} your questionnaire`} onClick={() => shareProfileLink(firstName)} />}
+          {!self && <MenuLine title="Send fitness profile link" meta={`WhatsApp ${firstName} your questionnaire`} onClick={() => shareProfileLink(linkFor(user.uid, invites, client.id, client.name), firstName)} />}
           <ConfirmButton
             className="danger-link"
             onConfirm={() => {

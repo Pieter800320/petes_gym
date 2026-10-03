@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.20 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.21 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -124,6 +124,15 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     `Programme.tags` is written only by the library (`saveProgramme` leaves it out). "Use a copy
     for…" makes a draft for any client (`copyProgrammeTo`: no weights, private notes, client
     note or translations).
+  - 0.9.21 (Pieter, 2026-10-03): profile pipeline. The Fitness Profile questionnaire is a page of the
+    app (`/fit/:uid/:token`, `FitnessProfileScreen`, shown before the sign-in gate; questions in
+    `data/fitnessProfile.ts`, copied one-to-one from the old Google Form). "Send fitness profile link"
+    creates an invite (`data/invites.ts`, `users/{uid}/invites/{token}`) and shares its personal link;
+    an open link for the same person is reused. Answers show on Clients as "New answers from X";
+    `AnswersSheet` turns them into a new or updated profile through the same `mergeProfile` as the
+    CSV import, with no Claude call, then deletes the invite. Unanswered links can be cancelled on
+    Clients. The Google Form link is gone; the CSV import stays for older responses.
+    **Needs the invite block in `firestore.rules` published in the Firebase console.**
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -150,6 +159,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   0.9.18–0.9.20: gear and backup (22 checks), training with a client (20), library search,
   filters, hand labels and copy (24), all on the in-memory backend. Claude's labelling call is
   NOT tested against the real API (no credits); it follows translate.ts's pattern.
+  0.9.21: send link → fill in → new answers → profile, for an existing and a new client, link
+  reuse, dead link, cancel (34 checks) on the in-memory backend. The database rules for invites are
+  NOT tested (no emulator on this PC) and nothing was run against the real Firestore.
   0.9.11: moving a progression between days and to/from "every day" checked in the app (15
   checks). The new wording in Claude's instructions is NOT tested against the real API (no credits).
   0.9.7: with 40–160 ms added to every listener's first answer, switching tabs went from 4–6
@@ -179,6 +191,10 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 - **Offline writes are fire-and-forget.** Never `await` a Firestore write in UI code: the promise only
   resolves when the server acknowledges, which never happens without signal. Use the helpers in
   `src/data/store.ts` (they attach `.catch(reportWriteError)`).
+- **Fitness Profile invites** are the only data reachable without signing in. Keep it that way: the
+  rules let a link holder `get` one unanswered invite and set its `answers`/`answeredAt` once, nothing
+  more. `submitAnswers` is the one awaited write (the client must know it arrived). A change to the
+  rules is live only after Pieter publishes `firestore.rules` in the console.
 - **Avoid composite indexes.** Don't combine `where()` with `orderBy()` on another field; filter in
   Firestore, sort on the device (see `useNotes`).
 - **The Anthropic API key never leaves the device.** It lives in localStorage (`src/settings.ts`).

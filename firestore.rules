@@ -7,5 +7,18 @@ service cloud.firestore {
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // Fitness Profile links. A client has no account: whoever holds the link (it contains the
+    // invite's random id) may read the invite while it is unanswered and send the answers once.
+    // Only the answers and their time can be set, never anything else, and an answered invite can
+    // no longer be read or changed through the link. Listing invites is never allowed.
+    match /users/{uid}/invites/{token} {
+      allow get: if resource.data.answeredAt == null;
+      allow update: if resource.data.answeredAt == null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers', 'answeredAt'])
+        && request.resource.data.answeredAt is number
+        && request.resource.data.answers is map
+        && request.resource.data.answers.size() <= 40;
+    }
   }
 }

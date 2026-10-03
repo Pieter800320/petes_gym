@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { NavLink, Navigate, Route, Routes, useLocation, useMatch, useNavigationType } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, matchPath, useLocation, useMatch, useNavigationType } from 'react-router-dom'
 import { useAuth } from './auth/useAuth'
 import { isFirebaseConfigured } from './firebase'
 import { NoteSheet } from './components/NoteSheet'
@@ -12,6 +12,7 @@ import { ClientScreen } from './screens/ClientScreen'
 import { ClientsScreen } from './screens/ClientsScreen'
 import { CreateScreen } from './screens/CreateScreen'
 import { DeletedScreen } from './screens/DeletedScreen'
+import { FitnessProfileScreen } from './screens/FitnessProfileScreen'
 import { LoadingScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
 import { ImportScreen } from './screens/ImportScreen'
 import { LibraryScreen } from './screens/LibraryScreen'
@@ -34,8 +35,13 @@ const TABS = [
 export default function App() {
   useTheme() // applies the saved theme on startup
   const { user, loading } = useAuth()
+  const location = useLocation()
 
   if (!isFirebaseConfigured) return <NotConfiguredScreen />
+  // A client's Fitness Profile link: the questionnaire, for someone without an account, and
+  // nothing else of the app.
+  const fit = matchPath('/fit/:uid/:token', location.pathname)
+  if (fit?.params.uid && fit.params.token) return <FitnessProfileScreen uid={fit.params.uid} token={fit.params.token} />
   if (loading) return <LoadingScreen />
   if (!user) return <SignInScreen />
   return <Shell />

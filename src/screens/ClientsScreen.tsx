@@ -1,8 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { AnswersSheet } from '../components/AnswersSheet'
 import { ClientSheet } from '../components/ClientSheet'
+import { ConfirmButton } from '../components/ConfirmButton'
 import { IconChevronRight, IconSearch } from '../components/Icons'
 import { BigTitle, Dial, TopBar } from '../components/TopBar'
+import { toast } from '../components/toast'
+import { useAuth } from '../auth/useAuth'
+import { deleteInvite, useInvites, type Invite } from '../data/invites'
 import { useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Programme } from '../data/types'
 
@@ -14,6 +19,7 @@ function shortDate(ms: number): string {
 
 /** Pete's own space (You, general notes) on a card at the top; clients as ruled lines below. */
 export function ClientsScreen() {
+  const { user } = useAuth()
   const { data: clients, loading, error } = useClients()
   const { data: deletedClients } = useClients(true)
   const { data: deletedProgrammes } = useProgrammes('all', true)
@@ -23,6 +29,11 @@ export function ClientsScreen() {
   const { data: myWorkouts } = useWorkouts(self ? { clientId: self.id } : null)
   const [search, setSearch] = useState('')
   const [newClient, setNewClient] = useState<null | 'client' | 'self'>(null)
+  // Fitness Profile links: answered ones wait here to become profiles.
+  const invites = useInvites()
+  const answered = invites.filter((i) => i.answeredAt !== null)
+  const waiting = invites.filter((i) => i.answeredAt === null)
+  const [openAnswers, setOpenAnswers] = useState<Invite | null>(null)
 
   const others = clients.filter((c) => !c.isSelf)
   const visible = useMemo(() => {
@@ -71,6 +82,31 @@ export function ClientsScreen() {
         </Link>
       </div>
 
+      {answered.length > 0 && (
+        <div className="lines">
+          {answered.map((i) => (
+            <button type="button" key={i.id} className="line-link answers-line" onClick={() => setOpenAnswers(i)}>
+              <span className="grow">
+                <span className="line-title">New answers from {String(i.answers?.name || i.name || 'a client')}</span>
+                <span className="line-meta">Fitness profile · tap to add to their profile</span>
+              </span>
+              <IconChevronRight />
+            </button>
+          ))}
+        </div>
+      )}
+      {waiting.length > 0 && user && (
+        <details className="waiting-links">
+          <summary className="muted small">{waiting.length} fitness profile link{waiting.length === 1 ? '' : 's'} sent, not answered yet</summary>
+          {waiting.map((i) => (
+            <div key={i.id} className="waiting-link">
+              <span className="grow">{i.name || 'No name'} <span className="muted small">· sent {new Date(i.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span></span>
+              <ConfirmButton className="danger-link" armedLabel="Tap again to cancel" onConfirm={() => { deleteInvite(user.uid, i.id); toast('Link cancelled') }}>Cancel link</ConfirmButton>
+            </div>
+          ))}
+        </details>
+      )}
+
       <label className="search-line">
         <IconSearch />
         <input id="client-search" placeholder="Search clients" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search clients" />
@@ -92,6 +128,7 @@ export function ClientsScreen() {
       {binCount > 0 && !search && <Link to="/deleted" className="text-link quiet">Recently deleted ({binCount})</Link>}
 
       <Dial label="ADD" longLabel="Add client" ariaLabel="New client" onClick={() => setNewClient('client')} />
+      <AnswersSheet invite={openAnswers} onClose={() => setOpenAnswers(null)} />
       <ClientSheet open={newClient !== null} onClose={() => setNewClient(null)} initial={newClient === 'self' ? { name: 'Pete', isSelf: true } : undefined} />
     </div>
   )

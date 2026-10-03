@@ -493,6 +493,23 @@ svg { flex: none; }
 .row-banner { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
 .center-screen { min-height: 100%; display: grid; place-items: center; padding: var(--space-4) var(--space-3); }
 
+/* ── Fitness Profile: the questionnaire a client fills in, and its answers in Clients ── */
+.fit-page { display: flex; flex-direction: column; gap: var(--space-5); width: 100%; max-width: 620px; margin: 0 auto; padding: calc(env(safe-area-inset-top, 0px) + var(--space-4)) var(--gutter) var(--space-6); }
+.fit-end { gap: var(--space-3); padding-top: 0; padding-bottom: 0; }
+.fit-head { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: var(--space-3); border-bottom: 3px solid var(--color-text); }
+.fit-head h1, .fit-end h1 { font-size: 30px; }
+.fit-section { display: flex; flex-direction: column; gap: var(--space-4); }
+.fit-section h2 { font-size: 20px; padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-text); }
+.fit-label { font-size: 15px; font-weight: 600; line-height: 1.35; }
+.fit-options { display: flex; flex-direction: column; gap: var(--space-2); margin-top: 2px; }
+.fit-option { min-height: 48px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: none; color: var(--color-text); text-align: left; font-size: 15px; line-height: 1.35; }
+.fit-option[aria-pressed="true"] { border-color: var(--color-text); background: var(--color-text); color: var(--color-bg); }
+.fit-consent { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; line-height: 1.45; }
+.fit-consent input { flex: none; width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--color-accent); }
+.answers-line { border-left: 2px solid var(--color-accent); padding-left: 12px; }
+.waiting-links summary { min-height: 48px; display: flex; align-items: center; cursor: pointer; }
+.waiting-link { display: flex; align-items: center; gap: var(--space-3); min-height: 48px; border-top: 1px solid var(--color-border); }
+
 /* ── Notes ────────────────────────────────────────────────────────── */
 .note { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 6px 0 6px 12px; border: 0; border-left: 2px solid var(--color-accent); background: none; color: var(--color-text); text-align: left; }
 .note p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }

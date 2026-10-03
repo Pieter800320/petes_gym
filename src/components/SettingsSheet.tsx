@@ -151,7 +151,7 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
           <button type="button" className="row-link" onClick={() => { onDone(); navigate('/import-profiles') }}>
             <div className="grow">
               <div className="title">Import questionnaire answers</div>
-              <div className="meta">Fitness Profile responses from Google Forms</div>
+              <div className="meta">Older Fitness Profile responses from Google Forms</div>
             </div>
           </button>
           <button type="button" className="row-link" onClick={() => { onDone(); navigate('/import') }}>

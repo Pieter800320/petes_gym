@@ -4,6 +4,7 @@ import { Sheet } from './Sheet'
 import { shareProfileLink } from './shareProfileLink'
 import { toast } from './toast'
 import { useAuth } from '../auth/useAuth'
+import { linkFor, useInvites } from '../data/invites'
 import { EMPTY_CLIENT, createClient, updateClient } from '../data/store'
 import type { Client, ClientDraft } from '../data/types'
 
@@ -36,6 +37,7 @@ const LONG_FIELDS: { key: FieldKey; label: string; placeholder: string }[] = [
 function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Partial<ClientDraft>; onDone: () => void }) {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const invites = useInvites()
   const [draft, setDraft] = useState<ClientDraft>(() => {
     if (!client) return { ...EMPTY_CLIENT, ...initial }
     const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = client
@@ -62,7 +64,12 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
   return (
     <div className="form">
       {!client && !draft.isSelf && (
-        <button type="button" className="row-link" onClick={() => shareProfileLink(draft.name.trim().split(/\s+/)[0] || undefined)}>
+        <button type="button" className="row-link" onClick={() => {
+          if (!user) return
+          // A link of their own: the answers come back into the app and create the profile.
+          const name = draft.name.trim()
+          shareProfileLink(linkFor(user.uid, invites, null, name), name.split(/\s+/)[0] || undefined)
+        }}>
           <span className="title">Send the fitness profile link</span>
         </button>
       )}
