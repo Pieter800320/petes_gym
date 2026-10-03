@@ -143,8 +143,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     (Art. 9(2)(a), Art. 7) and a "Privacy notice ›" link to the full Art. 13 notice in a sheet, EN/DE,
     all in `data/privacy.ts`. The time, notice version and language of each consent travel with the
     answers (`_consent`) and end up as the last line of the profile's questionnaire text. Under 16
-    cannot send. **`CONTROLLER` in privacy.ts (Pieter's name, address, email) must be filled in
-    before the form goes to clients.** Not legal advice; Pieter should have the text checked.
+    cannot send. `CONTROLLER` in privacy.ts holds Pieter's name, address and email (public on the
+    form). Not legal advice; Pieter should have the text checked.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

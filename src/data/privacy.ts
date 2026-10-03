@@ -8,13 +8,12 @@ import type { Lang } from './fitnessProfile'
 
 /**
  * Who is responsible for the data (Art. 13(1)(a)); also serves as the page's legal notice.
- * The notice is incomplete, and must not go to clients, while these are empty.
  */
 export const CONTROLLER = {
-  name: '',
-  street: '',
-  city: '',
-  email: '',
+  name: 'Pieter van der Merwe',
+  street: 'Asbachstr. 30',
+  city: '99423 Weimar',
+  email: 'vandermerwe.pieter6@gmail.com',
 }
 
 /** The date of this wording; saved with every consent, so it is clear what was agreed to. */
