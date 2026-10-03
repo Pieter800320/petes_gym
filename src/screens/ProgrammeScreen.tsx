@@ -14,10 +14,11 @@ import { Sheet } from '../components/Sheet'
 import { TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
-import { activateProgramme, copyToSelf, createNextBlock, duplicateProgramme } from '../data/programmeActions'
+import { activateProgramme, createNextBlock, duplicateProgramme } from '../data/programmeActions'
 import { restoreProgramme, softDeleteProgramme, updateProgrammeFields, useClients, useProgramme, useProgrammes } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { Programme, ProgrammeStatus } from '../data/types'
+import { setTrainProgrammeId } from '../settings'
 import { leaveFor } from '../util/navHistory'
 
 const STATUS_LABEL: Record<ProgrammeStatus, string> = { draft: 'Draft', active: 'Current', archived: 'Archived' }
@@ -48,28 +49,23 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
   const [exportOpen, setExportOpen] = useState(false)
 
   const client = clients.find((c) => c.id === programme.clientId)
-  const self = clients.find((c) => c.isSelf)
   const isMine = Boolean(client?.isSelf)
-  const { data: selfProgrammes } = useProgrammes(self?.id ?? '__none__')
   const firstName = client?.name.trim().split(/\s+/)[0] ?? 'client'
 
   if (!user) return null
   const uid = user.uid
 
-  function loadInTrain() {
-    if (!self) {
-      toast('Add your own profile first: Clients → You')
-      return
-    }
+  /** A client's programme: Train shows it (their session, their history) until Pete goes back to his own. */
+  function openInTrain() {
     flush()
-    copyToSelf(uid, programme, self.id, selfProgrammes)
-    toast('Loaded in Train as your current programme')
+    setTrainProgrammeId(programme.id)
     navigate('/train')
   }
 
   function trainMine() {
     flush()
     if (programme.status !== 'active') activateProgramme(uid, programme, siblings)
+    setTrainProgrammeId(null)
     navigate('/train')
   }
 
@@ -118,7 +114,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
           {isMine ? (
             <MenuLine title="Export" meta="HTML or Word, English or German" onClick={() => { setMoreOpen(false); setExportOpen(true) }} />
           ) : (
-            <MenuLine title="Load in Train" meta="Use a copy for your own training" onClick={loadInTrain} />
+            <MenuLine title="Open in Train" meta={`Run ${firstName}'s session: clock, tweaks and notes`} onClick={openInTrain} />
           )}
           <MenuLine title="Build next block" meta="A new draft based on this one, in Create" onClick={() => { flush(); navigate(`/create/${createNextBlock(uid, programme)}`) }} />
           {programme.status !== 'active' && (

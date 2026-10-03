@@ -31,27 +31,6 @@ export function createNextBlock(uid: string, p: Programme): string {
   })
 }
 
-/**
- * "Use for my own training": copies a client's programme to Pete's profile as his current
- * programme (archiving his previous one). The client's original is left untouched.
- */
-export function copyToSelf(uid: string, p: Programme, selfId: string, selfProgrammes: Programme[]): string {
-  for (const other of selfProgrammes) {
-    if (other.status === 'active') updateProgrammeFields(uid, other.id, { status: 'archived' })
-  }
-  const { id: _id, createdAt: _c, updatedAt: _u, deletedAt: _d, deletedWithClient: _w, translationsDe: _t, ...rest } = p
-  return createProgramme(uid, {
-    ...rest,
-    clientId: selfId,
-    status: 'active',
-    personalNote: '',
-    startDate: null,
-    sessions: p.sessions.map(cloneSession),
-    progression: p.progression ? { ...p.progression, rows: p.progression.rows.map((r) => [...r]) } : null,
-    parentId: null,
-  })
-}
-
 export function duplicateProgramme(uid: string, p: Programme): string {
   const { id: _id, createdAt: _c, updatedAt: _u, deletedAt: _d, deletedWithClient: _w, ...rest } = p
   return createProgramme(uid, { ...rest, title: `${p.title} (copy)`, status: 'draft', sessions: p.sessions.map(cloneSession), parentId: null })

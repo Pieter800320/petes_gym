@@ -1,5 +1,6 @@
 /*
- * Train — Pete's own training, like reading a training card.
+ * Train — a training card to work from: Pete's own current programme, or a client's programme he
+ * opened here ("Open in Train" on its page) to run their session.
  * Start sets the clock, Pause stops it (paused time isn't counted), Finish records the session.
  * Changes made to an exercise during the session (sets, reps, rest, swaps) stick to the programme and are listed with the session.
  */
@@ -16,9 +17,10 @@ import { useAuth } from '../auth/useAuth'
 import { activeMs, cancelWorkout, finishWorkout, pauseWorkout, resumeWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
 import { mapSession } from '../data/programmeEdits'
 import { estimateSessionMin, formatClock, sessionRows } from '../data/programmeUtils'
-import { useClients, useProgrammes, useWorkouts } from '../data/store'
+import { useClients, useProgramme, useProgrammes, useWorkouts } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { ActiveWorkout, Programme, Workout } from '../data/types'
+import { setTrainProgrammeId, useTrainProgrammeId } from '../settings'
 import { splitDayTitle } from '../util/dayTitle'
 
 /** Horizontal finger travel (px) that counts as a swipe to the next or previous day. */
@@ -34,12 +36,27 @@ function nextSessionIndex(p: Programme, workouts: Workout[]): number {
 
 const today = () => new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()
 
-/** Train is only for Pete's own training: it shows his profile's current programme. */
+/** Shows Pete's own current programme, unless a client's programme has been opened in Train. */
 export function TrainScreen() {
   const { data: clients, loading: clientsLoading } = useClients()
   const self = clients.find((c) => c.isSelf)
   const { data: programmes, loading } = useProgrammes(self?.id ?? '__none__')
   const programme = programmes.find((p) => p.status === 'active') ?? null
+
+  // A client's programme opened in Train takes over until Pete goes back to his own.
+  const guestId = useTrainProgrammeId()
+  const { data: guest, loading: guestLoading } = useProgramme(guestId ?? undefined)
+  const guestGone = guestId !== null && !guestLoading && (!guest || Boolean(guest.deletedAt))
+  useEffect(() => {
+    // Deleted meanwhile (here or on another device): fall back to Pete's own programme.
+    if (guestGone) setTrainProgrammeId(null)
+  }, [guestGone])
+
+  if (guestId !== null && !guestGone) {
+    if (guestLoading || clientsLoading || !guest) return <TrainLoading />
+    const owner = clients.find((c) => c.id === guest.clientId)
+    return <TrainProgramme key={guest.id} stored={guest} guestName={owner && !owner.isSelf ? owner.name : undefined} />
+  }
 
   if (clientsLoading || (self && loading)) return <TrainLoading />
 
@@ -52,7 +69,7 @@ export function TrainScreen() {
           <p className="lead">Train is for your own training. Add your profile first: Clients → You.</p>
         ) : (
           <div className="stack">
-            <p className="lead">No current programme. Build one for yourself in Create, or open a client's programme and tap “Load in Train”.</p>
+            <p className="lead">No current programme. Build one for yourself in Create, or open a client's programme and choose “Open in Train” in its ⋯ menu.</p>
             <Link to="/create" className="text-link">Go to Create ›</Link>
           </div>
         )}
@@ -76,7 +93,8 @@ function TrainLoading() {
   )
 }
 
-function TrainProgramme({ stored }: { stored: Programme }) {
+/** guestName: the client whose programme this is, when it isn't Pete's own. */
+function TrainProgramme({ stored, guestName }: { stored: Programme; guestName?: string }) {
   const { user } = useAuth()
   const { programme, change, flush } = useProgrammeDraft(stored)
   const { data: workouts, loading } = useWorkouts({ programmeId: stored.id })
@@ -127,6 +145,12 @@ function TrainProgramme({ stored }: { stored: Programme }) {
   return (
     <div className="screen has-dial">
       <TopBar overline={running ? (paused ? <span className="live-label">PAUSED</span> : <span className="live-label"><span className="live-dot" />IN SESSION</span>) : today()} noteClientId={programme.clientId} />
+      {guestName && (
+        <div className="banner row-banner">
+          <span>Training with <b>{guestName}</b></span>
+          <button type="button" className="text-link quiet" style={{ flex: 'none' }} onClick={() => { flush(); setTrainProgrammeId(null) }}>Back to mine ›</button>
+        </div>
+      )}
       <BigTitle
         text={main}
         accent={extra || undefined}
@@ -191,8 +215,8 @@ function TrainProgramme({ stored }: { stored: Programme }) {
         <div className="quiet-links">
           {active && (
             <>
-              <span className="muted small">A session on an earlier programme is still open, so START is unavailable until it ends.</span>
-              <ConfirmButton className="btn-ghost small" armedLabel="Tap again to end it" onConfirm={() => { cancelWorkout(); toast('Earlier session ended, nothing saved') }}>End that session</ConfirmButton>
+              <span className="muted small">A session on another programme is still open, so START is unavailable until it ends.</span>
+              <ConfirmButton className="btn-ghost small" armedLabel="Tap again to end it" onConfirm={() => { cancelWorkout(); toast('That session ended, nothing saved') }}>End that session</ConfirmButton>
             </>
           )}
           <button type="button" className="text-link" onClick={() => setEditOpen(true)}>Edit programme ›</button>
@@ -200,7 +224,7 @@ function TrainProgramme({ stored }: { stored: Programme }) {
         </div>
       )}
 
-      <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} clientName="You" onChange={change} />
+      <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} clientName={guestName ?? 'You'} onChange={change} />
 
       {running ? (
         <FinishDial workout={running} onFinish={finish} />

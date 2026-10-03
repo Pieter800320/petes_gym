@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.18 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.19 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -111,6 +111,12 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     SettingsSheet); it is no longer on the You page. Settings → Download backup saves one JSON
     file with every collection (`readAllData` in store.ts); the API key is never in it. There is
     no restore in the app yet.
+  - 0.9.19 (Pieter, 2026-10-03): Train can run a client's session. "Open in Train" in a client
+    programme's ⋯ menu makes Train show that programme (banner "Training with [name] · Back to
+    mine ›"); tweaks are saved to the client's programme and finished sessions are listed on the
+    client's page. Which programme Train shows is per device (`getTrainProgrammeId` in
+    settings.ts; null = Pete's own). "Load in Train" (copying a client's programme to Pete) is
+    removed; reuse comes back with the programme library.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

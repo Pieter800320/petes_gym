@@ -2,7 +2,7 @@
  * Per-device settings in localStorage. Deliberately NOT synced: the Anthropic API key must
  * never reach Firestore or GitHub, and theme is a per-device preference.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 
 const THEME_KEY = 'pg_theme_v1'
 const API_KEY_KEY = 'pg_anthropic_key_v1'
@@ -75,6 +75,32 @@ export function getCreateProgrammeId(): string | null {
 
 export function setCreateProgrammeId(id: string | null) {
   write(CREATE_PROGRAMME_KEY, id)
+}
+
+const TRAIN_PROGRAMME_KEY = 'pg_train_programme_v1'
+const TRAIN_PROGRAMME_EVENT = 'pg:train-programme'
+
+/**
+ * A client's programme opened in Train on this device ("Open in Train" on its page). Null means
+ * Train shows Pete's own current programme. Per device: the phone in the gym decides, not the PC.
+ */
+export function getTrainProgrammeId(): string | null {
+  return read(TRAIN_PROGRAMME_KEY)
+}
+
+export function setTrainProgrammeId(id: string | null) {
+  write(TRAIN_PROGRAMME_KEY, id)
+  window.dispatchEvent(new Event(TRAIN_PROGRAMME_EVENT))
+}
+
+function onTrainProgrammeChange(cb: () => void) {
+  window.addEventListener(TRAIN_PROGRAMME_EVENT, cb)
+  return () => window.removeEventListener(TRAIN_PROGRAMME_EVENT, cb)
+}
+
+/** Follows setTrainProgrammeId, so Train switches the moment a programme is opened in it or left. */
+export function useTrainProgrammeId(): string | null {
+  return useSyncExternalStore(onTrainProgrammeChange, getTrainProgrammeId)
 }
 
 const HAPTICS_KEY = 'pg_haptics_v1'

@@ -126,12 +126,12 @@ export function ClientScreen() {
         <Link to={`/create/${featured.id}`} className="btn-cta btn-block">Continue in Create</Link>
       )}
 
-      {self && workouts.length > 0 && (
+      {workouts.length > 0 && (
         <>
           <button type="button" className="line-link" onClick={() => setShowSessions(!showSessions)} aria-expanded={showSessions}>
             <span className="grow">
               <span className="line-title">Sessions</span>
-              <span className="line-meta">{workouts.length} sessions · {hours.toFixed(hours < 10 ? 1 : 0)} h trained</span>
+              <span className="line-meta">{workouts.length} session{workouts.length === 1 ? '' : 's'} · {hours.toFixed(hours < 10 ? 1 : 0)} h trained</span>
             </span>
             <span className="mono muted">{showSessions ? '−' : '›'}</span>
           </button>
