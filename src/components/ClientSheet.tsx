@@ -63,10 +63,7 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
     <div className="form">
       {!client && !draft.isSelf && (
         <button type="button" className="row-link" onClick={() => shareProfileLink(draft.name.trim().split(/\s+/)[0] || undefined)}>
-          <div className="grow">
-            <div className="title">Or send them the fitness profile link</div>
-            <div className="meta">They fill in your questionnaire; import the answers later (Settings → Import)</div>
-          </div>
+          <span className="title">Send the fitness profile link</span>
         </button>
       )}
       <label className="field">
