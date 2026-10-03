@@ -70,7 +70,7 @@ function TrainLoading() {
       <TopBar overline={today()} />
       <BigTitle text="Train" />
       <span className="label">Loading…</span>
-      <Dial label="START" disabled ariaLabel="Loading" onClick={() => undefined} />
+      <Dial label="START" longLabel="Start session" disabled ariaLabel="Loading" onClick={() => undefined} />
     </div>
   )
 }
@@ -200,6 +200,7 @@ function TrainProgramme({ stored }: { stored: Programme }) {
       ) : (
         <Dial
           label="START"
+          longLabel="Start session"
           disabled={Boolean(active)}
           ariaLabel={active ? 'Another session is running' : `Start day ${index + 1}`}
           onClick={() => {

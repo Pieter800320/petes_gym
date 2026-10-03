@@ -92,7 +92,7 @@ svg { flex: none; }
   }
   .nav-brand { display: block; font-size: var(--type-lg); padding: 0 var(--space-2) var(--space-5); }
   .nav-brand span { color: var(--color-accent); }
-  .nav-link { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 44px; padding: 0 var(--space-2); font-size: 15px; border-radius: 12px; }
+  .nav-link { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 44px; padding: 0 var(--space-2); font-size: 15px; border-radius: var(--radius-md); }
   .nav-link.active { background: var(--color-surface); }
   .shell-main { padding-top: var(--space-5); padding-bottom: var(--space-6); }
 }
@@ -138,12 +138,8 @@ svg { flex: none; }
 .dial-inner { width: 100%; height: 100%; border-radius: 50%; background: var(--color-bg); color: var(--color-text); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .dial-time { font-family: var(--font-mono); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; } /* steady digits while the clock ticks */
 .dial-sub { font-size: 12px; letter-spacing: 0.16em; color: var(--color-accent); }
-/* Desktop: the dial sits at the foot of the navigation rail, so it never covers the page.
-   It stacks above the rail (z-index) and the page needs no room kept free for it. */
-@media (min-width: 900px) {
-  .dial-dock { right: auto; width: var(--rail-width); z-index: 31; }
-  .screen.has-dial { padding-bottom: 0; }
-}
+/* Desktop-only parts of the action button (see the desktop block further down). */
+.dial-long, .dial-side-text, .rail-action { display: none; }
 
 /* ── Buttons and links ────────────────────────────────────────────── */
 .btn-cta, .btn-outline, .btn-acc, .btn-ghost {
@@ -573,6 +569,26 @@ svg { flex: none; }
 }
 .dial-side svg { width: 20px; height: 20px; }
 .dial-side:active { transform: scale(0.92); }
+/* Desktop: the main action is an ordinary button in the navigation rail, under the tabs (Dial
+   renders into .rail-action there). Square like everything else; the round dial is the phone's.
+   A running session is a block with the clock and FINISH, and Pause as its own button below. */
+@media (min-width: 900px) {
+  .screen.has-dial { padding-bottom: 0; }
+  .rail-action { display: block; margin-top: var(--space-4); }
+  .dial-dock { position: static; display: block; pointer-events: auto; }
+  .dial-wrap { flex-direction: column; gap: var(--space-2); }
+  .dial-short { display: none; }
+  .dial-long, .dial-side-text { display: inline; }
+  .dial { width: 100%; height: auto; min-height: 50px; padding: 0 var(--space-3); border-radius: var(--radius-pill); font-family: var(--font-body); font-size: 15px; letter-spacing: 0; box-shadow: none; }
+  .dial:active { transform: none; filter: brightness(0.92); }
+  .dial-running { width: 100%; height: auto; padding: 12px var(--space-3); }
+  .dial-inner { border-radius: 0; background: none; color: inherit; gap: 0; }
+  .dial-sub { color: inherit; }
+  .dial-paused .dial-inner { color: var(--color-text); }
+  .dial-side { position: static; width: 100%; height: 44px; gap: var(--space-2); border-radius: var(--radius-pill); border: 1px solid var(--color-border); background: none; color: var(--color-text); box-shadow: none; font-size: 15px; font-weight: 600; }
+  .dial-side svg { width: 16px; height: 16px; }
+  .dial-side:active { transform: none; opacity: 0.6; }
+}
 /* Private note for next time: full width in the open card; a small dot on the closed line. */
 .ex-fields label.ex-memo { flex-basis: 100%; }
 .ex-memo textarea { width: 100%; resize: none; field-sizing: content; min-height: 1.6em; font-family: var(--font-body); line-height: 1.4; }

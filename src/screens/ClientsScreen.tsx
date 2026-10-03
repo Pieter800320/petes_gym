@@ -91,7 +91,7 @@ export function ClientsScreen() {
 
       {binCount > 0 && !search && <Link to="/deleted" className="text-link quiet">Recently deleted ({binCount})</Link>}
 
-      <Dial label="ADD" ariaLabel="New client" onClick={() => setNewClient('client')} />
+      <Dial label="ADD" longLabel="Add client" ariaLabel="New client" onClick={() => setNewClient('client')} />
       <ClientSheet open={newClient !== null} onClose={() => setNewClient(null)} initial={newClient === 'self' ? { name: 'Pete', isSelf: true } : undefined} />
     </div>
   )

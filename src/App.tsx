@@ -5,6 +5,7 @@ import { isFirebaseConfigured } from './firebase'
 import { NoteSheet } from './components/NoteSheet'
 import { onOpenNote, type NoteRequest } from './components/noteEvents'
 import { Snackbar } from './components/Snackbar'
+import { RAIL_ACTION_ID } from './components/TopBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { ClientScreen } from './screens/ClientScreen'
 import { ClientsScreen } from './screens/ClientsScreen'
@@ -93,6 +94,8 @@ function Shell() {
             {t.label}
           </NavLink>
         ))}
+        {/* Desktop: the tab's main action (Start, New, Add) appears here, see Dial. */}
+        <div id={RAIL_ACTION_ID} className="rail-action" />
       </nav>
 
       <main className="shell-main">

@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.8 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.9 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -46,8 +46,10 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     to open the next draft). Exports: fixed columns that fit a phone, no "Day 1 —" after the red
     number, long words wrap, goal on its own row, Word keeps each day on one page and has no
     spelling squiggles, file names use ae/oe/ue/ss.
-  - 0.9.4 (Pieter, 2026-10-03): on desktop (≥900px) the dial sits at the foot of the navigation
-    rail instead of over the page; toasts sit under the page. Phone layout unchanged.
+  - 0.9.4 → 0.9.9 (Pieter, 2026-10-03): on desktop (≥900px) the main action is not a round dial
+    but a rectangular red button in the navigation rail, under the tabs ("Start session", "New
+    programme", "Add client"; a running session shows clock + FINISH with a Pause button below).
+    `Dial` portals into `#rail-action` there. Toasts sit under the page. The phone keeps the round dial.
   - 0.9.5 (Pieter, 2026-10-03): the phone's Back button closes the open sheet (top one only when
     stacked) instead of leaving the page. Each open sheet adds one marked step to the history
     (`Sheet.tsx`, `sheetMark` in `util/navHistory.ts`).
@@ -119,7 +121,8 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   `var EX=`), the master list. Keys follow Falkenburg's `exKey()`. Never invent YouTube links. If there's
   no library video, fall back to a YouTube search URL (`videoUrl()`).
 - **Styling:** tokens only (`src/styles/tokens.css`), no raw hex in components. Dark-first; light mode
-  is a full equal. 48px minimum touch targets. One CTA per screen. Swiss Print: black ink, one red pen
+  is a full equal. 48px minimum touch targets. One CTA per screen (`Dial`: round on the phone, a
+  rail button on desktop; give it both `label` and `longLabel`). Swiss Print: black ink, one red pen
   (accent), blue ink for Pete's edits and progression tables, square corners (the dial stays round),
   sentence-case bold headings, small uppercase labels. Letter case, tracking, heading weight and
   control corners are tokens (`--display-case`, `--label-case`, `--radius-control`…); don't

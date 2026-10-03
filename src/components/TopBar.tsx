@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { IconBack, IconPen } from './Icons'
 import { openNote } from './noteEvents'
@@ -70,8 +71,36 @@ export function BigTitle({ text, sub, accent }: { text: string; sub?: ReactNode;
   )
 }
 
+/** Where the action button goes on desktop: a slot in the navigation rail, under the tabs (App.tsx). */
+export const RAIL_ACTION_ID = 'rail-action'
+const DESKTOP = '(min-width: 900px)'
+
+const readRail = () => {
+  const desktop = window.matchMedia(DESKTOP).matches
+  return { desktop, slot: desktop ? document.getElementById(RAIL_ACTION_ID) : null }
+}
+
+/**
+ * Whether this is the desktop layout, and the rail's slot there. Read straight away so the button
+ * is in the rail from its first frame; the slot is only missing for the app's very first render.
+ */
+function useRailSlot(): { desktop: boolean; slot: HTMLElement | null } {
+  const [rail, setRail] = useState(readRail)
+  useEffect(() => {
+    const media = window.matchMedia(DESKTOP)
+    const update = () => setRail(readRail())
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+  return rail
+}
+
 interface DialProps {
+  /** Short word on the phone's round button ("START"). */
   label: string
+  /** Full wording on the desktop button ("Start session"). */
+  longLabel?: string
   onClick: () => void
   ariaLabel?: string
   /** Running clock: shows the time with the label underneath, as a progress ring. */
@@ -83,9 +112,14 @@ interface DialProps {
   side?: { icon: ReactNode; label: string; onClick: () => void }
 }
 
-/** The one round action per tab (Start, New, Add), always in the same spot above the nav. */
-export function Dial({ label, onClick, ariaLabel, time, disabled, paused, side }: DialProps) {
-  return (
+/**
+ * The one main action per tab (Start, New, Add). Phone: a round button above the nav. Desktop: a
+ * rectangular button in the navigation rail, under the tabs; a running session shows the clock
+ * with Finish, and Pause as its own button below.
+ */
+export function Dial({ label, longLabel, onClick, ariaLabel, time, disabled, paused, side }: DialProps) {
+  const { desktop, slot } = useRailSlot()
+  const dial = (
     <div className="dial-dock">
       <div className="dial-wrap">
         {time ? (
@@ -97,15 +131,20 @@ export function Dial({ label, onClick, ariaLabel, time, disabled, paused, side }
           </button>
         ) : (
           <button type="button" className="dial" onClick={onClick} aria-label={ariaLabel} disabled={disabled} data-haptic="strong">
-            {label}
+            <span className="dial-short">{label}</span>
+            <span className="dial-long">{longLabel ?? label}</span>
           </button>
         )}
         {side && (
           <button type="button" className="dial-side" onClick={side.onClick} aria-label={side.label} title={side.label}>
             {side.icon}
+            <span className="dial-side-text">{side.label}</span>
           </button>
         )}
       </div>
     </div>
   )
+  // Desktop before the rail exists (first render of the app): wait a frame rather than flash it in the page.
+  if (desktop) return slot ? createPortal(dial, slot) : null
+  return dial
 }

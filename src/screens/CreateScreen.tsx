@@ -101,7 +101,7 @@ function CreateHome() {
       <div className="section-label">Exercise library</div>
       <LibraryBrowser />
 
-      <Dial label="NEW" ariaLabel="New programme" onClick={() => setPickOpen(true)} />
+      <Dial label="NEW" longLabel="New programme" ariaLabel="New programme" onClick={() => setPickOpen(true)} />
 
       <Sheet open={pickOpen} onClose={() => setPickOpen(false)} title="Programme for…">
         <div className="lines">
