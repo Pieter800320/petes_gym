@@ -108,7 +108,7 @@ Rules:
 - Superset labels like "A1"/"B2" go in superset.
 - When an exercise is clearly the same movement as one in the library index, use the library's exact name. Otherwise keep the document's name.
 - Weekly progression text (e.g. "Week 1 – Learn & Groove…") becomes block_progression with columns ["Week", "Focus"].
-- A week-by-week table for one exercise (e.g. a snatch or pull-up progression) goes in progression_blocks of the session in which that exercise is trained, wherever the table stands in the document: not all on the first session. A table that covers exercises from several days, or the programme as a whole, goes in block_progression.
+- A week-by-week table for one exercise (e.g. a snatch or pull-up progression) goes in progression_blocks of the session in which that exercise is trained, wherever the table stands in the document: not all on the first session. If the document has one table with a column per exercise and those exercises are trained on different days, make one table per exercise (first column plus that exercise's column, same rule text) on that exercise's day. Only a plan for the programme as a whole goes in block_progression.
 - Limitations, injuries and coach-facing remarks go in coach_notes.`
 
 function toBlock(b: z.infer<typeof zBlock>): ProgressionBlock {

@@ -160,12 +160,6 @@ function formatRx(p: RxParts): string {
   return reps ? `${sets} × ${reps}` : `${sets} ×`
 }
 
-/** True for the classic "sets × reps" shape (Create's edit card shows − / + only then). */
-export function isSteppable(rx: string): boolean {
-  const p = parseRx(rx)
-  return p.sets !== null && p.reps !== null
-}
-
 /** Rep steps: seconds and metres move in 5s, everything else in 1s. */
 function repStep(suffix: string): number {
   return /^\s*(s|sec|m\b)/i.test(suffix) ? 5 : 1

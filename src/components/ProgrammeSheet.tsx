@@ -10,7 +10,7 @@ import { DayList } from './DayList'
 import { Sheet } from './Sheet'
 import { toast } from './toast'
 import type { HealthIssue } from '../data/health'
-import { mapBlock, mapSession } from '../data/programmeEdits'
+import { mapBlock, mapSession, splitBlockByColumn } from '../data/programmeEdits'
 import { newProgressionBlock, newSession } from '../data/programmeUtils'
 import type { Programme } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
@@ -46,6 +46,23 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
     setBlock({ sessionId: target, blockId: moved.id })
     const day = p.sessions.findIndex((s) => s.id === target)
     toast(target ? `Moved to day ${day + 1}` : 'Now shown on every day')
+  }
+  /** Replaces the open progression by one table per column, each on the day its heading names. */
+  function splitBlock() {
+    if (!block || !blockData) return
+    const home = block.sessionId ?? p.sessions[0]?.id
+    if (!home) return
+    const parts = splitBlockByColumn(blockData)
+    let next: Programme = block.sessionId ? mapSession(p, block.sessionId, (s) => ({ ...s, progressionBlocks: s.progressionBlocks.filter((b) => b.id !== blockData.id) })) : { ...p, progression: null }
+    const days: number[] = []
+    for (const part of parts) {
+      const target = (part.dayIndex !== null ? p.sessions[part.dayIndex]?.id : undefined) ?? home
+      days.push(p.sessions.findIndex((s) => s.id === target) + 1)
+      next = mapSession(next, target, (s) => ({ ...s, progressionBlocks: [...s.progressionBlocks, part.block] }))
+    }
+    onChange(next)
+    setBlock(null)
+    toast(`Split into ${parts.length} tables: ${days.map((d) => `day ${d}`).join(', ')}`)
   }
   const warnings = issues.filter((i) => i.level === 'warn').length
   const eyebrow = [clientName, p.durationWeeks ? `${p.durationWeeks}-week training plan` : 'Training plan'].filter(Boolean).join(' · ')
@@ -150,6 +167,7 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
           current: block?.sessionId ?? null,
           wholeProgrammeFree: !p.progression,
           onMove: moveBlock,
+          onSplit: splitBlock,
         }}
       />
     </Sheet>

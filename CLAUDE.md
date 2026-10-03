@@ -9,9 +9,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.11 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.12 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
-  - M2 Train: one screen — day list. The open exercise card has four bands: cue + alternative; a 2×2
+  - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
     (Pieter, 2026-10-01: bigger jumps are typed); private `ExerciseRow.load`); a private note for
     next time (`ExerciseRow.memo`, dot after the name; both never exported or sent to Claude); actions
@@ -69,6 +69,11 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - 0.9.11 (Pieter, 2026-10-03): a progression belongs on the day its exercise is trained. Claude
     is told so in Create (`chat.ts`, tool descriptions) and in import (`importProgramme.ts`); the
     progression edit sheet has "Shown on" (a day, or every day) to move one by hand.
+  - 0.9.12 (Pieter, 2026-10-03): the open exercise card is the same in Edit as in Train (cue,
+    four pills, note, actions); Edit adds Alternative, Superset, ↑ ↓ and Delete, the name is
+    changed with Swap, and "+ Exercise" opens the picker. A progression with a column per
+    exercise can be split into one table per column (`splitBlockByColumn`); a heading that names
+    a day ("Snatch (Day 3)") puts its table on that day.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

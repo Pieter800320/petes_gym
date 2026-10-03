@@ -293,14 +293,12 @@ svg { flex: none; }
 .ex-card { display: flex; flex-direction: column; gap: 14px; }
 .ex-cue { margin: 0; font-size: 14px; color: var(--color-text-muted); }
 .ex-meta { margin: 0; font-size: 13px; color: var(--color-text-muted); }
-.ex-name-input { font-weight: 600; font-size: 16px; }
 .ex-fields { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .ex-fields label { display: flex; flex-direction: column; flex: 1 1 90px; font-family: var(--font-mono); font-size: 10px; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
 .ex-fields .plain { font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--color-text); }
 .ex-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; font-size: 14px; font-weight: 500; }
 .ex-actions a, .ex-actions > button { border: 0; background: none; padding: 6px 0; color: var(--color-text); text-decoration: none; font-weight: 500; }
 .ex-actions > button:disabled { opacity: 0.35; }
-.steppers { display: flex; gap: 12px; }
 .stepper { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 6px; border-radius: var(--radius-pill); border: 1px solid var(--color-border); }
 .stepper button { flex: none; width: 40px; height: 40px; border-radius: var(--radius-control); border: 0; background: var(--color-bg); font-size: 20px; line-height: 1; }
 .stepper button:active { background: var(--color-accent-wash); }

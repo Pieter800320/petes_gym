@@ -6,14 +6,14 @@
  *   train — plus an editable cue, sets/reps − +, weight and a note for next time (both private),
  *           swap (library or own name; a different exercise clears cue and alternative), remove; tap a section
  *           name to add an exercise (changes stick to the programme)
- *   edit  — plus name, cue, alternative, rest, superset, move, delete, section and day titles
+ *   edit  — the same card as train, plus alternative, superset, move, delete, section and day titles
  */
 import { useRef, useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
 import { ExercisePicker } from './ExercisePicker'
 import { exerciseKey, findExercise, videoUrl } from '../data/exercises'
 import { move } from '../data/programmeEdits'
-import { canStepReps, estimateSessionMin, isLoadSteppable, isRestSteppable, isSteppable, newRow, newSection, repsLabel, setReps, setSets, setsLabel, stepLoad, stepReps, stepRest, stepSets, typedLoad, typedRest, withLibraryLink } from '../data/programmeUtils'
+import { canStepReps, estimateSessionMin, isLoadSteppable, isRestSteppable, newRow, newSection, repsLabel, setReps, setSets, setsLabel, stepLoad, stepReps, stepRest, stepSets, typedLoad, typedRest } from '../data/programmeUtils'
 import type { ExerciseRow, ProgrammeSection, ProgrammeSession, ProgressionBlock } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
 
@@ -135,7 +135,7 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, hideHe
           )}
 
           {edit && (
-            <button type="button" className="text-link add-line" onClick={() => { const row = newRow(); updateSection(sec.id, (x) => ({ ...x, rows: [...x.rows, row] })); setOpenRow(row.id) }}>
+            <button type="button" className="text-link add-line" onClick={() => setAddTo(sec.id)}>
               + Exercise
             </button>
           )}
@@ -191,36 +191,39 @@ interface CardProps {
   canMoveDown: boolean
 }
 
+/**
+ * The open exercise. Train and Edit share one layout, so the card looks and works the same wherever
+ * it is opened: 1 how (cue, alternative) · 2 Sets, Reps, Rest, Weight as pills · 3 note · 4 actions.
+ * Edit adds what only building a programme needs: an editable alternative, the superset label,
+ * moving the line up or down, and Delete. The name is changed with Swap (library or your own).
+ */
 function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMoveUp, canMoveDown }: CardProps) {
   const ex = findExercise(r.exerciseKey ?? r.name)
   const video = r.name ? videoUrl(ex ?? { name: r.name }) : null
   const edit = mode === 'edit'
-  const train = mode === 'train'
-  const steppable = isSteppable(r.prescription)
+  const editable = mode !== 'read'
 
   return (
     <div className="ex-card">
-      {edit ? (
-        <input className="plain ex-name-input" list="exercise-names" value={r.name} placeholder="Exercise name" onChange={(e) => onChange((x) => withLibraryLink({ ...x, name: e.target.value }))} aria-label="Exercise name" autoFocus={!r.name} />
-      ) : train ? (
+      {editable ? (
         // 1 · How to do it. The cue can be typed here: after a swap the old one no longer fits.
         <div className="ex-how">
-          <textarea className="plain ex-cue-input" rows={1} value={r.notes} placeholder="Add a cue" onChange={(e) => onChange((x) => ({ ...x, notes: e.target.value }))} aria-label="Cue" />
-          {r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
+          <textarea className="plain ex-cue-input" rows={1} value={r.notes} placeholder={edit ? 'Add a cue (8 words or fewer)' : 'Add a cue'} onChange={(e) => onChange((x) => ({ ...x, notes: e.target.value }))} aria-label="Cue" />
+          {!edit && r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
         </div>
       ) : (
         // 1 · How to do it: read-only, quiet.
-        (r.notes || r.alternative || (mode === 'read' && r.rest)) && (
+        (r.notes || r.alternative || r.rest) && (
           <div className="ex-how">
             {r.notes && <p className="ex-cue">{r.notes}</p>}
             {r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
-            {mode === 'read' && r.rest && <p className="ex-meta">Rest {r.rest}</p>}
+            {r.rest && <p className="ex-meta">Rest {r.rest}</p>}
           </div>
         )
       )}
 
       {/* 2 · What to do: everything adjusted between sets, in one grid. 3 · Pete's note, full width. */}
-      {train && (
+      {editable && (
         <div className="ex-fields ex-grid">
           {/* All four always show as pills; "—" when empty. Tap the value to type ("AMRAP", "red band"). */}
           <Stepper
@@ -254,34 +257,20 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMov
             onStep={(d) => onChange((x) => ({ ...x, load: stepLoad(x.load ?? '', d) }))}
             typed={{ text: r.load ?? '', onCommit: (t) => onChange((x) => ({ ...x, load: typedLoad(t) })) }}
           />
+          {edit && (
+            <>
+              <label className="span-all">Alternative<input className="plain" value={r.alternative} placeholder="Another exercise the client can do instead" onChange={(e) => onChange((x) => ({ ...x, alternative: e.target.value }))} /></label>
+              <label className="span-all">Superset<input className="plain" value={r.superset} placeholder="A1, A2… pairs it with the next exercise" onChange={(e) => onChange((x) => ({ ...x, superset: e.target.value }))} /></label>
+            </>
+          )}
           <MemoField row={r} onChange={onChange} />
         </div>
-      )}
-
-      {edit && (
-        <>
-          {steppable && (
-            <div className="steppers">
-              <Stepper label="Sets" value={setsLabel(r.prescription)} onStep={(d) => onChange((x) => ({ ...x, prescription: stepSets(x.prescription, d) }))} />
-              <Stepper label="Reps" value={repsLabel(r.prescription)} onStep={(d) => onChange((x) => ({ ...x, prescription: stepReps(x.prescription, d) }))} />
-            </div>
-          )}
-          <div className="ex-fields">
-            <label>Sets × reps<input className="plain mono" value={r.prescription} placeholder="3 × 8–10" onChange={(e) => onChange((x) => ({ ...x, prescription: e.target.value }))} /></label>
-            <label>Rest<input className="plain mono" value={r.rest} placeholder="90s" onChange={(e) => onChange((x) => ({ ...x, rest: e.target.value }))} /></label>
-            <label>Superset<input className="plain mono" value={r.superset} placeholder="A1" onChange={(e) => onChange((x) => ({ ...x, superset: e.target.value }))} /></label>
-            <LoadField row={r} onChange={onChange} />
-            <MemoField row={r} onChange={onChange} />
-          </div>
-          <input className="plain plain-muted" value={r.notes} placeholder="Cue for the client (8 words max)" onChange={(e) => onChange((x) => ({ ...x, notes: e.target.value }))} aria-label="Cue" />
-          <input className="plain plain-muted" value={r.alternative} placeholder="Alternative (optional)" onChange={(e) => onChange((x) => ({ ...x, alternative: e.target.value }))} aria-label="Alternative" />
-        </>
       )}
 
       {/* 4 · Actions: Video and Swap on the left; the destructive one alone on the right. */}
       <div className="ex-actions">
         {video && <a href={video.url} target="_blank" rel="noopener noreferrer">Video</a>}
-        {mode !== 'read' && <button type="button" onClick={onSwap}>Swap</button>}
+        {editable && <button type="button" onClick={onSwap}>{r.name ? 'Swap' : 'Choose exercise'}</button>}
         {edit && (
           <>
             <button type="button" disabled={!canMoveUp} onClick={() => onMove(-1)} aria-label="Move up">↑</button>
@@ -289,17 +278,10 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onDelete, canMov
           </>
         )}
         <span className="grow" />
-        {edit && <ConfirmButton className="danger-link" onConfirm={onDelete}>Delete</ConfirmButton>}
-        {train && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Remove</ConfirmButton>}
+        {edit && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Delete</ConfirmButton>}
+        {mode === 'train' && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Remove</ConfirmButton>}
       </div>
     </div>
-  )
-}
-
-/** Free-text working weight; only visible in the open card. */
-function LoadField({ row: r, onChange }: { row: ExerciseRow; onChange: CardProps['onChange'] }) {
-  return (
-    <label>Weight<input className="plain mono" value={r.load ?? ''} placeholder="20 kg" inputMode="text" onChange={(e) => onChange((x) => ({ ...x, load: e.target.value }))} /></label>
   )
 }
 

@@ -27,6 +27,35 @@ export function mapBlock(s: ProgrammeSession, blockId: string, fn: (b: Progressi
   return { ...s, progressionBlocks: s.progressionBlocks.map((b) => (b.id === blockId ? fn(b) : b)) }
 }
 
+/** One of the tables a combined progression splits into, and the day it names (if any). */
+export interface SplitPart {
+  block: ProgressionBlock
+  /** Index of the day its column heading names ("Snatch (Day 3)" → 2); null when it names none. */
+  dayIndex: number | null
+}
+
+/** "Snatch (Day 3)" → { name: "Snatch", dayIndex: 2 }. Also "Tag 3", "– Day 3", "D3" is not matched. */
+function columnDay(heading: string): { name: string; dayIndex: number | null } {
+  const m = heading.match(/[\s(–—-]*\b(?:day|tag)\s*(\d+)\b\)?/i)
+  if (!m) return { name: heading.trim(), dayIndex: null }
+  return { name: heading.replace(m[0], '').trim() || heading.trim(), dayIndex: Number(m[1]) - 1 }
+}
+
+/**
+ * Splits a table that has one column per exercise ("Week | Clean & jerk (Day 1) | Snatch (Day 3)")
+ * into one table per column: the first column (the weeks) is kept in each, the rule is repeated,
+ * and the title is the column's heading. Nothing is reworded.
+ */
+export function splitBlockByColumn(b: ProgressionBlock): SplitPart[] {
+  return b.columns.slice(1).map((heading, i) => {
+    const { name, dayIndex } = columnDay(heading)
+    return {
+      dayIndex,
+      block: { id: newId(), title: name, rule: b.rule, columns: [b.columns[0], name], rows: b.rows.map((r) => [r[0] ?? '', r[i + 1] ?? '']) },
+    }
+  })
+}
+
 /** Deep copy with fresh ids, e.g. for "Duplicate session" or "Next block". */
 export function cloneSession(s: ProgrammeSession): ProgrammeSession {
   return {
