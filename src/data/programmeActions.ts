@@ -31,6 +31,25 @@ export function createNextBlock(uid: string, p: Programme): string {
   })
 }
 
+/**
+ * Reuse from the programme library: a draft copy for another client (or Pete). What belongs to the
+ * person it was written for stays behind: working weights, private notes, the note to the client,
+ * the start date and the German translation cache.
+ */
+export function copyProgrammeTo(uid: string, p: Programme, clientId: string): string {
+  const { id: _id, createdAt: _c, updatedAt: _u, deletedAt: _d, deletedWithClient: _w, translationsDe: _t, ...rest } = p
+  return createProgramme(uid, {
+    ...rest,
+    clientId,
+    status: 'draft',
+    startDate: null,
+    personalNote: '',
+    sessions: p.sessions.map(cloneSession).map((s) => ({ ...s, sections: s.sections.map((sec) => ({ ...sec, rows: sec.rows.map(({ load: _l, memo: _m, ...row }) => row) })) })),
+    progression: p.progression ? { ...p.progression, rows: p.progression.rows.map((r) => [...r]) } : null,
+    parentId: null,
+  })
+}
+
 export function duplicateProgramme(uid: string, p: Programme): string {
   const { id: _id, createdAt: _c, updatedAt: _u, deletedAt: _d, deletedWithClient: _w, ...rest } = p
   return createProgramme(uid, { ...rest, title: `${p.title} (copy)`, status: 'draft', sessions: p.sessions.map(cloneSession), parentId: null })

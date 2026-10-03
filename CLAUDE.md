@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.19 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.20 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -117,6 +117,13 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     client's page. Which programme Train shows is per device (`getTrainProgrammeId` in
     settings.ts; null = Pete's own). "Load in Train" (copying a client's programme to Pete) is
     removed; reuse comes back with the programme library.
+  - 0.9.20 (Pieter, 2026-10-03): programme library (`/library`, from the Create page): every
+    programme of every client, searchable (title, goal, client, exercise) and filterable by days
+    per week and by labels. Labels come from Claude (`claude/tagProgrammes.ts`, Haiku, fixed
+    vocabulary, cost kind `tags`) or are toggled by hand in the programme's sheet there;
+    `Programme.tags` is written only by the library (`saveProgramme` leaves it out). "Use a copy
+    for…" makes a draft for any client (`copyProgrammeTo`: no weights, private notes, client
+    note or translations).
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -140,6 +147,9 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   scroll kept), in the dev and the production build, phone and desktop. Not yet on a real phone.
   0.9.6: five sample exports opened with the network off at 360 and 900px: every part renders in
   Schibsted Grotesk, nothing is fetched. In-app preview checked on phone and desktop sizes.
+  0.9.18–0.9.20: gear and backup (22 checks), training with a client (20), library search,
+  filters, hand labels and copy (24), all on the in-memory backend. Claude's labelling call is
+  NOT tested against the real API (no credits); it follows translate.ts's pattern.
   0.9.11: moving a progression between days and to/from "every day" checked in the app (15
   checks). The new wording in Claude's instructions is NOT tested against the real API (no credits).
   0.9.7: with 40–160 ms added to every listener's first answer, switching tabs went from 4–6

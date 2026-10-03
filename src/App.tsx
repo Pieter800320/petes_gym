@@ -14,6 +14,7 @@ import { CreateScreen } from './screens/CreateScreen'
 import { DeletedScreen } from './screens/DeletedScreen'
 import { LoadingScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
 import { ImportScreen } from './screens/ImportScreen'
+import { LibraryScreen } from './screens/LibraryScreen'
 import { NotesScreen } from './screens/NotesScreen'
 import { ProfileImportScreen } from './screens/ProfileImportScreen'
 import { ProgrammeScreen } from './screens/ProgrammeScreen'
@@ -108,6 +109,7 @@ function Shell() {
           <Route path="/train/live" element={<Navigate to="/train" replace />} />
           <Route path="/create" element={<CreateScreen />} />
           <Route path="/create/:id" element={<CreateScreen />} />
+          <Route path="/library" element={<LibraryScreen />} />
           <Route path="/programmes/:id" element={<ProgrammeScreen />} />
           <Route path="/clients" element={<ClientsScreen />} />
           <Route path="/clients/:id" element={<ClientScreen />} />

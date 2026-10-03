@@ -246,11 +246,11 @@ export function createProgramme(uid: string, draft: ProgrammeDraft, createdAt?: 
 /**
  * Writes the programme's content: title, details, sessions, tables. Sessions are nested, so they
  * are always written whole. Lifecycle fields (current/archived, Recently deleted, owner,
- * translation cache) are changed only by their own actions: an editor holding an older copy
+ * translation cache, library labels) are changed only by their own actions: an editor holding an older copy
  * must never undo "Make current" or a delete made meanwhile.
  */
 export function saveProgramme(uid: string, programme: Programme) {
-  const { id, status: _s, deletedAt: _d, deletedWithClient: _w, clientId: _c, createdAt: _ca, updatedAt: _u, translationsDe: _t, ...content } = programme
+  const { id, status: _s, deletedAt: _d, deletedWithClient: _w, clientId: _c, createdAt: _ca, updatedAt: _u, translationsDe: _t, tags: _g, ...content } = programme
   setDoc(doc(userCollection(uid, 'programmes'), id), { ...encodeProgramme(content), updatedAt: Date.now() }, { merge: true }).catch(reportWriteError)
 }
 

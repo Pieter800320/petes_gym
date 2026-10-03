@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom'
-import { IconAttach, IconBack, IconPen, IconSend } from '../components/Icons'
+import { IconAttach, IconBack, IconChevronRight, IconPen, IconSend } from '../components/Icons'
 import { openNote } from '../components/noteEvents'
 import { LibraryBrowser } from '../components/LibraryBrowser'
 import { ProgrammeSheet } from '../components/ProgrammeSheet'
@@ -97,6 +97,14 @@ function CreateHome() {
         {!loading && !drafts.length && <p className="muted small lines-empty">Nothing in progress. Tap NEW to start a programme.</p>}
       </div>
       {drafts.length > 0 && <p className="muted small" style={{ margin: 0 }}><span className="swipe-hint-touch">Swipe a draft to the left to delete it.</span><span className="swipe-hint-pointer">Point at a draft and click the bin to delete it.</span></p>}
+
+      <Link to="/library" className="line-link">
+        <span className="grow">
+          <span className="line-title">Programme library</span>
+          <span className="line-meta">{programmes.length ? `${programmes.length} programme${programmes.length === 1 ? '' : 's'} to search and reuse` : 'Your programmes, to search and reuse'}</span>
+        </span>
+        <IconChevronRight />
+      </Link>
 
       <div className="section-label">Exercise library</div>
       <LibraryBrowser />

@@ -52,7 +52,7 @@ export function costUsd(model: string, usage: Usage): number {
   )
 }
 
-export type CostKind = 'create' | 'translate' | 'import'
+export type CostKind = 'create' | 'translate' | 'import' | 'tags'
 
 /** Where spending is recorded (the Firestore ledger); set once the user is signed in (App.tsx). */
 let costSink: ((kind: CostKind, usd: number) => void) | null = null
@@ -78,7 +78,7 @@ export const FALLBACK_BETA = 'server-side-fallback-2026-07-01'
 
 export class MissingApiKeyError extends Error {
   constructor() {
-    super('Add your Anthropic API key in Settings (Clients → gear icon) to use Claude on this device.')
+    super('Add your Anthropic API key in Settings (the gear at the top right) to use Claude on this device.')
   }
 }
 

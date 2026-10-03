@@ -10,10 +10,10 @@ import { readAllData, useCostLedger, type CostMonth } from '../data/store'
 import { download } from '../export/share'
 import { toast } from './toast'
 
-const COST_LABELS = { create: 'Create', translate: 'German exports', import: 'Imports' } as const
+const COST_LABELS = { create: 'Create', translate: 'German exports', import: 'Imports', tags: 'Library labels' } as const
 
 function CostLine({ label, month }: { label: string; month: CostMonth }) {
-  const total = (month.create ?? 0) + (month.translate ?? 0) + (month.import ?? 0)
+  const total = (month.create ?? 0) + (month.translate ?? 0) + (month.import ?? 0) + (month.tags ?? 0)
   const parts = (Object.keys(COST_LABELS) as (keyof typeof COST_LABELS)[])
     .filter((k) => (month[k] ?? 0) > 0)
     .map((k) => `${COST_LABELS[k]} ${formatUsd(month[k] ?? 0)}`)
