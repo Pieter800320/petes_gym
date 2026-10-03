@@ -374,15 +374,19 @@ svg { flex: none; }
 .doc-details summary { cursor: pointer; padding: 6px 0; font-size: 14px; font-weight: 600; }
 .doc-day { margin-top: var(--space-4); }
 .doc-day-actions { display: flex; align-items: center; gap: var(--space-3); }
-/* Edit programme: what can be typed into is underlined, so it reads as editable; adding is in ink.
-   Red is kept for deleting, which lives in the ⋯ menus, away from the add lines. */
+/* Edit programme: what can be typed into is underlined, so it reads as editable. The "+ …" lines
+   are red like every other action link; deleting lives in the ⋯ menus, away from them. */
 .doc .plain { border-bottom-color: var(--color-border); border-radius: 0; }
-.doc .add-line, .doc .doc-day-actions .text-link { color: var(--color-text); }
 /* "Section deleted · Undo": floats at the top of the sheet's page without pushing it down. */
 .undo-slot { position: sticky; top: 0; z-index: 3; height: 0; }
 .undo-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 48px; padding: 0 6px 0 var(--space-3); border-radius: var(--radius-md); background: var(--color-text); color: var(--color-bg); font-size: var(--type-sm); font-weight: 500; box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.5); }
 .undo-bar button { min-height: 44px; padding: 0 var(--space-3); border: 0; background: none; color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
-.ex-move-day { margin: -6px 0; }
+/* Edit card: everything that moves the exercise sits in one labelled row, apart from Video / Swap / Delete. */
+.ex-move { display: flex; flex-direction: column; }
+.ex-move .label { margin-bottom: -2px; }
+.ex-card .ex-move + .ex-actions { margin-top: -6px; padding-top: 6px; border-top: 1px solid var(--color-border); margin-left: 0; margin-right: 0; }
+.ex-card .ex-move + .ex-actions > :first-child { margin-left: -12px; }
+.ex-card .ex-move + .ex-actions > :last-child { margin-right: -12px; }
 .sheet-done { display: inline-flex; align-items: center; gap: var(--space-3); }
 .sheet-done .text-link { min-height: 44px; padding: 0 0 0 var(--space-2); font-size: 15px; }
 .line-link:disabled { opacity: 0.4; }

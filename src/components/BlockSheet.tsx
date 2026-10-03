@@ -2,8 +2,6 @@ import { ConfirmButton } from './ConfirmButton'
 import { Sheet } from './Sheet'
 import type { ProgressionBlock } from '../data/types'
 
-/** A table needs the weeks column plus at least two more to be worth splitting. */
-const MIN_COLUMNS_TO_SPLIT = 3
 /** Value of the "Shown on" choice that stands for the whole programme rather than one day. */
 const WHOLE_PROGRAMME = ''
 
@@ -16,8 +14,6 @@ export interface BlockPlace {
   /** False when the programme already has a whole-programme progression (there is room for one). */
   wholeProgrammeFree: boolean
   onMove: (dayId: string | null) => void
-  /** Replace this table by one per column, each on the day its heading names (else this day). */
-  onSplit: () => void
 }
 
 interface BlockSheetProps {
@@ -97,14 +93,6 @@ function BlockForm({ block: b, onChange, onDelete, onDone, place }: { block: Pro
         <button type="button" className="btn-ghost" onClick={() => onChange({ ...b, columns: [...b.columns, 'Column'], rows: b.rows.map((r) => [...r, '']) })}>+ Column</button>
         <button type="button" className="btn-ghost" disabled={b.columns.length <= 1} onClick={() => onChange({ ...b, columns: b.columns.slice(0, -1), rows: b.rows.map((r) => r.slice(0, b.columns.length - 1)) })}>− Column</button>
       </div>
-      {place && b.columns.length >= MIN_COLUMNS_TO_SPLIT && (
-        <div className="field">
-          <ConfirmButton className="btn-acc" armedLabel="Tap again to split" onConfirm={place.onSplit}>Split into one table per column</ConfirmButton>
-          <span className="muted small">
-            For a table with a column per exercise: makes {b.columns.length - 1} tables ({b.columns.slice(1).join(', ')}), each with the "{b.columns[0]}" column. A heading that names a day ("Day 3") puts its table on that day.
-          </span>
-        </div>
-      )}
       <ConfirmButton onConfirm={() => onDelete(b.id)}>Delete block</ConfirmButton>
       <button type="button" className="btn-cta btn-block" onClick={onDone}>Done</button>
     </div>

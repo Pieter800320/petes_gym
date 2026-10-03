@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.14 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.15 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -71,13 +71,12 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     progression edit sheet has "Shown on" (a day, or every day) to move one by hand.
   - 0.9.12 (Pieter, 2026-10-03): the open exercise card is the same in Edit as in Train (cue,
     four pills, note, actions); Edit adds Alternative, Superset, ↑ ↓ and Delete, the name is
-    changed with Swap, and "+ Exercise" opens the picker. A progression with a column per
-    exercise can be split into one table per column (`splitBlockByColumn`); a heading that names
-    a day ("Snatch (Day 3)") puts its table on that day.
+    changed with Swap, and "+ Exercise" opens the picker. (It also added a "split a combined
+    progression per column" action; removed again in 0.9.15, Pieter: too complicated, a one-off.)
   - 0.9.13 (Pieter, 2026-10-03), Edit programme step 1. Division of labour: Train adjusts today's
     session; Edit programme does all of that plus structure. The sheet is titled "Edit
-    programme" with Done and a Saving…/Saved note; editable text is underlined; add lines are in
-    ink and in order (+ Exercise, + Section, progressions, + Progression for this day); deleting
+    programme" with Done and a Saving…/Saved note; editable text is underlined; add lines are
+    in order (+ Exercise, + Section, progressions, + Progression for this day); deleting
     lives in ⋯ menus per day (move up/down, duplicate, delete) and per section (move up/down,
     delete) and names what goes with it; section length and note are editable (the note now shows
     in Train and on the programme page too); day titles wrap and drop "Day 1 —". Reached from
@@ -86,6 +85,11 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     day…" puts it in the other day's section of the same name, else its last section
     (`moveRowInSession`, `moveRowToSession`); after any delete in the sheet a bar offers Undo for
     10 s or until the next edit (`ProgrammeSheet` compares `programmeCounts` before and after).
+  - 0.9.15 (Pieter, 2026-10-03): "as simple as possible; the layout says what each control
+    does". Split removed. All action links are red: "+ …" lines in Edit, and both "Edit
+    programme ›" and "Rework with Claude ›" in Train. The Edit card groups everything that moves
+    the exercise in one labelled row (MOVE: ↑ Up, ↓ Down, To another day…), above Video · Swap …
+    Delete.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

@@ -219,7 +219,7 @@ interface CardProps {
  * The open exercise. Train and Edit share one layout, so the card looks and works the same wherever
  * it is opened: 1 how (cue, alternative) · 2 Sets, Reps, Rest, Weight as pills · 3 note · 4 actions.
  * Edit adds what only building a programme needs: an editable alternative, the superset label,
- * moving the line up or down, and Delete. The name is changed with Swap (library or your own).
+ * a Move row (up, down, to another day) and Delete. The name is changed with Swap (library or your own).
  */
 function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onMoveToDay, onDelete, canMoveUp, canMoveDown }: CardProps) {
   const ex = findExercise(r.exerciseKey ?? r.name)
@@ -291,18 +291,22 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onMoveToDay, onD
         </div>
       )}
 
-      {edit && onMoveToDay && <button type="button" className="text-link quiet ex-move-day" onClick={onMoveToDay}>Move to another day…</button>}
+      {/* Edit only · Move: every way of moving the exercise, in one labelled row, in words. */}
+      {edit && (
+        <div className="ex-move" role="group" aria-label="Move this exercise">
+          <span className="label">Move</span>
+          <div className="ex-actions">
+            <button type="button" disabled={!canMoveUp} onClick={() => onMove(-1)} aria-label="Move up">↑ Up</button>
+            <button type="button" disabled={!canMoveDown} onClick={() => onMove(1)} aria-label="Move down">↓ Down</button>
+            {onMoveToDay && <button type="button" onClick={onMoveToDay}>To another day…</button>}
+          </div>
+        </div>
+      )}
 
       {/* 4 · Actions: Video and Swap on the left; the destructive one alone on the right. */}
       <div className="ex-actions">
         {video && <a href={video.url} target="_blank" rel="noopener noreferrer">Video</a>}
         {editable && <button type="button" onClick={onSwap}>{r.name ? 'Swap' : 'Choose exercise'}</button>}
-        {edit && (
-          <>
-            <button type="button" disabled={!canMoveUp} onClick={() => onMove(-1)} aria-label="Move up">↑</button>
-            <button type="button" disabled={!canMoveDown} onClick={() => onMove(1)} aria-label="Move down">↓</button>
-          </>
-        )}
         <span className="grow" />
         {edit && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Delete</ConfirmButton>}
         {mode === 'train' && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Remove</ConfirmButton>}
