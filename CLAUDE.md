@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.16 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.17 (2026-10-03). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -97,6 +97,15 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     Programme page: one button, then "Edit programme ›" and "Rework with Claude ›" as in Train;
     "Edit programme" left the ⋯ menu. Train keeps "+ Exercise": adding one mid-workout is an
     in-the-moment change; structure lives in Edit programme.
+  - 0.9.17 (Pieter, 2026-10-03, replaces the 0.9.16 button rule: "one big red button looks cheap,
+    two red links is too much red"). Buttons: a pair of rectangles, the main action red and the
+    second outlined (`.button-pair`); anything further is a quiet grey text link, so red appears
+    once. You page: none. Client page: Send to [name] + Rework with Claude. Programme page:
+    Open in Train / Send + Edit programme, then "Rework with Claude ›" quiet. Train: "Edit
+    programme ›" red, "Rework with Claude ›" quiet. The in-app programme views (programme page,
+    Edit programme, the card on a client's page) now follow the theme: dark in dark mode
+    (`--paper-*` in tokens.css); exports and Preview stay white. The read-only exercise card on
+    the programme page shows Cue / Alternative / Rest as labelled lines and a red "▶ Video".
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -159,7 +168,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   `var EX=`), the master list. Keys follow Falkenburg's `exKey()`. Never invent YouTube links. If there's
   no library video, fall back to a YouTube search URL (`videoUrl()`).
 - **Styling:** tokens only (`src/styles/tokens.css`), no raw hex in components. Dark-first; light mode
-  is a full equal. 48px minimum touch targets. One CTA per screen, other destinations as red text links with "›" (`Dial`: round on the phone, a
+  is a full equal. 48px minimum touch targets. One CTA per screen; a second action is an outlined rectangle beside it, further ones quiet text links (`Dial`: round on the phone, a
   rail button on desktop; give it both `label` and `longLabel`). Swiss Print: black ink, one red pen
   (accent), blue ink for Pete's edits and progression tables, square corners (the dial stays round),
   sentence-case bold headings, small uppercase labels. Letter case, tracking, heading weight and
@@ -175,10 +184,11 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   sheet implementation; don't hand-roll another. An open sheet owns a history step (Back closes
   it), so `navigate(-1)` from inside a sheet only closes the sheet: to leave the page from a
   sheet use `leaveFor()` or a normal `navigate(path)`.
-- **Exports** (M3) and in-app programme views (`.paper-*`, `.doc`) share Swiss Print: white sheet, thick
+- **Exports** (M3) and in-app programme views (`.paper-*`, `.doc`) share the Swiss Print layout: thick
   rule under the masthead and above each later day, red day numbers, ruled section headers, blue
   progression blocks, no branding. Change one, change all three (`renderHtml.ts`, `renderDocx.ts`,
-  the paper rules in app.css).
+  the paper rules in app.css). Colour differs by purpose (Pieter, 2026-10-03): exports and the
+  export Preview are always white; the in-app views follow the theme.
 
 ## 3. Delivery checklist
 

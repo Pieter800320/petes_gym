@@ -196,7 +196,7 @@ function TrainProgramme({ stored }: { stored: Programme }) {
             </>
           )}
           <button type="button" className="text-link" onClick={() => setEditOpen(true)}>Edit programme ›</button>
-          <Link to={`/create/${programme.id}`} className="text-link" onClick={flush}>Rework with Claude ›</Link>
+          <Link to={`/create/${programme.id}`} className="text-link quiet" onClick={flush}>Rework with Claude ›</Link>
         </div>
       )}
 

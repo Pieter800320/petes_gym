@@ -1,7 +1,7 @@
 /*
  * A programme on its own page: the paper document, the same one the client receives.
- * Reached from a client's page (current or earlier programmes). One red button, two text links
- * (Edit programme, Rework with Claude); the rarer actions are in ⋯.
+ * Reached from a client's page (current or earlier programmes). A red button and an outlined one
+ * (Edit programme), a quiet link to Rework with Claude; the rarer actions are in ⋯.
  */
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -101,16 +101,17 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
         ))}
       </article>
 
-      {/* One red button (what the page is for), then red text links to the tools, as in Train. */}
-      {isMine ? (
-        <button type="button" className="btn-cta btn-block" onClick={trainMine}>{programme.status === 'active' ? 'Open in Train' : 'Make current & train'}</button>
-      ) : (
-        <button type="button" className="btn-cta btn-block" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
-      )}
-      <div className="quiet-links">
-        <button type="button" className="text-link" onClick={() => setEditOpen(true)}>Edit programme ›</button>
-        <Link to={`/create/${programme.id}`} className="text-link" onClick={flush}>Rework with Claude ›</Link>
+      {/* A pair of rectangles: the main action in red, Edit programme outlined beside it.
+          Rework with Claude is a quiet link, so red appears once. */}
+      <div className="button-pair">
+        {isMine ? (
+          <button type="button" className="btn-cta" onClick={trainMine}>{programme.status === 'active' ? 'Open in Train' : 'Make current & train'}</button>
+        ) : (
+          <button type="button" className="btn-cta" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
+        )}
+        <button type="button" className="btn-outline" onClick={() => setEditOpen(true)}>Edit programme</button>
       </div>
+      <Link to={`/create/${programme.id}`} className="text-link quiet" onClick={flush}>Rework with Claude ›</Link>
 
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title={programme.title}>
         <div className="lines">

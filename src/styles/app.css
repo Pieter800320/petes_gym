@@ -146,7 +146,7 @@ svg { flex: none; }
 .dial-long, .dial-side-text, .rail-action { display: none; }
 
 /* ── Buttons and links ────────────────────────────────────────────── */
-.btn-cta, .btn-acc, .btn-ghost {
+.btn-cta, .btn-outline, .btn-acc, .btn-ghost {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   min-height: 50px; padding: 0 var(--space-4); border-radius: var(--radius-pill);
   font-weight: 600; font-size: 15px; text-decoration: none; text-align: center;
@@ -158,8 +158,13 @@ svg { flex: none; }
 .btn-ghost { border: 0; background: none; color: var(--color-text-muted); min-height: 44px; padding: 0 var(--space-2); }
 .btn-ghost.danger { color: var(--color-danger); }
 .btn-ghost.small { min-height: 36px; font-size: var(--type-sm); }
-.btn-ghost:disabled, .btn-acc:disabled { opacity: 0.4; }
+.btn-ghost:disabled, .btn-acc:disabled, .btn-outline:disabled { opacity: 0.4; }
+.btn-outline { border: 1px solid var(--color-border); background: none; color: var(--color-text); }
+.btn-outline:active { opacity: 0.6; }
 .btn-block { width: 100%; }
+/* The main action in red beside the second one, outlined: equal halves. */
+.button-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.button-pair > * { min-width: 0; padding: 0 var(--space-3); }
 
 .text-link { align-self: flex-start; border: 0; background: none; padding: 8px 0; color: var(--color-accent); font-weight: 600; font-size: 14px; text-decoration: none; }
 .text-link.quiet { color: var(--color-text-muted); font-weight: 500; }
@@ -222,7 +227,7 @@ svg { flex: none; }
   --color-bg: var(--paper);
   --color-accent: var(--paper-accent);
   --color-accent-wash: var(--paper-wash);
-  --color-on-accent: var(--paper);
+  --color-on-accent: var(--paper-on-accent);
   --color-accent-2: var(--paper-accent-2);
   --color-accent-2-wash: var(--paper-accent-2-wash);
   --color-danger: var(--paper-accent);
@@ -521,7 +526,7 @@ svg { flex: none; }
 .sheet-body { overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2) var(--gutter) var(--space-4); }
 /* Export preview: the exported page fills the sheet and scrolls by itself. */
 .sheet-body:has(> .preview-frame) { flex: 1; min-height: 0; display: flex; padding: 0; overflow: hidden; }
-.preview-frame { flex: 1; width: 100%; border: 0; background: var(--paper); }
+.preview-frame { flex: 1; width: 100%; border: 0; background: var(--export-paper); }
 /* While a sheet is on screen, the bottom-pinned nav and round button step aside (see Sheet.tsx). */
 .sheet-open body { overflow: hidden; }
 .sheet-open .nav, .sheet-open .dial-dock { visibility: hidden; }
@@ -650,6 +655,12 @@ svg { flex: none; }
 .ex-card .ex-fields .plain { min-height: 48px; }
 /* Open card in Train: 1 how (cue, alternative) · 2 a 2×2 grid of Sets, Reps, Rest, Weight · 3 note · 4 actions. */
 .ex-how { display: flex; flex-direction: column; gap: 2px; }
+/* Read-only card: small label on the left, the value on the right. */
+.ex-facts { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.ex-facts > div { display: grid; grid-template-columns: 6em minmax(0, 1fr); column-gap: 12px; }
+.ex-facts dt { padding-top: 3px; font-size: 10px; font-weight: 700; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-text-muted); }
+.ex-facts dd { margin: 0; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.ex-card .ex-actions a.ex-video { color: var(--color-accent); font-size: 12px; font-weight: 700; letter-spacing: var(--label-tracking); text-transform: var(--label-case); }
 /* Train: the cue reads like the grey line it replaces, but takes typing (48px tall, grows with its text). */
 .ex-cue-input { width: calc(100% + 12px); min-height: 48px; padding: 14px 6px; font-family: var(--font-body); font-size: 14px; line-height: 1.4; color: var(--color-text-muted); field-sizing: content; }
 .ex-cue-input:focus { color: var(--color-text); }

@@ -236,13 +236,13 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onMoveToDay, onD
           {!edit && r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
         </div>
       ) : (
-        // 1 · How to do it: read-only, quiet.
+        // Read-only (the programme page): each fact beside its name; empty ones are left out.
         (r.notes || r.alternative || r.rest) && (
-          <div className="ex-how">
-            {r.notes && <p className="ex-cue">{r.notes}</p>}
-            {r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
-            {r.rest && <p className="ex-meta">Rest {r.rest}</p>}
-          </div>
+          <dl className="ex-facts">
+            {r.notes && <div><dt>Cue</dt><dd>{r.notes}</dd></div>}
+            {r.alternative && <div><dt>Alternative</dt><dd>{r.alternative}</dd></div>}
+            {r.rest && <div><dt>Rest</dt><dd>{r.rest}</dd></div>}
+          </dl>
         )
       )}
 
@@ -305,7 +305,7 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onMoveToDay, onD
 
       {/* 4 · Actions: Video and Swap on the left; the destructive one alone on the right. */}
       <div className="ex-actions">
-        {video && <a href={video.url} target="_blank" rel="noopener noreferrer">Video</a>}
+        {video && <a href={video.url} target="_blank" rel="noopener noreferrer" className={editable ? undefined : 'ex-video'}>{editable ? 'Video' : '\u25B6\uFE0E Video'}</a>}
         {editable && <button type="button" onClick={onSwap}>{r.name ? 'Swap' : 'Choose exercise'}</button>}
         <span className="grow" />
         {edit && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Delete</ConfirmButton>}

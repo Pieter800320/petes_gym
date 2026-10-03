@@ -110,16 +110,19 @@ export function ClientScreen() {
         </button>
       )}
 
-      {/* One red button: what this page is for. Sending is why a client's page is opened; Pete's own
-          page has none (Train is a tab away). Anything that leads elsewhere is a red text link. */}
+      {/* A pair of rectangles: the main action in red, the second one outlined. Pete's own page has
+          none (Train is a tab away, and the programme page has the rest). */}
       {featured?.status === 'active' && !self && (
-        <button type="button" className="btn-cta btn-block" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
+        <div className="button-pair">
+          <button type="button" className="btn-cta" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
+          <Link to={`/create/${featured.id}`} className="btn-outline">Rework with Claude</Link>
+        </div>
       )}
       {featured?.status === 'archived' && (
-        <>
-          <button type="button" className="btn-cta btn-block" onClick={() => { activateProgramme(user.uid, featured, programmes); toast('Now the current programme') }}>Make current</button>
-          <button type="button" className="text-link" onClick={() => navigate(`/create/${createNextBlock(user.uid, featured)}`)}>Build next block ›</button>
-        </>
+        <div className="button-pair">
+          <button type="button" className="btn-cta" onClick={() => { activateProgramme(user.uid, featured, programmes); toast('Now the current programme') }}>Make current</button>
+          <button type="button" className="btn-outline" onClick={() => navigate(`/create/${createNextBlock(user.uid, featured)}`)}>Build next block</button>
+        </div>
       )}
       {featured?.status === 'draft' && (
         <Link to={`/create/${featured.id}`} className="btn-cta btn-block">Continue in Create</Link>

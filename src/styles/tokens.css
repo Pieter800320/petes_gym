@@ -1,7 +1,8 @@
 /*
  * Pete's Gym design tokens — Swiss Print: black ink on white, one red pen, square corners.
- * Ink (dark) and Paper (light) are full equals; programmes always render as a white printed sheet
- * (--paper-*), the same as the HTML and Word exports.
+ * Ink (dark) and Paper (light) are full equals. The programme views Pete works in (programme page,
+ * Edit programme, the card on a client's page) use --paper-*: a white sheet in the light theme, a
+ * dark one in the dark theme, same layout. What the client receives (exports, Preview) is always white.
  * Components never use raw hex values — only these variables.
  * Bare :root holds Ink (dark). Paper applies when the OS asks for light (unless Ink is forced in
  * Settings) or when Paper is forced.
@@ -31,18 +32,21 @@
   --color-note: #FF4A3D;
   --color-danger: #FF4A3D;
 
-  /* The printed sheet (programmes look like what the client receives), in both themes */
-  --paper: #FFFFFF;
-  --paper-ink: #111111;
-  --paper-soft: #5A5A57;
-  --paper-faint: #BDBDB8;
-  --paper-rule: #D8D8D4;
-  --paper-raised: #EFEFEC;
-  --paper-edge: transparent;      /* outline that lifts the sheet off a light background */
-  --paper-accent: #E0241A;
-  --paper-wash: rgba(224, 36, 26, 0.08);
-  --paper-accent-2: #1F4FA0;
-  --paper-accent-2-wash: rgba(31, 79, 160, 0.08);
+  /* The programme sheet in the app: one step lighter than the page, so it still reads as a sheet */
+  --paper: #1C1C1C;
+  --paper-ink: #F0F0EC;
+  --paper-soft: #A5A5A0;
+  --paper-faint: #4A4A48;
+  --paper-rule: #383838;
+  --paper-raised: #2A2A2A;
+  --paper-edge: #2E2E2E;          /* outline that lifts the sheet off the page */
+  --paper-accent: #FF4A3D;
+  --paper-wash: rgba(255, 74, 61, 0.14);
+  --paper-accent-2: #7FA8F0;
+  --paper-accent-2-wash: rgba(127, 168, 240, 0.14);
+  --paper-on-accent: #121212;
+  /* What the client receives is white in every theme (the frame behind the export Preview). */
+  --export-paper: #FFFFFF;
 
   /* Type: one family; numbers (.mono) never use a monospace face */
   --font-display: "Schibsted Grotesk", "Helvetica Neue", Arial, system-ui, sans-serif;
@@ -109,6 +113,17 @@
     --color-success: #1F4FA0;
     --color-note: #E0241A;
     --color-danger: #E0241A;
+    --paper: #FFFFFF;
+    --paper-ink: #111111;
+    --paper-soft: #5A5A57;
+    --paper-faint: #BDBDB8;
+    --paper-rule: #D8D8D4;
+    --paper-raised: #EFEFEC;
+    --paper-accent: #E0241A;
+    --paper-wash: rgba(224, 36, 26, 0.08);
+    --paper-accent-2: #1F4FA0;
+    --paper-accent-2-wash: rgba(31, 79, 160, 0.08);
+    --paper-on-accent: #FFFFFF;
     --paper-edge: #D8D8D4;
     color-scheme: light;
   }
@@ -131,6 +146,17 @@
   --color-success: #1F4FA0;
   --color-note: #E0241A;
   --color-danger: #E0241A;
+  --paper: #FFFFFF;
+  --paper-ink: #111111;
+  --paper-soft: #5A5A57;
+  --paper-faint: #BDBDB8;
+  --paper-rule: #D8D8D4;
+  --paper-raised: #EFEFEC;
+  --paper-accent: #E0241A;
+  --paper-wash: rgba(224, 36, 26, 0.08);
+  --paper-accent-2: #1F4FA0;
+  --paper-accent-2-wash: rgba(31, 79, 160, 0.08);
+  --paper-on-accent: #FFFFFF;
   --paper-edge: #D8D8D4;
   color-scheme: light;
 }
