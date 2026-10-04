@@ -1,6 +1,12 @@
 /* Hands a generated file to the OS share sheet (WhatsApp, email, Drive) or downloads it. */
 
-export async function shareOrDownload(file: File): Promise<'shared' | 'downloaded' | 'cancelled'> {
+/**
+ * Must be called straight from a tap, with nothing awaited before it: the browser only opens the
+ * share sheet in answer to a tap, and refuses (NotAllowedError) once that tap is a moment old.
+ * download-fallback: sharing is supported but was refused, so the file was saved instead.
+ */
+export async function shareOrDownload(file: File): Promise<'shared' | 'downloaded' | 'download-fallback' | 'cancelled'> {
+  let refused = false
   // Android Chrome shares HTML files; some browsers refuse .docx, so check before trying.
   if (navigator.canShare?.({ files: [file] })) {
     try {
@@ -8,11 +14,12 @@ export async function shareOrDownload(file: File): Promise<'shared' | 'downloade
       return 'shared'
     } catch (err) {
       if ((err as DOMException).name === 'AbortError') return 'cancelled'
+      refused = (err as DOMException).name === 'NotAllowedError'
       // Any other share failure: fall through to a download.
     }
   }
   download(file)
-  return 'downloaded'
+  return refused ? 'download-fallback' : 'downloaded'
 }
 
 export function download(file: File) {

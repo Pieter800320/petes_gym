@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Sheet } from './Sheet'
 import { toast } from './toast'
 import { useAuth } from '../auth/useAuth'
@@ -12,6 +12,20 @@ import { shareOrDownload } from '../export/share'
 const MIME: Record<ExportFormat, string> = {
   html: 'text/html',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+/** An English file is rebuilt this long after the last change to the form. */
+const AUTO_BUILD_MS = 400
+
+/** The export as a file. The renderers are loaded on demand: the Word library is large and only needed here. */
+async function renderFile(p: Programme, opts: ExportOptions, format: ExportFormat, translate: (s: string) => string): Promise<File> {
+  const doc = buildExportDoc(p, opts, translate)
+  const suffix = opts.lang === 'de' ? '_DE' : ''
+  if (format === 'html') {
+    const { renderHtml } = await import('../export/renderHtml')
+    return new File([renderHtml(doc)], `${doc.fileBase}${suffix}.html`, { type: MIME.html })
+  }
+  const { renderDocx } = await import('../export/renderDocx')
+  return new File([await renderDocx(doc)], `${doc.fileBase}${suffix}.docx`, { type: MIME.docx })
 }
 
 interface ExportSheetProps {
@@ -46,50 +60,120 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
   const [preview, setPreview] = useState<string | null>(null)
   const set = <K extends keyof ExportOptions>(k: K, v: ExportOptions[K]) => setOpts((o) => ({ ...o, [k]: v }))
 
-  async function buildFile(): Promise<File> {
-    let translate = (s: string) => s
-    if (opts.lang === 'de') {
-      setBusy('Translating into German…')
-      const pairs = await translateToGerman(clientFacingStrings(p, opts.personalNote, opts.goal).concat([opts.frequency, opts.sessionLength].filter(Boolean)), p.translationsDe ?? [])
-      if (user && pairs.length !== (p.translationsDe ?? []).length) updateProgrammeFields(user.uid, p.id, { translationsDe: pairs })
-      const map = new Map(pairs.map((t) => [t.src, t.de]))
-      translate = (s) => map.get(s) ?? s
+  /*
+   * Building and sharing are two steps. The phone only opens its share sheet straight from a tap,
+   * so the file has to exist before Share is tapped: `ready` is the built file and `key` what it
+   * was built from. Share is on only while the two match.
+   */
+  const key = JSON.stringify({ opts, format })
+  const [ready, setReady] = useState<{ file: File; key: string } | null>(null)
+  /** The form as it was when a build failed, so the button offers another try instead of waiting. */
+  const [failedKey, setFailedKey] = useState<string | null>(null)
+  const current = ready?.key === key ? ready.file : null
+  const firstBuild = useRef(true)
+
+  // Have both renderers loaded by the time they are needed.
+  useEffect(() => {
+    import('../export/renderHtml').catch(() => undefined)
+    import('../export/renderDocx').catch(() => undefined)
+  }, [])
+
+  // English costs nothing to build: done when the sheet opens, and again shortly after each change.
+  // German is never built unasked: translating new text costs money.
+  useEffect(() => {
+    if (opts.lang !== 'en') return
+    let cancelled = false
+    const delay = firstBuild.current ? 0 : AUTO_BUILD_MS
+    firstBuild.current = false
+    const timer = setTimeout(() => {
+      renderFile(p, opts, format, (s) => s).then(
+        (file) => {
+          if (!cancelled) setReady({ file, key })
+        },
+        (err: unknown) => {
+          console.error(err)
+          if (cancelled) return
+          setError(describeClaudeError(err))
+          setFailedKey(key)
+        },
+      )
+    }, delay)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
     }
-    setBusy('Building the document…')
-    const doc = buildExportDoc(p, opts, translate)
-    const suffix = opts.lang === 'de' ? '_DE' : ''
-    if (format === 'html') {
-      const { renderHtml } = await import('../export/renderHtml')
-      return new File([renderHtml(doc)], `${doc.fileBase}${suffix}.html`, { type: MIME.html })
-    }
-    // Loaded on demand: the Word library is large and only needed here.
-    const { renderDocx } = await import('../export/renderDocx')
-    return new File([await renderDocx(doc)], `${doc.fileBase}${suffix}.docx`, { type: MIME.docx })
+  }, [p, opts, format, key])
+
+  /** The personal note belongs to the programme, so keep what was written here. */
+  function saveNote() {
+    if (user && opts.personalNote !== p.personalNote) updateProgrammeFields(user.uid, p.id, { personalNote: opts.personalNote })
   }
 
-  async function run(action: 'share' | 'preview') {
+  /** German text for the export; Claude is asked only for strings it hasn't translated before. */
+  async function germanText(): Promise<(s: string) => string> {
+    const wanted = clientFacingStrings(p, opts.personalNote, opts.goal).concat([opts.frequency, opts.sessionLength].filter(Boolean))
+    const cache = p.translationsDe ?? []
+    const pairs = await translateToGerman(wanted, cache)
+    // Saved without strings the programme no longer contains, so the cache doesn't grow with every edit.
+    const inUse = new Set(wanted)
+    const kept = pairs.filter((t) => inUse.has(t.src))
+    if (user && JSON.stringify(kept) !== JSON.stringify(cache)) updateProgrammeFields(user.uid, p.id, { translationsDe: kept })
+    const map = new Map(pairs.map((t) => [t.src, t.de]))
+    return (s) => map.get(s) ?? s
+  }
+
+  /** Builds the file for the form as it is now (the tap for German, or another try after a failure). */
+  async function prepare(): Promise<File | null> {
     setError(null)
-    // The personal note belongs to the programme, so keep what was written here.
-    if (user && opts.personalNote !== p.personalNote) updateProgrammeFields(user.uid, p.id, { personalNote: opts.personalNote })
+    setFailedKey(null)
+    saveNote()
     try {
-      const file = await buildFile()
-      if (action === 'preview') {
-        setPreview(await file.text())
-      } else {
-        const result = await shareOrDownload(file)
-        if (result !== 'cancelled') {
-          // Zero-width spaces let a long file name wrap at its underscores instead of mid-word.
-          toast(result === 'shared' ? 'Programme shared' : `Saved ${file.name.replace(/_/g, '_​')}`)
-          onDone()
-        }
+      let translate = (s: string) => s
+      if (opts.lang === 'de') {
+        setBusy('Translating into German…')
+        translate = await germanText()
       }
+      setBusy('Building the document…')
+      const file = await renderFile(p, opts, format, translate)
+      setReady({ file, key })
+      return file
     } catch (err) {
       console.error(err)
       setError(describeClaudeError(err))
+      setFailedKey(key)
+      return null
     } finally {
       setBusy(null)
     }
   }
+
+  /** Called straight from the tap: nothing may be awaited before shareOrDownload. */
+  function share(file: File) {
+    setError(null)
+    saveNote()
+    shareOrDownload(file).then(
+      (result) => {
+        if (result === 'cancelled') return
+        // Zero-width spaces let a long file name wrap at its underscores instead of mid-word.
+        const saved = `Saved ${file.name.replace(/_/g, '_​')}`
+        toast(result === 'shared' ? 'Programme shared' : result === 'download-fallback' ? "Couldn't open the share sheet, so the file was saved to Downloads" : saved)
+        onDone()
+      },
+      (err: unknown) => {
+        console.error(err)
+        setError(describeClaudeError(err))
+      },
+    )
+  }
+
+  async function showPreview() {
+    const file = current ?? (await prepare())
+    if (file) setPreview(await file.text())
+  }
+
+  // English is on its way by itself; anything else waits for a tap.
+  const building = opts.lang === 'en' && !current && failedKey !== key
+  const mainLabel = busy ?? (current ? 'Share' : building ? 'Preparing…' : opts.lang === 'de' ? 'Translate & prepare' : 'Prepare')
 
   return (
     <div className="form">
@@ -147,11 +231,11 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
 
       {error && <div className="banner error">{error}</div>}
 
-      <button type="button" className="btn-cta btn-block" disabled={busy !== null} onClick={() => run('share')}>
-        {busy ?? 'Share'}
+      <button type="button" className="btn-cta btn-block" disabled={busy !== null || building} onClick={() => (current ? share(current) : prepare())}>
+        {mainLabel}
       </button>
       {format === 'html' && (
-        <button type="button" className="btn-ghost" disabled={busy !== null} onClick={() => run('preview')}>Preview</button>
+        <button type="button" className="btn-ghost" disabled={busy !== null} onClick={showPreview}>Preview</button>
       )}
 
       <Sheet open={preview !== null} onClose={() => setPreview(null)} title="Preview" tall>
