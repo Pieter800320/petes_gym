@@ -60,6 +60,9 @@ export function ImportScreen() {
   const [preview, setPreview] = useState<Item | null>(null)
   const mounted = useRef(true)
   const latest = useRef(items)
+  /** Files waiting to be converted, and whether the one loop that works through them is running. */
+  const queue = useRef<Item[]>([])
+  const working = useRef(false)
 
   useEffect(() => {
     latest.current = items
@@ -81,10 +84,20 @@ export function ImportScreen() {
     setItems((list) => list.map((i) => (i.key === key ? { ...i, ...p } : i)))
   }
 
-  async function convert(queue: Item[]) {
+  /**
+   * Adds files to the one queue. Files added while others convert wait their turn: a second loop
+   * beside the first would double the calls to Claude and show "Save all" while it still ran.
+   */
+  function convert(more: Item[]) {
+    queue.current.push(...more)
+    if (!working.current) void work()
+  }
+
+  async function work() {
+    working.current = true
     setRunning(true)
     // One at a time: keeps within rate limits and lets Pete review while the rest convert.
-    for (const item of queue) {
+    for (let item = queue.current.shift(); item; item = queue.current.shift()) {
       if (!item.file) continue
       try {
         patch(item.key, { status: 'reading', error: undefined })
@@ -98,6 +111,7 @@ export function ImportScreen() {
         patch(item.key, { status: 'error', error: describeClaudeError(err) })
       }
     }
+    working.current = false
     if (mounted.current) setRunning(false)
   }
 
@@ -219,7 +233,7 @@ export function ImportScreen() {
               {item.status === 'error' && (
                 <>
                   <div className="banner error">{item.error}</div>
-                  {item.file && <button type="button" className="btn-ghost" disabled={running} onClick={() => convert([item])}>Try again</button>}
+                  {item.file && <button type="button" className="btn-ghost" onClick={() => { patch(item.key, { status: 'queued', error: undefined }); convert([item]) }}>Try again</button>}
                 </>
               )}
 
