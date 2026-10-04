@@ -88,7 +88,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
         ) : (
           <div className="banner row-banner">
             <span>This programme is in Recently deleted.</span>
-            <button type="button" className="text-link" onClick={() => { restoreProgramme(uid, programme.id); toast('Programme restored') }}>Restore</button>
+            <button type="button" className="text-link" onClick={() => { restoreProgramme(uid, programme); toast('Programme restored') }}>Restore</button>
           </div>
         ))}
 

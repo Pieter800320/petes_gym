@@ -55,7 +55,7 @@ export function DeletedScreen() {
               <div className="muted" style={{ fontSize: 'var(--type-sm)' }}>{clientName(p.clientId)} · deleted {when(p.deletedAt)}</div>
             </div>
             <div className="toolbar">
-              <button type="button" className="btn-acc" onClick={() => { restoreProgramme(uid, p.id); toast('Programme restored') }}>Restore</button>
+              <button type="button" className="btn-acc" onClick={() => { restoreProgramme(uid, p); toast('Programme restored') }}>Restore</button>
               <ConfirmButton onConfirm={() => { purgeProgramme(uid, p.id); scrubDeleted(uid, { clientIds: [], programmeIds: [p.id] }); toast('Programme deleted forever') }}>Delete forever</ConfirmButton>
             </div>
           </div>

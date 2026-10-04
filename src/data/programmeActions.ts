@@ -1,19 +1,18 @@
 /* Higher-level programme operations used from several screens. */
 import { cloneSession } from './programmeEdits'
-import { createProgramme, updateProgrammeFields } from './store'
+import { archiveDeletedCurrent, createProgramme, setCurrentProgramme } from './store'
 import type { Programme } from './types'
 
 /**
  * Makes a programme the client's current one ("active" in data). Any other current programme for
- * the same client is archived, so each client, including Pete, has exactly one current programme.
+ * the same client is archived in the same write, so each client, including Pete, has exactly one
+ * current programme. `siblings` are the ones the screen shows; a current programme lying in
+ * Recently deleted is archived a moment later, once it has been looked up.
  */
 export function activateProgramme(uid: string, programme: Programme, siblings: Programme[]) {
-  for (const other of siblings) {
-    if (other.id !== programme.id && other.clientId === programme.clientId && other.status === 'active') {
-      updateProgrammeFields(uid, other.id, { status: 'archived' })
-    }
-  }
-  updateProgrammeFields(uid, programme.id, { status: 'active' })
+  const others = siblings.filter((other) => other.id !== programme.id && other.clientId === programme.clientId && other.status === 'active')
+  setCurrentProgramme(uid, programme.id, others.map((other) => other.id))
+  archiveDeletedCurrent(uid, programme.clientId, programme.id)
 }
 
 /** New draft that starts from this programme, linked to it as its parent (programme lineage). */

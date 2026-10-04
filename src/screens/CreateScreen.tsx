@@ -170,7 +170,7 @@ function Workspace({ id }: { id: string }) {
         ) : (
           <>
             <p className="lead">This programme is in Recently deleted.</p>
-            {user && <button type="button" className="text-link" onClick={() => { restoreProgramme(user.uid, id); toast('Programme restored') }}>Restore</button>}
+            {user && <button type="button" className="text-link" onClick={() => { restoreProgramme(user.uid, programme); toast('Programme restored') }}>Restore</button>}
           </>
         )}
       </div>

@@ -22,6 +22,7 @@ import {
   updateDoc,
   where,
   type QueryConstraint,
+  type WriteBatch,
 } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
@@ -38,6 +39,21 @@ function userCollection(uid: string, name: string) {
 export function reportWriteError(err: unknown) {
   console.error('Firestore write failed', err)
   window.dispatchEvent(new CustomEvent('pg:error', { detail: 'Could not save. Check your connection and try again.' }))
+}
+
+/** Writes per batch. Firestore refuses a batch of more than 500. */
+const BATCH_SIZE = 450
+
+/**
+ * Commits any number of writes in batches of BATCH_SIZE, in order. Fire-and-forget like every
+ * other write here, so each batch is atomic but the whole is not.
+ */
+function commitInChunks(ops: ((batch: WriteBatch) => void)[], size = BATCH_SIZE) {
+  for (let i = 0; i < ops.length; i += size) {
+    const batch = writeBatch(requireDb())
+    ops.slice(i, i + size).forEach((op) => op(batch))
+    batch.commit().catch(reportWriteError)
+  }
 }
 
 interface LiveQuery<T> {
@@ -250,10 +266,41 @@ export function createProgramme(uid: string, draft: ProgrammeDraft, createdAt?: 
  * are always written whole. Lifecycle fields (current/archived, Recently deleted, owner,
  * translation cache) are changed only by their own actions: an editor holding an older copy
  * must never undo "Make current" or a delete made meanwhile.
+ *
+ * An update, not a merge: a late autosave of a programme that was deleted forever meanwhile (here
+ * or on another device) must not bring back a half-empty document. That refusal is not an error.
  */
 export function saveProgramme(uid: string, programme: Programme) {
   const { id, status: _s, deletedAt: _d, deletedWithClient: _w, clientId: _c, createdAt: _ca, updatedAt: _u, translationsDe: _t, ...content } = programme
-  setDoc(doc(userCollection(uid, 'programmes'), id), { ...encodeProgramme(content), updatedAt: Date.now() }, { merge: true }).catch(reportWriteError)
+  updateDoc(doc(userCollection(uid, 'programmes'), id), { ...encodeProgramme(content), updatedAt: Date.now() }).catch((err: unknown) => {
+    if ((err as { code?: string } | null)?.code !== 'not-found') reportWriteError(err)
+  })
+}
+
+/**
+ * Makes one programme the current one and archives the others in a single write, so the client
+ * never has two current programmes, or none, if only part of it arrives.
+ */
+export function setCurrentProgramme(uid: string, id: string, archiveIds: string[]) {
+  const now = Date.now()
+  const batch = writeBatch(requireDb())
+  for (const other of archiveIds) batch.update(doc(userCollection(uid, 'programmes'), other), { status: 'archived', updatedAt: now })
+  batch.update(doc(userCollection(uid, 'programmes'), id), { status: 'active', updatedAt: now })
+  batch.commit().catch(reportWriteError)
+}
+
+/**
+ * Archives the client's programmes that are still marked current but sit in Recently deleted
+ * (the screens don't see those). Only deleted ones: anything visible is handled by setCurrentProgramme,
+ * and a slow answer here must not archive a programme made current in the meantime.
+ */
+export function archiveDeletedCurrent(uid: string, clientId: string, keepId: string) {
+  reportAsync(
+    clientProgrammeIds(uid, clientId).then((all) => {
+      const stale = all.filter((p) => p.id !== keepId && p.status === 'active' && p.deletedAt)
+      if (stale.length) commitInChunks(stale.map((p) => (batch) => batch.update(doc(userCollection(uid, 'programmes'), p.id), { status: 'archived' })))
+    }),
+  )
 }
 
 export function updateProgrammeFields(uid: string, id: string, patch: Partial<ProgrammeDraft>) {
@@ -286,9 +333,11 @@ export function saveWorkout(uid: string, workout: Omit<Workout, 'id'>): string {
 // A client takes its programmes along (deletedWithClient); its notes and sessions simply stay
 // hidden with it. "Delete forever" removes the documents for good.
 
-async function clientProgrammeIds(uid: string, clientId: string): Promise<{ id: string; deletedAt?: number | null; deletedWithClient?: boolean }[]> {
+type ProgrammeState = Pick<Programme, 'id' | 'status' | 'updatedAt'> & { deletedAt?: number | null; deletedWithClient?: boolean }
+
+async function clientProgrammeIds(uid: string, clientId: string): Promise<ProgrammeState[]> {
   const snap = await getDocs(query(userCollection(uid, 'programmes'), where('clientId', '==', clientId)))
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as { deletedAt?: number | null; deletedWithClient?: boolean }) }))
+  return snap.docs.map((d) => ({ ...(d.data() as Omit<ProgrammeState, 'id'>), id: d.id }))
 }
 
 /** Runs a delete/restore that has to read first; failures show the usual "Could not save". */
@@ -310,21 +359,24 @@ export function purgeClient(uid: string, clientId: string) {
 
 async function deleteClientNow(uid: string, clientId: string) {
   const now = Date.now()
-  const batch = writeBatch(requireDb())
-  batch.update(doc(userCollection(uid, 'clients'), clientId), { deletedAt: now })
+  const ops: ((batch: WriteBatch) => void)[] = [(batch) => batch.update(doc(userCollection(uid, 'clients'), clientId), { deletedAt: now })]
   for (const p of await clientProgrammeIds(uid, clientId)) {
-    if (!p.deletedAt) batch.update(doc(userCollection(uid, 'programmes'), p.id), { deletedAt: now, deletedWithClient: true })
+    if (!p.deletedAt) ops.push((batch) => batch.update(doc(userCollection(uid, 'programmes'), p.id), { deletedAt: now, deletedWithClient: true }))
   }
-  batch.commit().catch(reportWriteError)
+  commitInChunks(ops)
 }
 
 async function restoreClientNow(uid: string, clientId: string) {
-  const batch = writeBatch(requireDb())
-  batch.update(doc(userCollection(uid, 'clients'), clientId), { deletedAt: null })
-  for (const p of await clientProgrammeIds(uid, clientId)) {
-    if (p.deletedWithClient) batch.update(doc(userCollection(uid, 'programmes'), p.id), { deletedAt: null, deletedWithClient: false })
+  const ops: ((batch: WriteBatch) => void)[] = [(batch) => batch.update(doc(userCollection(uid, 'clients'), clientId), { deletedAt: null })]
+  const all = await clientProgrammeIds(uid, clientId)
+  // One current programme at most: of those coming back, the most recently changed keeps the title.
+  const current = all.filter((p) => p.status === 'active' && (p.deletedWithClient || !p.deletedAt)).sort((a, b) => b.updatedAt - a.updatedAt)[0]
+  for (const p of all) {
+    if (!p.deletedWithClient) continue
+    const demote = p.status === 'active' && p.id !== current?.id
+    ops.push((batch) => batch.update(doc(userCollection(uid, 'programmes'), p.id), { deletedAt: null, deletedWithClient: false, ...(demote ? { status: 'archived' } : {}) }))
   }
-  batch.commit().catch(reportWriteError)
+  commitInChunks(ops)
 }
 
 /** A programme's archived earlier chats (filter only, so no composite index). */
@@ -335,26 +387,40 @@ async function chatArchiveRefs(uid: string, programmeId: string) {
 
 /** Erases a client and everything that belongs to it: programmes, their chats, notes, sessions and fitness profile links. */
 async function purgeClientNow(uid: string, clientId: string) {
-  const batch = writeBatch(requireDb())
-  batch.delete(doc(userCollection(uid, 'clients'), clientId))
+  // A long-term client has more notes and sessions than one batch may hold.
+  const ops: ((batch: WriteBatch) => void)[] = [(batch) => batch.delete(doc(userCollection(uid, 'clients'), clientId))]
   for (const p of await clientProgrammeIds(uid, clientId)) {
-    batch.delete(doc(userCollection(uid, 'programmes'), p.id))
-    batch.delete(doc(userCollection(uid, 'chats'), p.id))
-    for (const ref of await chatArchiveRefs(uid, p.id)) batch.delete(ref)
+    ops.push((batch) => batch.delete(doc(userCollection(uid, 'programmes'), p.id)))
+    ops.push((batch) => batch.delete(doc(userCollection(uid, 'chats'), p.id)))
+    for (const ref of await chatArchiveRefs(uid, p.id)) ops.push((batch) => batch.delete(ref))
   }
   for (const name of ['notes', 'workouts', 'invites']) {
     const snap = await getDocs(query(userCollection(uid, name), where('clientId', '==', clientId)))
-    snap.docs.forEach((d) => batch.delete(d.ref))
+    snap.docs.forEach((d) => ops.push((batch) => batch.delete(d.ref)))
   }
-  batch.commit().catch(reportWriteError)
+  commitInChunks(ops)
 }
 
 export function softDeleteProgramme(uid: string, id: string) {
   updateDoc(doc(userCollection(uid, 'programmes'), id), { deletedAt: Date.now(), deletedWithClient: false }).catch(reportWriteError)
 }
 
-export function restoreProgramme(uid: string, id: string) {
-  updateDoc(doc(userCollection(uid, 'programmes'), id), { deletedAt: null, deletedWithClient: false }).catch(reportWriteError)
+/**
+ * Takes a programme out of Recently deleted. One that was the current programme comes back as
+ * archived when the client has another current one by now.
+ */
+export function restoreProgramme(uid: string, programme: Pick<Programme, 'id' | 'clientId' | 'status'>) {
+  const ref = doc(userCollection(uid, 'programmes'), programme.id)
+  const restore = (demote: boolean) => updateDoc(ref, { deletedAt: null, deletedWithClient: false, ...(demote ? { status: 'archived' } : {}) }).catch(reportWriteError)
+  if (programme.status !== 'active') {
+    restore(false)
+    return
+  }
+  reportAsync(
+    clientProgrammeIds(uid, programme.clientId).then((all) => {
+      restore(all.some((p) => p.id !== programme.id && p.status === 'active' && !p.deletedAt))
+    }),
+  )
 }
 
 /** Erases a programme and its Claude chat, archived earlier chats included, for good. */
