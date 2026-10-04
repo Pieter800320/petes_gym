@@ -26,6 +26,7 @@ import {
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
 import type { CostKind } from '../claude/client'
+import { withUniqueIds } from './programmeIds'
 import type { Client, ClientDraft, Note, Programme, ProgrammeDraft, ProgressionBlock, Workout } from './types'
 
 type WithoutId<T> = Omit<T, 'id'>
@@ -181,12 +182,13 @@ function encodeProgramme<T extends Partial<ProgrammeDraft>>(p: T) {
 }
 
 function decodeProgramme(raw: WithoutId<Programme>, id: string): Programme {
-  return {
+  // Programmes saved with duplicate ids are repaired as they are read; the next normal save writes the new ids.
+  return withUniqueIds({
     ...raw,
     id,
     progression: raw.progression ? decodeBlock(raw.progression) : null,
     sessions: raw.sessions.map((s) => ({ ...s, progressionBlocks: s.progressionBlocks.map(decodeBlock) })),
-  }
+  })
 }
 
 /** clientId: one client's programmes, or 'all'. Sorted newest first on the device. */

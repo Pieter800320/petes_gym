@@ -4,10 +4,12 @@
  *
  * Claude edits at session granularity (write_session replaces one whole session) but keeps the
  * ids of rows it didn't touch. Diffing by row id then gives exact per-exercise highlights.
+ * Ids are unique per programme: a tool only keeps ids from the session (or table) it replaces.
  */
 import type Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { CONTRAINDICATIONS, EQUIPMENT, EXERCISES, PATTERNS, findExercise, searchExercises } from '../data/exercises'
+import { duplicateIds } from '../data/programmeIds'
 import { newId, withLibraryLink } from '../data/programmeUtils'
 import type { ExerciseRow, Programme, ProgrammeSession, ProgressionBlock } from '../data/types'
 
@@ -234,7 +236,7 @@ const zSearch = z.object({
 
 // ── Applying edits ────────────────────────────────────────────────────
 
-/** Keep a Claude-supplied id only if it really exists (and isn't reused), else mint a new one. */
+/** Keep a Claude-supplied id only if it is one of `existing` (and isn't reused), else mint a new one. */
 function idKeeper(existing: Set<string>) {
   const used = new Set<string>()
   return (id: string | null) => {
@@ -248,19 +250,18 @@ function toBlock(b: z.infer<typeof zBlock>, keep: (id: string | null) => string)
   return { id: keep(b.id), title: b.title, rule: b.rule, columns: b.columns, rows: b.rows.map((r) => b.columns.map((_, i) => r[i] ?? '')) }
 }
 
-function allIds(p: Programme): Set<string> {
+/** The ids a rewrite of this session may keep: its own sections, rows and blocks, nothing from another day. */
+function sessionIds(s: ProgrammeSession): Set<string> {
   const ids = new Set<string>()
-  for (const s of p.sessions) {
-    ids.add(s.id)
-    for (const sec of s.sections) {
-      ids.add(sec.id)
-      for (const r of sec.rows) ids.add(r.id)
-    }
-    for (const b of s.progressionBlocks) ids.add(b.id)
+  for (const sec of s.sections) {
+    ids.add(sec.id)
+    for (const r of sec.rows) ids.add(r.id)
   }
-  if (p.progression) ids.add(p.progression.id)
+  for (const b of s.progressionBlocks) ids.add(b.id)
   return ids
 }
+
+const duplicatesMessage = (ids: string[]) => `Duplicate ids (${ids.join(', ')}), nothing changed. Resend with null for those ids.`
 
 export interface ToolOutcome {
   programme: Programme
@@ -305,9 +306,11 @@ export function runTool(name: string, input: unknown, p: Programme, ctx: ToolCon
       const parsed = zSession.safeParse(input)
       if (!parsed.success) return fail(`Invalid input, nothing changed: ${parsed.error.message}`)
       const s = parsed.data
-      const keep = idKeeper(allIds(p))
       const existing = s.session_id ? p.sessions.find((x) => x.id === s.session_id) : undefined
       if (s.session_id && !existing) return fail(`No session with id ${s.session_id}. Use null to add a new session.`)
+      const keep = idKeeper(existing ? sessionIds(existing) : new Set())
+      // Looked up across the whole programme by the id Claude sent, so a row moved from another
+      // day keeps Pete's weight and note although it gets a new id here.
       const oldRows = new Map([...rowMap(p)].map(([id, { row }]) => [id, row]))
       const session: ProgrammeSession = {
         id: existing ? existing.id : newId(),
@@ -335,9 +338,12 @@ export function runTool(name: string, input: unknown, p: Programme, ctx: ToolCon
         sessions = [...p.sessions]
         sessions.splice(s.position ?? sessions.length, 0, session)
       }
+      const next: Programme = { ...p, sessions }
+      const duplicates = duplicateIds(next)
+      if (duplicates.length) return fail(duplicatesMessage(duplicates))
       const notInLibrary = session.sections.flatMap((x) => x.rows).filter((r) => !r.exerciseKey).map((r) => r.name)
       return {
-        programme: { ...p, sessions },
+        programme: next,
         result: `Saved session "${session.title}" (id ${session.id}).${notInLibrary.length ? ` Not in library: ${notInLibrary.join(', ')}.` : ''}`,
         isError: false,
         label: `${existing ? 'Updated' : 'Added'} ${session.title || 'session'}`,
@@ -378,8 +384,11 @@ export function runTool(name: string, input: unknown, p: Programme, ctx: ToolCon
       if (raw === null) return { programme: { ...p, progression: null }, result: 'Cleared.', isError: false, label: 'Removed block progression' }
       const parsed = zBlock.safeParse(raw)
       if (!parsed.success) return fail(`Invalid input: ${parsed.error.message}`)
-      const keep = idKeeper(allIds(p))
-      return { programme: { ...p, progression: toBlock(parsed.data, keep) }, result: 'Saved block progression.', isError: false, label: 'Set block progression' }
+      const keep = idKeeper(new Set(p.progression ? [p.progression.id] : []))
+      const next: Programme = { ...p, progression: toBlock(parsed.data, keep) }
+      const duplicates = duplicateIds(next)
+      if (duplicates.length) return fail(duplicatesMessage(duplicates))
+      return { programme: next, result: 'Saved block progression.', isError: false, label: 'Set block progression' }
     }
     default:
       return fail(`Unknown tool ${name}.`)
