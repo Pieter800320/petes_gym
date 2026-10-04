@@ -5,8 +5,17 @@
  */
 import { getClaude, MODEL_LIGHT, trackCost } from './client'
 
-/** Largest file sent to Claude for transcription (the API allows 32 MB per request). */
+/** Largest PDF sent to Claude for transcription (the API allows 32 MB per request). */
 const MAX_TRANSCRIBE_BYTES = 20 * 1024 * 1024
+/**
+ * Longest edge of a photo sent to Claude. The light model looks at no more than 1568 px (Anthropic's
+ * vision docs, standard tier, read 2026-10-04); anything bigger is only a slower upload.
+ */
+const MAX_IMAGE_EDGE = 1568
+/** The API's limit for one image, measured on its base64 text (same docs: 10 MB on the Claude API). */
+const MAX_IMAGE_BASE64_CHARS = 10 * 1024 * 1024
+/** JPEG qualities tried in turn until the photo fits. */
+const JPEG_QUALITIES = [0.85, 0.7, 0.55]
 
 export const ACCEPTED_FILES = '.pdf,.docx,.html,.htm,.md,.txt,.csv,image/*'
 
@@ -34,15 +43,62 @@ function toBase64(buf: ArrayBuffer): string {
   return btoa(binary)
 }
 
+function isImage(file: File): boolean {
+  // Phones often give HEIC photos no type at all, so the file name counts too.
+  return file.type.startsWith('image/') || /.(jpe?g|png|gif|webp|heic|heif)$/i.test(file.name)
+}
+
+/** The scaled photo as a JPEG. OffscreenCanvas where the browser has it, else a canvas element. */
+async function encodeJpeg(bitmap: ImageBitmap, width: number, height: number, quality: number): Promise<Blob> {
+  if (typeof OffscreenCanvas !== 'undefined') {
+    const canvas = new OffscreenCanvas(width, height)
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, width, height)
+    return canvas.convertToBlob({ type: 'image/jpeg', quality })
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, width, height)
+  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode the photo.'))), 'image/jpeg', quality))
+}
+
+/**
+ * A photo as Claude should get it: scaled down to MAX_IMAGE_EDGE (never up) and saved as JPEG.
+ * A phone photo of 5–12 MB becomes a few hundred KB, which is as much as the model reads anyway.
+ */
+async function prepareImage(file: File): Promise<{ data: string; mediaType: 'image/jpeg' }> {
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(file)
+  } catch {
+    // HEIC outside Safari, or a damaged file.
+    throw new Error(`${file.name}: this photo format can't be read here. Save it as JPEG and try again.`)
+  }
+  try {
+    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height))
+    const width = Math.max(1, Math.round(bitmap.width * scale))
+    const height = Math.max(1, Math.round(bitmap.height * scale))
+    for (const quality of JPEG_QUALITIES) {
+      const data = toBase64(await (await encodeJpeg(bitmap, width, height, quality)).arrayBuffer())
+      if (data.length <= MAX_IMAGE_BASE64_CHARS) return { data, mediaType: 'image/jpeg' }
+    }
+    throw new Error(`${file.name} is too large to send, even made smaller.`)
+  } finally {
+    bitmap.close()
+  }
+}
+
 async function transcribe(file: File): Promise<string> {
-  if (file.size > MAX_TRANSCRIBE_BYTES) throw new Error(`${file.name} is larger than 20 MB.`)
-  const data = toBase64(await file.arrayBuffer())
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-  const imageType = (['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const).find((t) => t === file.type)
-  if (!isPdf && !imageType) throw new Error(`${file.name}: unsupported file type.`)
-  const source = isPdf
-    ? ({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } } as const)
-    : ({ type: 'image', source: { type: 'base64', media_type: imageType!, data } } as const)
+  if (!isPdf && !isImage(file)) throw new Error(`${file.name}: unsupported file type.`)
+  if (isPdf && file.size > MAX_TRANSCRIBE_BYTES) throw new Error(`${file.name} is larger than 20 MB.`)
+  let source
+  if (isPdf) {
+    source = { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: toBase64(await file.arrayBuffer()) } } as const
+  } else {
+    const image = await prepareImage(file)
+    source = { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } } as const
+  }
 
   // Streamed so long documents get Haiku's full output allowance without an HTTP timeout.
   const stream = getClaude().messages.stream({

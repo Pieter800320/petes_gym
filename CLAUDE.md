@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.41 (2026-10-04). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.42 (2026-10-04). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -176,6 +176,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - 0.9.39 (Pieter, 2026-10-04): a programme in Recently deleted can't be worked on. Create shows "This programme is in Recently deleted." with Restore instead of the chat (deleted with its client: "Restore the client from Recently deleted", no button) and forgets it as the tab's last programme; deleting from the programme page forgets it too. The programme page of a deleted programme shows only the banner and the read-only document: no buttons, no "Rework with Claude", no ⋯ menu. Not yet seen in the app.
   - 0.9.40 (Pieter, 2026-10-04): stopping or losing a reply in Create is explained. Stopped before anything was saved: the message and its attachments are back in the box ("Stopped. Nothing was saved; …"). Stopped in a later round: "You stopped Claude. The changes so far are kept." A reply that uses all 12 tool rounds ends with "Claude reached its limit of 12 steps for one reply. Send "continue" to let it finish." A failed or stopped request is charged from the stream's partial message (`stream.currentMessage`: input tokens, not the output cut off). History storage unchanged. Checked in Node on a stub client (7 checks), not against the real API.
   - 0.9.41 (Pieter, 2026-10-04): Send in Create waits for attachments. While a file is being read (PDFs and photos go through Claude), Send and Ctrl+Enter are off, a dashed chip "Reading [file]…" stands in the chips row and the box reads "Reading the file…" (`reading` in `CreateScreen.tsx`); before, a message sent meanwhile went without the file, which then landed in the next one. Not yet seen in the app.
+  - 0.9.42 (Pieter, 2026-10-04): photos are made smaller before Claude reads them (`prepareImage` in `claude/extract.ts`): longest edge 1568 px (all the light model looks at), JPEG at 0.85, then 0.7 and 0.55 if it is still over the API's limit. Limits from Anthropic's vision docs on 2026-10-04: 10 MB per image measured on the base64 text (the audit assumed 5 MB), 8000 px per side. The 20 MB cap now applies to PDFs only. HEIC/HEIF count as photos and are tried; where the browser can't decode one: "this photo format can't be read here. Save it as JPEG and try again." Type-checked only: not run in a browser or against the real API.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
