@@ -1,4 +1,5 @@
 import { Fragment, memo, useEffect, useMemo, useRef, useState } from 'react'
+import { AutoTextarea } from '../components/AutoTextarea'
 import { Link, Navigate, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { IconAttach, IconBack, IconPen, IconSend } from '../components/Icons'
@@ -465,7 +466,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
             <input type="file" accept={ACCEPTED_FILES} multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
             {attaching ? '…' : <IconAttach />}
           </label>
-          <textarea
+          <AutoTextarea
             id="chat-input"
             className="composer-input"
             placeholder={busy ? 'Claude is working…' : attaching ? 'Reading the file…' : 'Message Claude'}

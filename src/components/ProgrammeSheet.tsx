@@ -4,6 +4,7 @@
  * programme page (Edit programme).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AutoTextarea } from './AutoTextarea'
 import { BlockSheet } from './BlockSheet'
 import { ConfirmButton } from './ConfirmButton'
 import { DayList } from './DayList'
@@ -184,8 +185,8 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
 
         <header className="doc-mast">
           <span className="doc-eyebrow">{eyebrow}</span>
-          <textarea id="pp-title" className="plain doc-title" rows={1} value={p.title} onChange={(e) => set('title', e.target.value)} aria-label="Programme title" />
-          <textarea id="pp-goal" className="plain doc-goal" rows={2} placeholder="Goal" value={p.goal} onChange={(e) => set('goal', e.target.value)} aria-label="Goal" />
+          <AutoTextarea id="pp-title" className="plain doc-title" rows={1} value={p.title} onChange={(e) => set('title', e.target.value)} aria-label="Programme title" />
+          <AutoTextarea id="pp-goal" className="plain doc-goal" rows={2} placeholder="Goal" value={p.goal} onChange={(e) => set('goal', e.target.value)} aria-label="Goal" />
           <div className="doc-stats">
             <label>Frequency<input id="pp-freq" className="plain mono" placeholder="3× / week" value={p.frequency} onChange={(e) => set('frequency', e.target.value)} /></label>
             <label>Length<input id="pp-len" className="plain mono" placeholder="45–60 min" value={p.sessionLength} onChange={(e) => set('sessionLength', e.target.value)} /></label>

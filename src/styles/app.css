@@ -734,3 +734,12 @@ button.stepper-value { justify-content: center; border: 0; background: none; col
 button.stepper-value:active { background: var(--color-accent-wash); }
 .stepper-value .mono { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .stepper-input { width: 100%; min-width: 0; height: 28px; padding: 0 4px; border: 0; border-bottom: 1px solid var(--color-accent); border-radius: 4px; background: var(--color-raised); color: var(--color-text); font-size: 15px; text-align: center; outline: none; }
+
+/* ── iPhone and iPad only ─────────────────────────────────────────────
+   Safari zooms the page into a text field whose type is under 16px, and stays zoomed. These are
+   the fields set smaller than that; there they are 16px (-webkit-touch-callout exists on iOS only).
+   A field added later with smaller type belongs in this list. */
+@supports (-webkit-touch-callout: none) {
+  .search-line input, .composer-input, .stepper-input, .ex-cue-input, .ex-fields .plain, .ex-memo textarea,
+  .doc-goal, .doc-stats .plain, .plain-muted, .section-note-input, .section-label-input { font-size: 16px; }
+}

@@ -9,6 +9,7 @@
  *   edit  — the same card as train, plus alternative, superset, move, delete, section and day titles
  */
 import { memo, useRef, useState } from 'react'
+import { AutoTextarea } from './AutoTextarea'
 import { ConfirmButton } from './ConfirmButton'
 import { ExercisePicker } from './ExercisePicker'
 import { IconMore } from './Icons'
@@ -77,8 +78,8 @@ export const DayList = memo(function DayList({ session: s, index, mode, onChange
           {edit ? (
             <div className="day-title">
               {/* The red number already says which day it is, so "Day 1 — " is not shown again; long titles wrap. */}
-              <textarea className="plain day-title-input" rows={1} value={stripDayPrefix(s.title)} placeholder={`Name of day ${index + 1}`} onChange={(e) => onChange?.((x) => ({ ...x, title: e.target.value.replace(/\n/g, ' ') }))} aria-label="Day title" />
-              <textarea className="plain plain-muted day-focus-input" rows={1} value={s.focus} placeholder="Focus of the day (one line)" onChange={(e) => onChange?.((x) => ({ ...x, focus: e.target.value.replace(/\n/g, ' ') }))} aria-label="Day focus" />
+              <AutoTextarea className="plain day-title-input" rows={1} value={stripDayPrefix(s.title)} placeholder={`Name of day ${index + 1}`} onChange={(e) => onChange?.((x) => ({ ...x, title: e.target.value.replace(/\n/g, ' ') }))} aria-label="Day title" />
+              <AutoTextarea className="plain plain-muted day-focus-input" rows={1} value={s.focus} placeholder="Focus of the day (one line)" onChange={(e) => onChange?.((x) => ({ ...x, focus: e.target.value.replace(/\n/g, ' ') }))} aria-label="Day focus" />
             </div>
           ) : (
             <div className="day-title">
@@ -104,7 +105,7 @@ export const DayList = memo(function DayList({ session: s, index, mode, onChange
                   <button type="button" className="icon-btn" aria-label={`${sec.title || 'Section'}: move or delete`} onClick={() => setSectionMenu(sec.id)}><IconMore /></button>
                 )}
               </div>
-              <textarea className="plain section-note-input" rows={1} value={sec.note} placeholder="Note for this section (the client sees it)" onChange={(e) => updateSection(sec.id, (x) => ({ ...x, note: e.target.value }))} aria-label="Section note" />
+              <AutoTextarea className="plain section-note-input" rows={1} value={sec.note} placeholder="Note for this section (the client sees it)" onChange={(e) => updateSection(sec.id, (x) => ({ ...x, note: e.target.value }))} aria-label="Section note" />
             </>
           ) : train && sec.title ? (
             <button type="button" className="section-label section-toggle" onClick={() => setAddOpen(addOpen === sec.id ? null : sec.id)} aria-expanded={addOpen === sec.id}>
@@ -234,7 +235,7 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onMoveToDay, onD
       {editable ? (
         // 1 · How to do it. The cue can be typed here: after a swap the old one no longer fits.
         <div className="ex-how">
-          <textarea className="plain ex-cue-input" rows={1} value={r.notes} placeholder={edit ? 'Add a cue (8 words or fewer)' : 'Add a cue'} onChange={(e) => onChange((x) => ({ ...x, notes: e.target.value }))} aria-label="Cue" />
+          <AutoTextarea className="plain ex-cue-input" rows={1} value={r.notes} placeholder={edit ? 'Add a cue (8 words or fewer)' : 'Add a cue'} onChange={(e) => onChange((x) => ({ ...x, notes: e.target.value }))} aria-label="Cue" />
           {!edit && r.alternative && <p className="ex-meta">Or: {r.alternative}</p>}
         </div>
       ) : (
@@ -321,7 +322,7 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onMoveToDay, onD
 function MemoField({ row: r, onChange }: { row: ExerciseRow; onChange: CardProps['onChange'] }) {
   return (
     <label className="ex-memo">Note
-      <textarea className="plain" rows={1} value={r.memo ?? ''} placeholder="Add a note" onChange={(e) => onChange((x) => ({ ...x, memo: e.target.value }))} />
+      <AutoTextarea className="plain" rows={1} value={r.memo ?? ''} placeholder="Add a note" onChange={(e) => onChange((x) => ({ ...x, memo: e.target.value }))} />
     </label>
   )
 }
