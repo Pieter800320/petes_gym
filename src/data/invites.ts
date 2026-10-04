@@ -6,7 +6,7 @@
  * link is dead: the answers can be read by Pete only.
  */
 import { useEffect, useState } from 'react'
-import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc, updateDoc, waitForPendingWrites } from 'firebase/firestore'
 import { reportWriteError } from './store'
 import { useAuth } from '../auth/useAuth'
 import { requireDb } from '../firebase'
@@ -25,30 +25,71 @@ export interface Invite {
   answers?: Answers
   /** Pete's own script to call when the answers are sent, so he gets an email (see NotifySheet). */
   notifyUrl?: string
+  /** Not stored: this device has written the invite but the server doesn't have it yet, so its link would not open. */
+  pending: boolean
 }
+
+type StoredInvite = Omit<Invite, 'id' | 'pending'>
 
 const invitesOf = (uid: string) => collection(requireDb(), 'users', uid, 'invites')
 
-/** Creates the invite and returns its token. The link works once this has reached the server. */
-function createInvite(uid: string, clientId: string | null, name: string): string {
-  const ref = doc(invitesOf(uid))
-  const data: Omit<Invite, 'id'> = { clientId, name: name.trim(), createdAt: Date.now(), answeredAt: null, ...(isNotifyUrl(notifyUrl) ? { notifyUrl } : {}) }
-  setDoc(ref, data).catch(reportWriteError)
-  return ref.id
-}
+/** How long "Send fitness profile link" waits for a new invite to reach the server. */
+const LINK_TIMEOUT_MS = 10_000
+const NO_CONNECTION = 'No connection: the link would not work for the client yet. Send it when you have signal.'
 
 /** The address a client opens. It names Pete's account and the invite; neither is a secret on its own. */
 function inviteLink(uid: string, token: string): string {
   return `${window.location.origin}${import.meta.env.BASE_URL}#/fit/${uid}/${token}`
 }
 
+/** The link already waiting for this person, if there is one: sending it twice mustn't leave two links open. */
+function openInvite(invites: Invite[], clientId: string | null, name: string): Invite | undefined {
+  return invites.find((i) => i.answeredAt === null && (clientId ? i.clientId === clientId : i.clientId === null && i.name === name.trim()))
+}
+
+/** This person's link when its invite is already on the server (it can be shared in the same tap), else null. */
+export function readyLink(uid: string, invites: Invite[], clientId: string | null, name: string): string | null {
+  const open = openInvite(invites, clientId, name)
+  return open && !open.pending ? inviteLink(uid, open.id) : null
+}
+
 /**
- * The link to send: the one already waiting for this person if there is one (so sending it twice
- * doesn't leave two links open), else a new one.
+ * The link to send, once it will work: the invite is created if this person has none, and the
+ * link is returned only when the server has it. Awaited, unlike other writes in the app: a link
+ * is useless to the client until then. Without a connection, or after 10 s, it fails with a
+ * message for Pete; an invite created meanwhile stays queued and is reused on the next try.
  */
-export function linkFor(uid: string, invites: Invite[], clientId: string | null, name: string): string {
-  const open = invites.find((i) => i.answeredAt === null && (clientId ? i.clientId === clientId : i.clientId === null && i.name === name.trim()))
-  return inviteLink(uid, open?.id ?? createInvite(uid, clientId, name))
+export async function prepareLink(uid: string, invites: Invite[], clientId: string | null, name: string): Promise<string> {
+  const open = openInvite(invites, clientId, name)
+  if (open && !open.pending) return inviteLink(uid, open.id)
+  if (!navigator.onLine) throw new Error(NO_CONNECTION)
+  let token: string
+  let arrived: Promise<void>
+  if (open) {
+    // Written earlier and still waiting to be sent: wait for the queue rather than write a second one.
+    token = open.id
+    arrived = waitForPendingWrites(requireDb())
+  } else {
+    const ref = doc(invitesOf(uid))
+    const data: StoredInvite = { clientId, name: name.trim(), createdAt: Date.now(), answeredAt: null, ...(isNotifyUrl(notifyUrl) ? { notifyUrl } : {}) }
+    token = ref.id
+    arrived = setDoc(ref, data)
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(NO_CONNECTION)), LINK_TIMEOUT_MS)
+  })
+  try {
+    await Promise.race([arrived, timeout])
+  } catch (err) {
+    if (err instanceof Error && err.message === NO_CONNECTION) throw err
+    // Refused by the server, not a matter of signal.
+    console.error(err)
+    throw new Error('The link could not be created. Try again.', { cause: err })
+  } finally {
+    clearTimeout(timer)
+  }
+  return inviteLink(uid, token)
 }
 
 /** Removes an invite: once its answers are in a profile, or to cancel a link. */
@@ -64,7 +105,9 @@ export function useInvites(): Invite[] {
     if (!user) return
     return onSnapshot(
       invitesOf(user.uid),
-      (snap) => setInvites(snap.docs.map((d) => ({ ...(d.data() as Omit<Invite, 'id'>), id: d.id })).sort((a, b) => (b.answeredAt ?? 0) - (a.answeredAt ?? 0))),
+      // Also told when a write of this device reaches the server, for `pending`.
+      { includeMetadataChanges: true },
+      (snap) => setInvites(snap.docs.map((d) => ({ ...(d.data() as StoredInvite), id: d.id, pending: d.metadata.hasPendingWrites })).sort((a, b) => (b.answeredAt ?? 0) - (a.answeredAt ?? 0))),
       (err) => console.error(err),
     )
   }, [user])
@@ -126,7 +169,7 @@ export async function readInvite(uid: string, token: string): Promise<InviteRead
   try {
     const snap = await getDoc(doc(invitesOf(uid), token))
     if (!snap.exists()) return { kind: 'gone' }
-    const d = snap.data() as Omit<Invite, 'id'>
+    const d = snap.data() as StoredInvite
     return d.answeredAt === null ? { kind: 'ok', name: d.name, notifyUrl: d.notifyUrl ?? '' } : { kind: 'gone' }
   } catch (err) {
     // Only the server's own refusal means the link is dead; everything else is the connection.

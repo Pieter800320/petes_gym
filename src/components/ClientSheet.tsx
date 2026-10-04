@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sheet } from './Sheet'
-import { shareProfileLink } from './shareProfileLink'
 import { toast } from './toast'
+import { useProfileLink } from './useProfileLink'
 import { useAuth } from '../auth/useAuth'
-import { linkFor, useInvites } from '../data/invites'
 import { EMPTY_CLIENT, createClient, updateClient } from '../data/store'
 import type { Client, ClientDraft } from '../data/types'
 
@@ -37,12 +36,12 @@ const LONG_FIELDS: { key: FieldKey; label: string; placeholder: string }[] = [
 function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Partial<ClientDraft>; onDone: () => void }) {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const invites = useInvites()
   const [draft, setDraft] = useState<ClientDraft>(() => {
     if (!client) return { ...EMPTY_CLIENT, ...initial }
     const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = client
     return rest
   })
+  const profileLink = useProfileLink(null, draft.name)
 
   const set = <K extends keyof ClientDraft>(k: K, v: ClientDraft[K]) => setDraft((d) => ({ ...d, [k]: v }))
 
@@ -64,13 +63,12 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
   return (
     <div className="form">
       {!client && !draft.isSelf && (
-        <button type="button" className="row-link" onClick={() => {
-          if (!user) return
-          // A link of their own: the answers come back into the app and create the profile.
-          const name = draft.name.trim()
-          shareProfileLink(linkFor(user.uid, invites, null, name), name.split(/\s+/)[0] || undefined)
-        }}>
-          <span className="title">Send the fitness profile link</span>
+        // A link of their own: the answers come back into the app and create the profile.
+        <button type="button" className="row-link" onClick={profileLink.tap}>
+          <span className="grow">
+            <span className="title">{profileLink.status === 'ready' ? 'Share link ›' : 'Send the fitness profile link'}</span>
+            {profileLink.status !== 'idle' && <div className="meta">{profileLink.status === 'preparing' ? 'Preparing link…' : 'The link is ready: tap to send it'}</div>}
+          </span>
         </button>
       )}
       <label className="field">
