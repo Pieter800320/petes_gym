@@ -8,7 +8,7 @@
  */
 import type Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
-import { CONTRAINDICATIONS, EQUIPMENT, EXERCISES, PATTERNS, findExercise, searchExercises } from '../data/exercises'
+import { CONTRAINDICATIONS, EQUIPMENT, exerciseKey, EXERCISES, findExercise, PATTERNS, searchExercises } from '../data/exercises'
 import { duplicateIds } from '../data/programmeIds'
 import { newId, withLibraryLink } from '../data/programmeUtils'
 import type { ExerciseRow, Programme, ProgrammeSession, ProgressionBlock } from '../data/types'
@@ -321,12 +321,14 @@ export function runTool(name: string, input: unknown, p: Programme, ctx: ToolCon
           title: sec.title,
           duration: sec.duration,
           note: sec.note,
-          // Claude never sees Pete's weight or note, so a kept row carries them over (the weight only
-          // while the exercise keeps its name: a different exercise needs a different weight).
+          // Claude never sees Pete's weight or note, so a kept row carries them over, but only while
+          // it is still the same exercise (the rule Swap follows too): on a different exercise the
+          // weight is wrong and the note is about something else.
           rows: sec.rows.map((r) => {
             const prev = r.id ? oldRows.get(r.id) : undefined
-            const load = prev?.load && prev.name === r.name ? { load: prev.load } : {}
-            const memo = prev?.memo ? { memo: prev.memo } : {}
+            const same = prev !== undefined && exerciseKey(prev.name) === exerciseKey(r.name)
+            const load = same && prev.load ? { load: prev.load } : {}
+            const memo = same && prev.memo ? { memo: prev.memo } : {}
             return withLibraryLink({ ...r, ...load, ...memo, id: keep(r.id), exerciseKey: null })
           }),
         })),

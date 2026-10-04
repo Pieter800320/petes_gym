@@ -4,7 +4,7 @@
  * depends on the mode:
  *   read  — cue, alternative, video
  *   train — plus an editable cue, sets/reps − +, weight and a note for next time (both private),
- *           swap (library or own name; a different exercise clears cue and alternative), remove; tap a section
+ *           swap (library or own name; a different exercise clears cue, alternative, weight and note), remove; tap a section
  *           name to add an exercise (changes stick to the programme)
  *   edit  — the same card as train, plus alternative, superset, move, delete, section and day titles
  */
@@ -193,10 +193,11 @@ export const DayList = memo(function DayList({ session: s, index, mode, onChange
           const target = swapFor
           if (!target) return
           const sec = s.sections.find((x) => x.rows.some((r) => r.id === target.id))
-          // A different exercise: the old cue and "Or: …" alternative no longer fit, so they are
-          // cleared (the cue can be retyped in the open card). Only respelling the same name keeps them.
+          // A different exercise: the old cue, "Or: …" alternative, weight and private note no longer
+          // fit, so they are cleared (the cue can be retyped in the open card). Only respelling the
+          // same name keeps them. Claude's rewrites follow the same rule (write_session).
           const sameExercise = exerciseKey(e.name) === exerciseKey(target.name)
-          if (sec) updateRow(sec.id, target.id, (r) => ({ ...r, name: e.name, exerciseKey: e.key, load: '', ...(sameExercise ? {} : { notes: '', alternative: '' }) }))
+          if (sec) updateRow(sec.id, target.id, (r) => ({ ...r, name: e.name, exerciseKey: e.key, ...(sameExercise ? {} : { load: '', memo: '', notes: '', alternative: '' }) }))
         }}
       />
     </section>

@@ -9,13 +9,14 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.49 (2026-10-04). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.50 (2026-10-04). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
     (Pieter, 2026-10-01: bigger jumps are typed); private `ExerciseRow.load`); a private note for
     next time (`ExerciseRow.memo`, dot after the name; both never exported or sent to Claude); actions
-    (Video, Swap to a library exercise or your own name, Remove in red on the right). Then the dial
+    (Video, Swap to a library exercise or your own name, Remove from programme in red on the right). One rule for Swap and for Claude's rewrites
+    (0.9.50): the same exercise (same `exerciseKey`) keeps weight and note; a different one clears both (Swap also clears cue and alternative). Then the dial
     (Start → clock; ❚❚/▶ on the dial's edge pauses/resumes, paused time not counted; Finish → session recorded
     with mid-session changes; no per-set logging), stats.
   - M3 Export: HTML + Word in Swiss Print (see Design below), EN/DE (German via Claude, cached per programme);
@@ -184,6 +185,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - 0.9.47 (Pieter, 2026-10-04): sturdier writes in `data/store.ts`. Deleting, restoring and purging a client go through `commitInChunks` (450 writes per batch; Firestore refuses more than 500, so "Delete forever" failed whole for a long-term client). `saveProgramme` is an update, not a merge: a late autosave of a programme that was deleted forever meanwhile no longer brings back a half-empty document, and that refusal (`not-found`) is not shown as an error. Make current is one batch (`setCurrentProgramme`: archive the others + activate this one); a current programme lying in Recently deleted is archived just after (`archiveDeletedCurrent`, only deleted ones, so a slow answer can't archive a newer choice). `restoreProgramme` takes the programme, not its id: one that was current comes back as archived when the client has another current one; restoring a client keeps only the most recently changed of its programmes current. Checked in Node on a stand-in for Firestore (29 checks, 705 writes in batches of 450 + 255), not against the real one.
   - 0.9.48 (Pieter, 2026-10-04): live edits are signposted (wording only). Create shows a quiet line above the Programme bar when the programme is not a draft: "This is [name]'s / your current programme: changes apply to it straight away. Undo is offered after each reply.", or "This is an archived programme: changes apply to it directly." (`.banner.live-note`). In Train the card's red action reads "Remove from programme", armed "Sure? It's removed for good" (it always deleted the exercise from the programme, not only for today). Not yet seen in the app: check that the longer label fits the action row on a 360px phone.
   - 0.9.49 (Pieter, 2026-10-04): "Build next block" no longer bumps a year: `nextTitle` (`data/programmeActions.ts`) adds one only to a trailing number of up to three digits ("Block 2" → "Block 3", "Phase 10 (copy)" → "Phase 11 (copy)"); "Strength Oct 2026" becomes "Strength Oct 2026 · next block" (was "Oct 2027"). The other half of this audit item, the German translation cache growing without limit, was already done in 0.9.37 (pairs the programme no longer has are dropped on save); copies keep the cache on purpose. Checked in Node (6 checks).
+  - 0.9.50 (Pieter, 2026-10-04): one rule for the private weight and note when a row's exercise changes: the same exercise (same `exerciseKey`, so a respelling counts) keeps both; a different one clears both. Swap in the card (`DayList.tsx`) used to clear the weight always and keep the note always, so "hinge deeper" stayed on a completely different exercise; Claude's `write_session` kept the note always and compared names as raw text. Swap still clears cue and alternative for a different exercise. Checked in Node through the real tool (7 checks); the Swap path is not yet seen in the app.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
