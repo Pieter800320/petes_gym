@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import { VitePWA } from 'vite-plugin-pwa'
 import pkg from './package.json' with { type: 'json' }
 
@@ -10,6 +10,11 @@ export default defineConfig({
   base: BASE,
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+  },
+  // npm test: the pure helpers (parsing, health checks, matching, id rules), in Node, no browser.
+  test: {
+    include: ['src/**/*.test.ts'],
+    environment: 'node',
   },
   plugins: [
     react(),
