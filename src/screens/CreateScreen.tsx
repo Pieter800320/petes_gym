@@ -438,6 +438,11 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
             )}
           </div>
         )}
+        {/* Not a draft: Claude's and Pete's changes land in a programme that is already in use. */}
+        {programme.status === 'active' && (
+          <div className="banner live-note">This is {client?.isSelf ? 'your' : client ? `${client.name}'s` : "the client's"} current programme: changes apply to it straight away. Undo is offered after each reply.</div>
+        )}
+        {programme.status === 'archived' && <div className="banner live-note">This is an archived programme: changes apply to it directly.</div>}
         <button type="button" className="programme-peek" onClick={() => setSheetOpen(true)}>
           <span className="display peek-label">Programme</span>
           <span className="grow muted small">

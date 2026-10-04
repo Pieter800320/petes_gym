@@ -310,7 +310,7 @@ function ExerciseCard({ row: r, mode, onChange, onSwap, onMove, onMoveToDay, onD
         {editable && <button type="button" onClick={onSwap}>{r.name ? 'Swap' : 'Choose exercise'}</button>}
         <span className="grow" />
         {edit && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Delete</ConfirmButton>}
-        {mode === 'train' && <ConfirmButton className="danger-link" armedLabel="Sure?" onConfirm={onDelete}>Remove</ConfirmButton>}
+        {mode === 'train' && <ConfirmButton className="danger-link" armedLabel="Sure? It's removed for good" onConfirm={onDelete}>Remove from programme</ConfirmButton>}
       </div>
     </div>
   )
