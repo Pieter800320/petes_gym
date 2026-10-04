@@ -3,7 +3,7 @@ import { ConfirmButton } from './ConfirmButton'
 import { Sheet } from './Sheet'
 import { toast } from './toast'
 import { useAuth } from '../auth/useAuth'
-import { countsOf, describeData, listSnapshots, parseBackupFile, readSnapshot, restoreData, takeSnapshot, type AppData, type Snapshot } from '../data/backups'
+import { checkBackupData, countsOf, describeData, listSnapshots, parseBackupFile, readSnapshot, restoreData, takeSnapshot, type AppData, type Snapshot } from '../data/backups'
 
 const KIND: Record<Snapshot['kind'], string> = { auto: 'Automatic', manual: 'Made by hand', 'before-restore': 'Before the last restore' }
 const when = (ms: number) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -55,6 +55,8 @@ function Backups() {
   /** Every restore first saves the present state, so it can itself be undone from this list. */
   const restore = (load: () => Promise<AppData>, from: string) => run('Restoring…', async () => {
     const data = await load()
+    // Refused here, before the present state is saved or anything else is written.
+    checkBackupData(data)
     await takeSnapshot(uid, 'before-restore')
     await restoreData(uid, data)
     setFile(null)
@@ -85,7 +87,7 @@ function Backups() {
               <span className="setting-name">{when(s.createdAt)}</span>
               <span className="setting-note">{KIND[s.kind]} · {describeData(s.clients, s.programmes)}</span>
             </span>
-            <ConfirmButton className="btn-ghost danger" armedLabel="Tap again: replaces everything" onConfirm={() => restore(() => readSnapshot(uid, s), `of ${when(s.createdAt)}`)}>Restore</ConfirmButton>
+            <ConfirmButton className="btn-ghost danger" armedLabel="Tap again: replaces everything" disabled={busy !== null} onConfirm={() => restore(() => readSnapshot(uid, s), `of ${when(s.createdAt)}`)}>Restore</ConfirmButton>
           </div>
         ))}
         <button type="button" className="text-link" disabled={busy !== null} onClick={() => run('Backing up…', async () => { await takeSnapshot(uid, 'manual'); return 'Backup made' })}>
@@ -103,7 +105,7 @@ function Backups() {
               <span className="setting-name">{file.exportedAt ? when(Date.parse(file.exportedAt)) : file.name}</span>
               <span className="setting-note">{countsOf(file.data)}</span>
             </span>
-            <ConfirmButton className="btn-ghost danger" armedLabel="Tap again: replaces everything" onConfirm={() => restore(async () => file.data, 'from the file')}>Restore</ConfirmButton>
+            <ConfirmButton className="btn-ghost danger" armedLabel="Tap again: replaces everything" disabled={busy !== null} onConfirm={() => restore(async () => file.data, 'from the file')}>Restore</ConfirmButton>
           </div>
         ) : null}
         <button type="button" className="text-link" disabled={busy !== null} onClick={() => picker.current?.click()}>{file ? 'Choose another file' : 'Choose a backup file'}</button>

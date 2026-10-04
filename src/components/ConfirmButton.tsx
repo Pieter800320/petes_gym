@@ -27,7 +27,7 @@ function swallowNextClick() {
  * fastTap: react to the finger lifting instead of waiting for the click. Chrome swallows the click
  * of a tap made just after a swipe (it only stops the fling), so a Delete revealed by a swipe needs this.
  */
-export function ConfirmButton({ onConfirm, children, className = 'btn-ghost danger', label, armedLabel = 'Tap again to delete', fastTap = false }: { onConfirm: () => void; children: ReactNode; className?: string; label?: string; armedLabel?: string; fastTap?: boolean }) {
+export function ConfirmButton({ onConfirm, children, className = 'btn-ghost danger', label, armedLabel = 'Tap again to delete', fastTap = false, disabled = false }: { onConfirm: () => void; children: ReactNode; className?: string; label?: string; armedLabel?: string; fastTap?: boolean; disabled?: boolean }) {
   const [armed, setArmed] = useState(false)
   const down = useRef<{ x: number; y: number } | null>(null)
   const lastTouchTap = useRef(0)
@@ -39,6 +39,7 @@ export function ConfirmButton({ onConfirm, children, className = 'btn-ghost dang
   }, [armed])
 
   function activate(fromTouch = false) {
+    if (disabled) return
     if (armed) {
       haptic('strong')
       setArmed(false)
@@ -55,6 +56,7 @@ export function ConfirmButton({ onConfirm, children, className = 'btn-ghost dang
       type="button"
       className={className}
       aria-label={label}
+      disabled={disabled}
       // Own haptics: a tick to arm, a strong pulse to confirm (the global tap tick would double up).
       data-haptic="none"
       onPointerDown={(e) => { down.current = fastTap && e.pointerType !== 'mouse' ? { x: e.clientX, y: e.clientY } : null }}
