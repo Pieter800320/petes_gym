@@ -138,6 +138,8 @@ svg { flex: none; }
 }
 .dial:active { transform: scale(0.96); }
 .dial:disabled { opacity: 0.45; box-shadow: none; }
+/* Waiting for the second tap (Finish): a second ring around the button. */
+.dial.armed { outline: 3px solid var(--color-accent); outline-offset: 4px; }
 .dial-running { width: 112px; height: 112px; padding: 5px; background: var(--color-accent); }
 .dial-inner { width: 100%; height: 100%; border-radius: 50%; background: var(--color-bg); color: var(--color-text); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .dial-time { font-family: var(--font-mono); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; } /* steady digits while the clock ticks */
@@ -621,6 +623,11 @@ button.setting:disabled { opacity: 0.4; }
   animation: snack-in 0.22s var(--ease-sheet);
 }
 .snackbar.leaving { animation: snack-out 0.18s var(--ease-standard) forwards; }
+/* The one action of a toast (Undo). Negative margins keep the pill's height while the tap target is ~48px. */
+.snackbar-action {
+  margin: -14px -12px -14px var(--space-2); padding: 14px 12px;
+  border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px;
+}
 /* Desktop: centred under the page (right of the rail), near the bottom edge; the dial is in the rail. */
 @media (min-width: 900px) { .snackbar { left: calc(var(--rail-width) + var(--space-3)); bottom: var(--space-4); } }
 @keyframes snack-in { from { opacity: 0; transform: translateY(12px); } }

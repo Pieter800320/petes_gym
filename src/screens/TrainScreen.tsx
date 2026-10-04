@@ -14,10 +14,10 @@ import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { IconPause, IconPlay } from '../components/Icons'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
-import { activeMs, cancelWorkout, finishWorkout, pauseWorkout, resumeWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
+import { activeMs, cancelWorkout, finishWorkout, pauseWorkout, restoreActiveWorkout, resumeWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
 import { mapSession } from '../data/programmeEdits'
 import { estimateSessionMin, formatClock, sessionRows } from '../data/programmeUtils'
-import { useClients, useProgramme, useProgrammes, useWorkouts } from '../data/store'
+import { deleteWorkout, useClients, useProgramme, useProgrammes, useWorkouts } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { ActiveWorkout, Programme, Workout } from '../data/types'
 import { setTrainProgrammeId, useTrainProgrammeId } from '../settings'
@@ -25,6 +25,8 @@ import { splitDayTitle } from '../util/dayTitle'
 
 /** Horizontal finger travel (px) that counts as a swipe to the next or previous day. */
 const SWIPE_PX = 70
+/** FINISH ignores taps this soon after Start: the second tap of a double tap on START lands on it. */
+const FINISH_GUARD_MS = 1500
 
 /** Index of the session after the most recently completed one ("up next"). */
 function nextSessionIndex(p: Programme, workouts: Workout[]): number {
@@ -138,9 +140,18 @@ function TrainProgramme({ stored, guestName }: { stored: Programme; guestName?: 
   function finish() {
     if (!user || !running) return
     flush()
-    const sec = finishWorkout(user.uid, running, programme.sessions.find((s) => s.id === running.sessionId))
+    const { uid } = user
+    const previous = running
+    const { durationSec, workoutId } = finishWorkout(uid, running, programme.sessions.find((s) => s.id === running.sessionId))
     setSelected(null)
-    toast(`Session saved · ${Math.max(1, Math.round(sec / 60))} min`)
+    toast(`Session saved · ${Math.max(1, Math.round(durationSec / 60))} min`, {
+      label: 'Undo',
+      run: () => {
+        // Only when the session can run again: with another one started meanwhile, the saved session stays.
+        if (restoreActiveWorkout(previous)) deleteWorkout(uid, workoutId)
+        else toast('Another session is running, so this one stays saved')
+      },
+    })
   }
 
   return (
@@ -257,6 +268,8 @@ function FinishDial({ workout, onFinish }: { workout: ActiveWorkout; onFinish: (
   return (
     <Dial
       label="FINISH"
+      confirmLabel="TAP AGAIN"
+      ignoreUntil={workout.startedAt + FINISH_GUARD_MS}
       time={formatClock(activeMs(workout, now) / 1000)}
       onClick={onFinish}
       ariaLabel="Finish session"

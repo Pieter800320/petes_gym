@@ -71,6 +71,16 @@ export function cancelWorkout() {
   write(null)
 }
 
+/**
+ * Undo of Finish: the session runs again as it was. The clock carries on from the original start
+ * and pauses are kept. Returns false, changing nothing, when another session was started meanwhile.
+ */
+export function restoreActiveWorkout(w: ActiveWorkout): boolean {
+  if (snapshot()) return false
+  write(w)
+  return true
+}
+
 /** Time actually trained: pauses (including one still going) are left out. */
 export function activeMs(w: ActiveWorkout, now = Date.now()): number {
   return Math.max(0, (w.pausedAt ?? now) - w.startedAt - (w.pausedMs ?? 0))
@@ -106,11 +116,11 @@ export function describeSessionChanges(before: RowSnapshot[], after: RowSnapshot
 }
 
 /** Records the session as it stands now (including mid-session changes) and stops the clock. */
-export function finishWorkout(uid: string, active: ActiveWorkout, session: ProgrammeSession | undefined): number {
+export function finishWorkout(uid: string, active: ActiveWorkout, session: ProgrammeSession | undefined): { durationSec: number; workoutId: string } {
   const endedAt = Date.now()
   const rows = session ? snapshotRows(session) : []
   const durationSec = Math.round(activeMs(active, endedAt) / 1000)
-  saveWorkout(uid, {
+  const workoutId = saveWorkout(uid, {
     programmeId: active.programmeId,
     clientId: active.clientId,
     sessionId: active.sessionId,
@@ -123,7 +133,7 @@ export function finishWorkout(uid: string, active: ActiveWorkout, session: Progr
     note: '',
   })
   write(null)
-  return durationSec
+  return { durationSec, workoutId }
 }
 
 /** "20 kg × 10, 10, 8" for per-set logs recorded by older versions of the app. */

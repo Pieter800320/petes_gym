@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { IconBack, IconPen, IconSettings } from './Icons'
 import { openNote, openSettings } from './noteEvents'
+import { haptic } from '../haptics'
 import { canGoBack, previousIs } from '../util/navHistory'
 
 interface TopBarProps {
@@ -77,6 +78,8 @@ export function BigTitle({ text, sub, accent, eyebrow }: { text: string; sub?: R
 /** Where the action button goes on desktop: a slot in the navigation rail, under the tabs (App.tsx). */
 export const RAIL_ACTION_ID = 'rail-action'
 const DESKTOP = '(min-width: 900px)'
+/** How long a dial with confirmLabel stays armed, waiting for the second tap. */
+const DIAL_ARM_MS = 3000
 
 const readRail = () => {
   const desktop = window.matchMedia(DESKTOP).matches
@@ -113,6 +116,10 @@ interface DialProps {
   paused?: boolean
   /** Small round button on the dial's upper-left edge (Pause / Resume): its own tap target. */
   side?: { icon: ReactNode; label: string; onClick: () => void }
+  /** Needs a second tap: the first one shows this for 3 s ("TAP AGAIN"), only a second one within that time calls onClick. */
+  confirmLabel?: string
+  /** Taps before this moment (epoch ms) do nothing at all: a double tap on the button this one replaced. */
+  ignoreUntil?: number
 }
 
 /**
@@ -120,22 +127,49 @@ interface DialProps {
  * rectangular button in the navigation rail, under the tabs; a running session shows the clock
  * with Finish, and Pause as its own button below.
  */
-export function Dial({ label, longLabel, onClick, ariaLabel, time, disabled, paused, side }: DialProps) {
+export function Dial({ label, longLabel, onClick, ariaLabel, time, disabled, paused, side, confirmLabel, ignoreUntil }: DialProps) {
   const { desktop, slot } = useRailSlot()
+  const [armed, setArmed] = useState(false)
+
+  useEffect(() => {
+    if (!armed) return
+    const t = setTimeout(() => setArmed(false), DIAL_ARM_MS)
+    return () => clearTimeout(t)
+  }, [armed])
+
+  /** Taps, clicks and Enter/Space all arrive here as the button's click. */
+  function activate() {
+    if (!confirmLabel) return onClick()
+    if (ignoreUntil !== undefined && Date.now() < ignoreUntil) return
+    // Same feel as ConfirmButton: a tick to arm, a strong pulse to confirm.
+    if (armed) {
+      haptic('strong')
+      setArmed(false)
+      onClick()
+    } else {
+      haptic()
+      setArmed(true)
+    }
+  }
+
+  const shown = (armed && confirmLabel) || label
+  const armedClass = armed ? ' armed' : ''
+  // Own haptics when it confirms (the global tap tick would double up).
+  const hapticMode = confirmLabel ? 'none' : 'strong'
   const dial = (
     <div className="dial-dock">
       <div className="dial-wrap">
         {time ? (
-          <button type="button" className={`dial dial-running${paused ? ' dial-paused' : ''}`} onClick={onClick} aria-label={ariaLabel ?? `${label}, ${time}`} data-haptic="strong">
+          <button type="button" className={`dial dial-running${paused ? ' dial-paused' : ''}${armedClass}`} onClick={activate} aria-label={armed ? shown : ariaLabel ?? `${label}, ${time}`} data-haptic={hapticMode}>
             <span className="dial-inner">
               <span className="dial-time">{time}</span>
-              <span className="dial-sub">{label}</span>
+              <span className="dial-sub">{shown}</span>
             </span>
           </button>
         ) : (
-          <button type="button" className="dial" onClick={onClick} aria-label={ariaLabel} disabled={disabled} data-haptic="strong">
-            <span className="dial-short">{label}</span>
-            <span className="dial-long">{longLabel ?? label}</span>
+          <button type="button" className={`dial${armedClass}`} onClick={activate} aria-label={armed ? shown : ariaLabel} disabled={disabled} data-haptic={hapticMode}>
+            <span className="dial-short">{shown}</span>
+            <span className="dial-long">{armed ? shown : longLabel ?? label}</span>
           </button>
         )}
         {side && (
