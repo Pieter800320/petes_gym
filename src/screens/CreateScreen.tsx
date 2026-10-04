@@ -206,7 +206,9 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   const [sheetOpen, setSheetOpen] = useState(false)
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<{ name: string; text: string }[]>([])
-  const [attaching, setAttaching] = useState(false)
+  /** Names of the files still being read (PDFs and photos take Claude a few seconds). */
+  const [reading, setReading] = useState<string[]>([])
+  const attaching = reading.length > 0
   const [pending, setPending] = useState<Pending | null>(null)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -275,24 +277,32 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return
-    setAttaching(true)
+    const names = [...files].map((f) => f.name)
+    setReading((r) => [...r, ...names])
     setError(null)
+    /** Takes one name off the list (the same file name can be in it twice). */
+    const done = (name: string) => setReading((r) => r.filter((_, i) => i !== r.indexOf(name)))
+    let next = 0
     try {
       for (const f of [...files]) {
         const text = await extractText(f)
         setAttachments((a) => [...a, { name: f.name, text }])
+        done(f.name)
+        next++
       }
     } catch (err) {
       setError(describeClaudeError(err))
     } finally {
-      setAttaching(false)
+      // After a failure the files not yet read are dropped too.
+      names.slice(next).forEach(done)
     }
   }
 
   async function send(text: string) {
     following.current = true
     const userText = text.trim()
-    if ((!userText && !attachments.length) || busy || full) return
+    // While a file is still being read it would miss this message and land in the next one.
+    if ((!userText && !attachments.length) || busy || full || attaching) return
     const before = programme
     flushEdits()
     setError(null)
@@ -454,13 +464,14 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
           </span>
           {changedCount > 0 && <span className="mono accent small">{changedCount} changed</span>}
         </button>
-        {attachments.length > 0 && (
+        {(attachments.length > 0 || attaching) && (
           <div className="chips">
             {attachments.map((a, i) => (
               <button type="button" key={i} className="chip" aria-pressed="true" onClick={() => setAttachments((x) => x.filter((_, j) => j !== i))} title="Remove">
                 {a.name} ✕
               </button>
             ))}
+            {reading.map((name, i) => <span key={`r${i}`} className="chip reading">Reading {name}…</span>)}
           </div>
         )}
         <div className="composer-row">
@@ -471,7 +482,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
           <textarea
             id="chat-input"
             className="composer-input"
-            placeholder={busy ? 'Claude is working…' : 'Message Claude'}
+            placeholder={busy ? 'Claude is working…' : attaching ? 'Reading the file…' : 'Message Claude'}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -482,7 +493,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
           {busy ? (
             <button type="button" className="send-btn stop" onClick={() => abortRef.current?.abort()} aria-label="Stop">■</button>
           ) : (
-            <button type="button" className="send-btn" disabled={!input.trim() && !attachments.length} onClick={() => send(input)} aria-label="Send"><IconSend /></button>
+            <button type="button" className="send-btn" disabled={attaching || (!input.trim() && !attachments.length)} onClick={() => send(input)} aria-label="Send"><IconSend /></button>
           )}
         </div>
       </div>

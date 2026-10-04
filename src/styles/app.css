@@ -507,6 +507,7 @@ button.setting:disabled { opacity: 0.4; }
 .client-find .search-line { margin-top: 0; }
 .client-find-hit { min-height: 44px; padding: 0; border: 0; border-bottom: 1px solid var(--color-border); background: none; text-align: left; font-size: 15px; }
 .client-find-hit:active { opacity: 0.6; }
+.chip.reading { color: var(--color-text-muted); border-style: dashed; }
 .chip-warn { border-color: var(--color-danger); color: var(--color-danger); }
 .banner { padding: 10px 14px; border-radius: var(--radius-md); background: var(--color-surface); font-size: 14px; }
 .banner.error { color: var(--color-danger); }
