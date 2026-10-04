@@ -323,12 +323,10 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
       if (reset) setError("The chat was full, so a fresh one was started. This reply's changes to the programme are saved; its text could not be kept.")
     } catch (err) {
       console.error(err)
-      // Nothing was saved: restore the draft text so Pete can retry.
-      if (!controller.signal.aborted) {
-        setError(describeClaudeError(err))
-        setInput(text)
-        setAttachments(sentAttachments)
-      }
+      // Nothing was saved, whether it failed or Pete stopped it: the message and its files go back in the box.
+      setError(controller.signal.aborted ? 'Stopped. Nothing was saved; your message is back in the box.' : describeClaudeError(err))
+      setInput(text)
+      setAttachments(sentAttachments)
     } finally {
       abortRef.current = null
       setPending(null)

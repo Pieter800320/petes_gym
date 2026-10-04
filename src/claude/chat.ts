@@ -318,9 +318,14 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     try {
       message = await stream.finalMessage()
     } catch (err) {
+      // A request that failed or was stopped part-way is still charged for what it had read. The
+      // stream keeps what arrived: the input counts are complete, the output written before the
+      // cut is not reported (the API sends that figure only at the end), so this is a lower bound.
+      const partial = stream.currentMessage
+      if (partial?.usage) costUsd += trackCost('create', { model: partial.model, usage: partial.usage })
       // Nothing from this round is kept, so the stored history stays a valid, append-only prefix.
       if (round === 0) throw err
-      return done('Claude stopped part-way. The changes so far are kept.')
+      return done(input.signal.aborted ? 'You stopped Claude. The changes so far are kept.' : 'Claude stopped part-way. The changes so far are kept.')
     }
     costUsd += trackCost('create', message)
     messages.push({ role: 'assistant', content: message.content as ContentBlockParam[] })
@@ -361,6 +366,10 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     messages.push({ role: 'user', content: results })
   }
 
+  // Ended on tool results rather than on Claude's own last word: the rounds ran out mid-task.
+  if (messages[messages.length - 1].role === 'user') {
+    return done(`Claude reached its limit of ${MAX_TOOL_ROUNDS} steps for one reply. Send "continue" to let it finish.`)
+  }
   return done(null)
 }
 
