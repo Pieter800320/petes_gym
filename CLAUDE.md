@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.26 (2026-10-03). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.27 (2026-10-04). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -161,6 +161,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
     "Email when answers arrive" stores the address of an Apps Script in Pieter's Google account
     (`meta/settings.notifyUrl`); each new invite carries it and the questionnaire calls it after
     sending (`pingNotify`, Google script addresses only, no data sent).
+  - 0.9.27 (Pieter, 2026-10-04): a Create chat can't outgrow its Firestore document. Over 700 KB (`CHAT_DOC_WARN_BYTES`) Create sends nothing and offers "Start fresh chat": the chat moves to `users/{uid}/chatArchives` (backed up, purged with its programme; nothing in the app reads it yet) and an empty one starts, so the next message resends the full `<context>`; `archivedCostUsd` keeps the cost total. A reply that would pass 1 MB drops the undo point, else resets the chat (`recordTurn` → `reset`; that reply's text is not kept). Logic checked in Node on stubs (14 checks); the banner is not yet seen in the app.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

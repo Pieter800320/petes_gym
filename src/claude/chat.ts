@@ -11,7 +11,7 @@
  */
 import type Anthropic from '@anthropic-ai/sdk'
 import { useEffect, useState } from 'react'
-import { doc, onSnapshot, setDoc } from 'firebase/firestore'
+import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
 import { FALLBACK_BETA, MODEL_DESIGN, getClaude, trackCost } from './client'
@@ -26,8 +26,10 @@ type ContentBlockParam = Anthropic.Beta.BetaContentBlockParam
 const MAX_TOOL_ROUNDS = 12
 /** Room for thinking plus several whole sessions of tool input in one reply (streaming allows up to 128K). */
 const MAX_OUTPUT_TOKENS = 64000
-/** Firestore documents max out at 1 MiB; warn well before that. */
-const HISTORY_SOFT_LIMIT_BYTES = 800_000
+/** A chat this large is full: Create asks for a fresh one instead of sending the next message. */
+export const CHAT_DOC_WARN_BYTES = 700_000
+/** A chat is never saved above this: Firestore's hard limit is 1,048,576 bytes per document. */
+export const CHAT_DOC_MAX_BYTES = 1_000_000
 
 export interface ChatDoc {
   /** JSON of MessageParam[] — the exact history sent to the API. */
@@ -40,7 +42,16 @@ export interface ChatDoc {
   undo: string | null
   /** USD per reply, keyed by turn number (0 = Pete's first message). Older chats have none. */
   costs?: Record<string, number>
+  /** Total cost (USD) of this programme's archived earlier chats. */
+  archivedCostUsd?: number
   updatedAt: number
+}
+
+const EMPTY_CHAT: ChatDoc = { history: '[]', baseline: null, lastChanged: [], undo: null, updatedAt: 0 }
+
+/** Size of a chat as stored. Counts the JSON text, which is a little more than Firestore does: the safe side. */
+export function chatDocBytes(chat: ChatDoc): number {
+  return new TextEncoder().encode(JSON.stringify(chat)).length
 }
 
 /** Pete's messages so far: user messages carrying text, not just tool results. */
@@ -48,9 +59,9 @@ function countTurns(history: MessageParam[]): number {
   return history.filter((m) => m.role === 'user' && typeof m.content !== 'string' && m.content.some((b) => b.type === 'text')).length
 }
 
-/** What the whole chat has cost so far. */
+/** What the whole chat has cost so far, archived earlier chats included. */
 export function chatCost(chat: ChatDoc | null): number {
-  return Object.values(chat?.costs ?? {}).reduce((sum, c) => sum + c, 0)
+  return Object.values(chat?.costs ?? {}).reduce((sum, c) => sum + c, chat?.archivedCostUsd ?? 0)
 }
 
 function chatRef(uid: string, programmeId: string) {
@@ -84,26 +95,60 @@ export function useChat(programmeId: string | undefined): { chat: ChatDoc | null
   return lastChats.has(key) ? { chat: lastChats.get(key) ?? null, loading: false } : { chat: null, loading: true }
 }
 
+function reportChatError(err: unknown) {
+  console.error(err)
+  window.dispatchEvent(new CustomEvent('pg:error', { detail: 'Could not save the chat. Check your connection.' }))
+}
+
 export function saveChat(uid: string, programmeId: string, chat: ChatDoc) {
-  setDoc(chatRef(uid, programmeId), chat).catch((err) => {
-    console.error(err)
-    window.dispatchEvent(new CustomEvent('pg:error', { detail: 'Could not save the chat. Check your connection.' }))
+  setDoc(chatRef(uid, programmeId), chat).catch(reportChatError)
+}
+
+/**
+ * Sets the chat aside in users/{uid}/chatArchives and starts an empty one for the programme. The
+ * existing conversation is not edited (history stays append-only); the empty history makes runTurn
+ * send the whole <context> block again, so Claude starts the new chat knowing client and programme.
+ */
+export function archiveAndResetChat(uid: string, programmeId: string, chat: ChatDoc, baseline: Programme): void {
+  setDoc(doc(collection(requireDb(), 'users', uid, 'chatArchives')), { programmeId, archivedAt: Date.now(), chat }).catch(reportChatError)
+  saveChat(uid, programmeId, {
+    history: '[]',
+    baseline: JSON.stringify(baseline),
+    lastChanged: [],
+    undo: null,
+    costs: {},
+    archivedCostUsd: chatCost(chat),
+    updatedAt: Date.now(),
   })
 }
 
-/** Stores the outcome of a reply: new history, what Claude now knows, highlights, and the undo point. */
-export function recordTurn(uid: string, before: Programme, chat: ChatDoc | null, result: TurnResult) {
+/**
+ * Stores the outcome of a reply: new history, what Claude now knows, highlights, and the undo point.
+ * `reset` means the reply made the chat too large to store, so a fresh one was started instead.
+ */
+export function recordTurn(uid: string, before: Programme, chat: ChatDoc | null, result: TurnResult): { changedAnything: boolean; reset: boolean } {
   const changedAnything = JSON.stringify(result.programme) !== JSON.stringify(before)
   const turn = countTurns(parseHistory(chat))
-  saveChat(uid, before.id, {
-    costs: { ...chat?.costs, [turn]: result.costUsd },
+  const costs = { ...chat?.costs, [turn]: result.costUsd }
+  let next: ChatDoc = {
+    costs,
     history: JSON.stringify(result.history),
     baseline: JSON.stringify(result.programme),
     lastChanged: [...result.changed],
     undo: changedAnything ? JSON.stringify(before) : null,
+    ...(chat?.archivedCostUsd !== undefined ? { archivedCostUsd: chat.archivedCostUsd } : {}),
     updatedAt: Date.now(),
-  })
-  return changedAnything
+  }
+  // Too large to store: give up the undo point first, the conversation only if that isn't enough.
+  if (chatDocBytes(next) > CHAT_DOC_MAX_BYTES) next = { ...next, undo: null }
+  if (chatDocBytes(next) > CHAT_DOC_MAX_BYTES) {
+    // The chat as it was before this reply is archived (with the reply it doesn't fit either);
+    // the reply's cost goes along so the running total stays right.
+    archiveAndResetChat(uid, before.id, { ...(chat ?? EMPTY_CHAT), costs }, result.programme)
+    return { changedAnything, reset: true }
+  }
+  saveChat(uid, before.id, next)
+  return { changedAnything, reset: false }
 }
 
 /** After Undo: keep the baseline (Claude's view) so the next message tells Claude what was reverted. */
@@ -317,10 +362,6 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
   }
 
   return done(null)
-}
-
-export function historyTooLarge(history: MessageParam[]): boolean {
-  return JSON.stringify(history).length > HISTORY_SOFT_LIMIT_BYTES
 }
 
 // ── Display ───────────────────────────────────────────────────────────

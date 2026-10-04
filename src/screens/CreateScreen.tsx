@@ -10,7 +10,7 @@ import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { describeClaudeError, formatUsd } from '../claude/client'
-import { chatCost, clearUndo, clientHistoryText, historyTooLarge, parseHistory, recordTurn, runTurn, toDisplay, useChat, type ChatDoc, type DisplayItem } from '../claude/chat'
+import { CHAT_DOC_WARN_BYTES, archiveAndResetChat, chatCost, chatDocBytes, clearUndo, clientHistoryText, parseHistory, recordTurn, runTurn, toDisplay, useChat, type ChatDoc, type DisplayItem } from '../claude/chat'
 import { ACCEPTED_FILES, extractText } from '../claude/extract'
 import { usePlaybook } from '../claude/playbook'
 import { changedRowIds } from '../claude/programmeTools'
@@ -192,6 +192,8 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   const mineMarks = useMemo(() => (baseline ? changedRowIds(baseline, programme) : new Set<string>()), [baseline, programme])
   const issues = useMemo(() => checkProgramme(programme, client), [programme, client])
   const busy = pending !== null
+  /** The stored chat is near Firestore's document limit: no more messages until a fresh one is started. */
+  const full = useMemo(() => chat !== null && chatDocBytes(chat) > CHAT_DOC_WARN_BYTES, [chat])
   const exerciseCount = programme.sessions.reduce((n, s) => n + s.sections.reduce((m, sec) => m + sec.rows.length, 0), 0)
   const changedCount = chat?.lastChanged.length ?? 0
 
@@ -253,7 +255,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   async function send(text: string) {
     following.current = true
     const userText = text.trim()
-    if ((!userText && !attachments.length) || busy) return
+    if ((!userText && !attachments.length) || busy || full) return
     const before = programme
     flushEdits()
     setError(null)
@@ -278,9 +280,10 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
         onProgramme: (p) => setLocal(p),
         signal: controller.signal,
       })
-      if (recordTurn(uid, before, chat, result)) saveProgramme(uid, result.programme)
+      const { changedAnything, reset } = recordTurn(uid, before, chat, result)
+      if (changedAnything) saveProgramme(uid, result.programme)
       if (result.error) setError(result.error)
-      if (historyTooLarge(result.history)) setError('This chat is getting very long. Confirm the programme and start the next block in a fresh chat.')
+      if (reset) setError("The chat was full, so a fresh one was started. This reply's changes to the programme are saved; its text could not be kept.")
     } catch (err) {
       console.error(err)
       // Nothing was saved: restore the draft text so Pete can retry.
@@ -294,6 +297,14 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
       setPending(null)
       setLocal(null)
     }
+  }
+
+  function startFreshChat() {
+    if (!chat) return
+    flushEdits()
+    setError(null)
+    archiveAndResetChat(uid, stored.id, chat, programme)
+    toast('Fresh chat started')
   }
 
   function undo() {
@@ -378,6 +389,12 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
 
       <div className="chat-bottom">
         {error && <div className="banner error">{error}</div>}
+        {full && !busy && (
+          <div className="banner error row-banner">
+            <span>This chat is full. Start a fresh chat to carry on: Claude still sees the whole programme and the client.</span>
+            <button type="button" className="text-link" onClick={startFreshChat}>Start fresh chat</button>
+          </div>
+        )}
         {chat?.undo && !busy && (
           <div className="undo-line">
             <span>Claude changed {changedCount || 'some'} exercise{changedCount === 1 ? '' : 's'}</span>

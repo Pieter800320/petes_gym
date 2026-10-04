@@ -325,6 +325,12 @@ async function restoreClientNow(uid: string, clientId: string) {
   batch.commit().catch(reportWriteError)
 }
 
+/** A programme's archived earlier chats (filter only, so no composite index). */
+async function chatArchiveRefs(uid: string, programmeId: string) {
+  const snap = await getDocs(query(userCollection(uid, 'chatArchives'), where('programmeId', '==', programmeId)))
+  return snap.docs.map((d) => d.ref)
+}
+
 /** Erases a client and everything that belongs to it: programmes, their chats, notes and sessions. */
 async function purgeClientNow(uid: string, clientId: string) {
   const batch = writeBatch(requireDb())
@@ -332,6 +338,7 @@ async function purgeClientNow(uid: string, clientId: string) {
   for (const p of await clientProgrammeIds(uid, clientId)) {
     batch.delete(doc(userCollection(uid, 'programmes'), p.id))
     batch.delete(doc(userCollection(uid, 'chats'), p.id))
+    for (const ref of await chatArchiveRefs(uid, p.id)) batch.delete(ref)
   }
   for (const name of ['notes', 'workouts']) {
     const snap = await getDocs(query(userCollection(uid, name), where('clientId', '==', clientId)))
@@ -348,18 +355,23 @@ export function restoreProgramme(uid: string, id: string) {
   updateDoc(doc(userCollection(uid, 'programmes'), id), { deletedAt: null, deletedWithClient: false }).catch(reportWriteError)
 }
 
-/** Erases a programme and its Claude chat for good. */
+/** Erases a programme and its Claude chat, archived earlier chats included, for good. */
 export function purgeProgramme(uid: string, id: string) {
+  reportAsync(purgeProgrammeNow(uid, id))
+}
+
+async function purgeProgrammeNow(uid: string, id: string) {
   const batch = writeBatch(requireDb())
   batch.delete(doc(userCollection(uid, 'programmes'), id))
   batch.delete(doc(userCollection(uid, 'chats'), id))
+  for (const ref of await chatArchiveRefs(uid, id)) batch.delete(ref)
   batch.commit().catch(reportWriteError)
 }
 
 // ── Backup ───────────────────────────────────────────────────────────
 
 /** Every collection kept under the account. */
-export const BACKUP_COLLECTIONS = ['clients', 'programmes', 'notes', 'workouts', 'chats', 'meta'] as const
+export const BACKUP_COLLECTIONS = ['clients', 'programmes', 'notes', 'workouts', 'chats', 'chatArchives', 'meta'] as const
 
 /**
  * Everything stored for this account, exactly as it is in the database: { collection: { id: document } }.
