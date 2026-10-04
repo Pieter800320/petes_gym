@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, Navigate, Route, Routes, matchPath, useLocation, useMatch, useNavigationType } from 'react-router-dom'
 import { useAuth } from './auth/useAuth'
 import { isFirebaseConfigured } from './firebase'
@@ -11,23 +11,37 @@ import { RAIL_ACTION_ID } from './components/TopBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { ClientScreen } from './screens/ClientScreen'
 import { ClientsScreen } from './screens/ClientsScreen'
-import { CreateScreen } from './screens/CreateScreen'
 import { toast } from './components/toast'
 import { backupIfDue, runPendingScrubs } from './data/backups'
 import { useInvites, watchNotifyUrl } from './data/invites'
-import { DeletedScreen } from './screens/DeletedScreen'
-import { FitnessProfileScreen } from './screens/FitnessProfileScreen'
 import { LoadingScreen, NoAccessScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
-import { ImportScreen } from './screens/ImportScreen'
-import { NotesScreen } from './screens/NotesScreen'
-import { ProfileImportScreen } from './screens/ProfileImportScreen'
-import { ProgrammeScreen } from './screens/ProgrammeScreen'
 import { TrainScreen } from './screens/TrainScreen'
-import { EXERCISES } from './data/exercises'
 import { recordCost, useProgramme } from './data/store'
-import { setCostSink } from './claude/client'
+import { setCostSink } from './claude/cost'
 import { recordPath } from './util/navHistory'
 import { useTheme } from './settings'
+
+// Loaded when first opened, so the daily path (Train, Clients) and a client's questionnaire don't
+// carry Create, the importers and the Anthropic SDK. The service worker has every file offline.
+const screens = {
+  CreateScreen: () => import('./screens/CreateScreen'),
+  DeletedScreen: () => import('./screens/DeletedScreen'),
+  FitnessProfileScreen: () => import('./screens/FitnessProfileScreen'),
+  ImportScreen: () => import('./screens/ImportScreen'),
+  NotesScreen: () => import('./screens/NotesScreen'),
+  ProfileImportScreen: () => import('./screens/ProfileImportScreen'),
+  ProgrammeScreen: () => import('./screens/ProgrammeScreen'),
+}
+const CreateScreen = lazy(() => screens.CreateScreen().then((m) => ({ default: m.CreateScreen })))
+const DeletedScreen = lazy(() => screens.DeletedScreen().then((m) => ({ default: m.DeletedScreen })))
+const FitnessProfileScreen = lazy(() => screens.FitnessProfileScreen().then((m) => ({ default: m.FitnessProfileScreen })))
+const ImportScreen = lazy(() => screens.ImportScreen().then((m) => ({ default: m.ImportScreen })))
+const NotesScreen = lazy(() => screens.NotesScreen().then((m) => ({ default: m.NotesScreen })))
+const ProfileImportScreen = lazy(() => screens.ProfileImportScreen().then((m) => ({ default: m.ProfileImportScreen })))
+const ProgrammeScreen = lazy(() => screens.ProgrammeScreen().then((m) => ({ default: m.ProgrammeScreen })))
+
+/** How long after the shell appears the other screens are fetched in the background. */
+const PRELOAD_SCREENS_MS = 1500
 
 const TABS = [
   { to: '/train', label: 'Train' },
@@ -44,7 +58,13 @@ export default function App() {
   // A client's Fitness Profile link: the questionnaire, for someone without an account, and
   // nothing else of the app.
   const fit = matchPath('/fit/:uid/:token', location.pathname)
-  if (fit?.params.uid && fit.params.token) return <FitnessProfileScreen uid={fit.params.uid} token={fit.params.token} />
+  if (fit?.params.uid && fit.params.token) {
+    return (
+      <Suspense fallback={<LoadingScreen />}>
+        <FitnessProfileScreen uid={fit.params.uid} token={fit.params.token} />
+      </Suspense>
+    )
+  }
   if (loading) return <LoadingScreen />
   if (!user) return <SignInScreen />
   // Someone else's Google account: stop before the shell, so none of its listeners start.
@@ -97,6 +117,16 @@ function Shell() {
   }, [user])
   useScrollMemory()
 
+  // Fetch the other screens once the first one is up, so opening them never shows "Loading…".
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // The questionnaire is for clients; Pete's app never shows it.
+      const { FitnessProfileScreen: _clientsOnly, ...mine } = screens
+      for (const load of Object.values(mine)) load().catch(() => {})
+    }, PRELOAD_SCREENS_MS)
+    return () => clearTimeout(timer)
+  }, [])
+
   // The weekly backup, and the address new questionnaire links carry for the email to Pete.
   useEffect(() => {
     if (!user) return
@@ -143,6 +173,7 @@ function Shell() {
       </nav>
 
       <main className="shell-main">
+        <Suspense fallback={<LoadingScreen />}>
         <Routes>
           <Route path="/" element={<Navigate to="/train" replace />} />
           <Route path="/train" element={<TrainScreen />} />
@@ -158,6 +189,7 @@ function Shell() {
           <Route path="/import-profiles" element={<ProfileImportScreen />} />
           <Route path="*" element={<Navigate to="/train" replace />} />
         </Routes>
+        </Suspense>
       </main>
 
       <NoteSheet
@@ -169,8 +201,6 @@ function Shell() {
       <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <Snackbar />
       <UpdateBanner />
-      {/* Library names for every exercise-name field (autocomplete). */}
-      <datalist id="exercise-names">{EXERCISES.map((e) => <option key={e.key} value={e.name} />)}</datalist>
     </div>
   )
 }

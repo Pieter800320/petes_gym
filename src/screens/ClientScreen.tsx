@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ClientSheet } from '../components/ClientSheet'
 import { ConfirmButton } from '../components/ConfirmButton'
-import { ExportSheet } from '../components/ExportSheet'
 import { IconMore } from '../components/Icons'
 import { NoteSheet } from '../components/NoteSheet'
 import { PinnedNotes } from '../components/PinnedNotes'
@@ -18,6 +17,9 @@ import { createProgramme, deleteClient, deleteWorkout, useClients, useNotes, use
 import type { Client, Note, Programme } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
 import { leaveFor } from '../util/navHistory'
+
+// The export sheet brings the translator (and with it the Anthropic SDK): fetched with this page, not with the app.
+const ExportSheet = lazy(() => import('../components/ExportSheet').then((m) => ({ default: m.ExportSheet })))
 
 const DETAIL_FIELDS = [
   { key: 'goals', label: 'Goals' },
@@ -232,7 +234,7 @@ export function ClientScreen() {
       <NewProgrammeSheet open={newOpen} onClose={() => setNewOpen(false)} client={client} />
       <ClientSheet open={editing} onClose={() => setEditing(false)} client={client} />
       <NoteSheet open={noteSheet !== null} onClose={() => setNoteSheet(null)} note={noteSheet ?? undefined} defaultClientId={client.id} />
-      {current && <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} programme={current} client={client} />}
+      {current && <Suspense fallback={null}><ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} programme={current} client={client} /></Suspense>}
     </div>
   )
 }

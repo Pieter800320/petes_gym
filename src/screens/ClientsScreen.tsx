@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AnswersSheet } from '../components/AnswersSheet'
 import { ClientSheet } from '../components/ClientSheet'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { IconChevronRight, IconSearch } from '../components/Icons'
@@ -11,6 +10,9 @@ import { deleteInvite, useInvites, type Invite } from '../data/invites'
 import { KEEP_YEARS } from '../data/privacy'
 import { useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Programme } from '../data/types'
+
+// Shares its profile-merging code with the CSV import, which calls Claude: fetched with this page, not with the app.
+const AnswersSheet = lazy(() => import('../components/AnswersSheet').then((m) => ({ default: m.AnswersSheet })))
 
 /** A profile untouched for this long is past the storage period the privacy notice gives. */
 const KEEP_MS = KEEP_YEARS * 365 * 86_400_000
@@ -143,7 +145,7 @@ export function ClientsScreen() {
       {binCount > 0 && !search && <Link to="/deleted" className="text-link quiet">Recently deleted ({binCount})</Link>}
 
       <Dial label="ADD" longLabel="Add client" ariaLabel="New client" onClick={() => setNewClient('client')} />
-      <AnswersSheet invite={openAnswers} onClose={() => setOpenAnswers(null)} />
+      <Suspense fallback={null}><AnswersSheet invite={openAnswers} onClose={() => setOpenAnswers(null)} /></Suspense>
       <ClientSheet open={newClient !== null} onClose={() => setNewClient(null)} initial={newClient === 'self' ? { name: 'Pete', isSelf: true } : undefined} />
     </div>
   )

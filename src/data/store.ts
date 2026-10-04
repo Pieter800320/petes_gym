@@ -25,7 +25,7 @@ import {
 } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
-import type { CostKind } from '../claude/client'
+import type { CostKind } from '../claude/cost'
 import { withUniqueIds } from './programmeIds'
 import type { Client, ClientDraft, Note, Programme, ProgrammeDraft, ProgressionBlock, Workout } from './types'
 
