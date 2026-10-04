@@ -33,7 +33,7 @@ function startLang(): Lang {
   return navigator.language.toLowerCase().startsWith('de') ? 'de' : 'en'
 }
 
-type Stage = 'loading' | 'form' | 'gone' | 'sent'
+type Stage = 'loading' | 'form' | 'gone' | 'offline' | 'sent'
 
 export function FitnessProfileScreen({ uid, token }: { uid: string; token: string }) {
   const [stage, setStage] = useState<Stage>('loading')
@@ -43,6 +43,10 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
   const [answers, setAnswers] = useState<Answers>(() => loadDraft(token))
   const [consent, setConsent] = useState(false)
   const [sending, setSending] = useState(false)
+  /** The send is taking long (weak signal): it is still on its way, and the page must stay open. */
+  const [slow, setSlow] = useState(false)
+  /** Counts "Try again" after the link could not be read without a connection. */
+  const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
   const [noticeOpen, setNoticeOpen] = useState(false)
   const t = UI[lang]
@@ -51,7 +55,7 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
     let cancelled = false
     readInvite(uid, token).then((invite) => {
       if (cancelled) return
-      if (!invite) return setStage('gone')
+      if (invite.kind !== 'ok') return setStage(invite.kind)
       setFirstName(invite.name.split(/\s+/)[0] ?? '')
       setNotifyUrl(invite.notifyUrl)
       // The name Pete typed is offered as the first answer; the client can change it.
@@ -61,7 +65,7 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
     return () => {
       cancelled = true
     }
-  }, [uid, token])
+  }, [uid, token, attempt])
 
   useEffect(() => {
     if (stage !== 'form') return
@@ -87,14 +91,17 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
   const tooYoung = Number.parseInt(String(answers.age ?? ''), 10) < MIN_AGE
 
   async function send() {
+    // One send at a time: the button is off until this one has arrived or been refused.
+    if (sending) return
     setFailed(false)
+    setSlow(false)
     setSending(true)
     try {
       // Answers to questions that are no longer shown (a "yes" changed back to "no") stay behind.
       const visible = new Set(SECTIONS.flatMap((s) => s.questions).filter((q) => isVisible(q, answers)).map((q) => q.id))
       const kept = Object.fromEntries(Object.entries(answers).filter(([id]) => visible.has(id)))
       // Proof of consent (Art. 7(1) DSGVO): when, to which wording, in which language.
-      await submitAnswers(uid, token, { ...kept, [CONSENT_KEY]: consentRecord(lang, Date.now()) })
+      await submitAnswers(uid, token, { ...kept, [CONSENT_KEY]: consentRecord(lang, Date.now()) }, () => setSlow(true))
       try {
         localStorage.removeItem(draftKey(token))
       } catch {
@@ -108,6 +115,7 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
       setFailed(true)
     } finally {
       setSending(false)
+      setSlow(false)
     }
   }
 
@@ -118,6 +126,19 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
   )
 
   if (stage === 'loading') return <div className="center-screen"><span className="label">{t.loading}</span></div>
+
+  if (stage === 'offline') {
+    return (
+      <div className="center-screen">
+        <div className="fit-page fit-end">
+          {langSwitch}
+          <h1 className="display">{t.offlineTitle}</h1>
+          <p className="lead">{t.offlineText}</p>
+          <button type="button" className="btn-cta btn-block" onClick={() => { setStage('loading'); setAttempt((n) => n + 1) }}>{t.tryAgain}</button>
+        </div>
+      </div>
+    )
+  }
 
   if (stage === 'gone' || stage === 'sent') {
     return (
@@ -164,6 +185,7 @@ export function FitnessProfileScreen({ uid, token }: { uid: string; token: strin
         <button type="button" className="btn-cta btn-block" disabled={sending || !consent || tooYoung || missing.length > 0} onClick={send}>
           {sending ? t.sending : t.send}
         </button>
+        {sending && slow && <p className="muted small" role="status">{t.stillSending}</p>}
         {missing.length > 0 && <p className="muted small">{t.needed}: {missing.join(', ')}.</p>}
       </section>
 

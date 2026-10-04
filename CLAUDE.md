@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.33 (2026-10-04). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.34 (2026-10-04). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -168,6 +168,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - 0.9.31 (Pieter, 2026-10-04): a backup or restore is only reported done when the server has it (`data/backups.ts` awaits its writes, 60 s timeout, online only). A snapshot's description is written last with `complete: true` and older snapshots are deleted only after that; a failed one is taken back. Restore checks the data's shape before anything is written (`checkBackupData`, also when a file is chosen), writes everything before deleting anything, in awaited batches of at most 400 documents or 4 M characters, and names the part it stopped at. Restore buttons are off while one runs (`ConfirmButton` `disabled`). Checked in Node on a stand-in for Firestore (17 checks), not against the real one.
   - 0.9.32 (Pieter, 2026-10-04): a page opened on a questionnaire link (`isPublicForm` in `firebase.ts`) keeps Firestore's cache and the sign-in state in memory only, so no `firestore/*` or `firebaseLocalStorageDb` database is left in the client's browser; the signed-in app keeps its persistent cache. Still left on the client's device: the app's own files (service worker cache) and possibly Firebase's `firebase-heartbeat-database` (no personal data). Not checked in a browser.
   - 0.9.33 (Pieter, 2026-10-04): only Pieter's account can use the app's data. `firestore.rules`: the owner block also requires `uid == 'PETE_UID'`; the invite block is unchanged. Pieter's UID is in the file and the rules were published on 2026-10-04 (a wrong UID there locks Pieter out as well). In the app, any other Google account sees "No access" before the shell renders (`OWNER_EMAIL` in `firebaseConfig.ts`, `NoAccessScreen`); that is UX only, the rules enforce it. Not tested: no second account, no emulator.
+  - 0.9.34 (Pieter, 2026-10-04): the questionnaire tells "no connection" from "link no longer usable". `readInvite` returns ok / gone / offline (gone only when the server refuses); offline shows "No connection" with Try again. `submitAnswers` sends once and waits for that one write however long it takes; after 20 s the page says "Still sending… please keep this page open" and Send stays off. A refusal counts as delivered when the invite can no longer be read (answered, or cancelled by Pieter: then the client sees "Thank you" although nothing arrived). New texts in EN and DE. Checked in Node on stubs (17 checks), not in a browser.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and

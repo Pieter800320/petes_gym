@@ -109,30 +109,47 @@ export function pingNotify(url: string) {
 
 // ── The client's side (no account) ───────────────────────────────────
 
-/** How long the form waits for the server before saying the connection failed. */
+/** How long the form waits for the server before telling the client it is still sending. */
 const SEND_TIMEOUT_MS = 20_000
 
+/** Firestore's error code ('permission-denied', 'unavailable'…), if the error has one. */
+const codeOf = (err: unknown) => (err as { code?: unknown } | null)?.code
+
 /**
- * What the form needs to know about its link. Null when the link is wrong, not active yet, or
- * already used: the rules refuse to show an answered invite to anyone but Pete.
+ * What the form learns about its link. gone: wrong, cancelled or already used (the rules refuse to
+ * show an answered invite to anyone but Pete). offline: the server could not be asked, so the link
+ * may well be fine.
  */
-export async function readInvite(uid: string, token: string): Promise<{ name: string; notifyUrl: string } | null> {
+export type InviteRead = { kind: 'ok'; name: string; notifyUrl: string } | { kind: 'gone' } | { kind: 'offline' }
+
+export async function readInvite(uid: string, token: string): Promise<InviteRead> {
   try {
     const snap = await getDoc(doc(invitesOf(uid), token))
-    if (!snap.exists()) return null
+    if (!snap.exists()) return { kind: 'gone' }
     const d = snap.data() as Omit<Invite, 'id'>
-    return d.answeredAt === null ? { name: d.name, notifyUrl: d.notifyUrl ?? '' } : null
-  } catch {
-    return null
+    return d.answeredAt === null ? { kind: 'ok', name: d.name, notifyUrl: d.notifyUrl ?? '' } : { kind: 'gone' }
+  } catch (err) {
+    // Only the server's own refusal means the link is dead; everything else is the connection.
+    return codeOf(err) === 'permission-denied' && navigator.onLine !== false ? { kind: 'gone' } : { kind: 'offline' }
   }
 }
 
 /**
  * Sends the answers. Unlike writes in the app itself this one is awaited: the client must be told
- * for certain whether Pete received them, so it fails after a while without a connection.
+ * for certain whether Pete received them. It is sent once and waited for however long it takes
+ * (a second attempt could be refused because the first one arrived); onSlow is called when the
+ * wait gets long, so the page can ask the client to keep it open.
  */
-export async function submitAnswers(uid: string, token: string, answers: Answers): Promise<void> {
-  const write = updateDoc(doc(invitesOf(uid), token), { answers, answeredAt: Date.now() })
-  const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), SEND_TIMEOUT_MS))
-  await Promise.race([write, timeout])
+export async function submitAnswers(uid: string, token: string, answers: Answers, onSlow: () => void): Promise<void> {
+  const slow = setTimeout(onSlow, SEND_TIMEOUT_MS)
+  try {
+    await updateDoc(doc(invitesOf(uid), token), { answers, answeredAt: Date.now() })
+  } catch (err) {
+    // Refused, and the invite can no longer be read either: it is answered (this write got
+    // through and was then repeated) or cancelled. Either way there is nothing left to send.
+    if (codeOf(err) === 'permission-denied' && (await readInvite(uid, token)).kind === 'gone') return
+    throw err
+  } finally {
+    clearTimeout(slow)
+  }
 }

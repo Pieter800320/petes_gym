@@ -151,6 +151,7 @@ export const SECTIONS: Section[] = [
 export const UI: Record<Lang, {
   eyebrow: string; hello: (firstName: string) => string; intro: string; chooseAll: string; privacy: string; under: (age: number) => string; send: string; sending: string
   needed: string; sendError: string; loading: string; thanksTitle: string; thanksText: string; goneTitle: string; goneText: string
+  stillSending: string; offlineTitle: string; offlineText: string; tryAgain: string
 }> = {
   en: {
     eyebrow: 'Fitness profile',
@@ -168,6 +169,10 @@ export const UI: Record<Lang, {
     thanksText: 'Your answers are with Pieter. He will use them to design your training programme. You can close this page.',
     goneTitle: 'This link can no longer be used',
     goneText: 'It has either been filled in already or is no longer active. If you still need to send your answers, ask Pieter for a new link.',
+    stillSending: 'Still sending… please keep this page open.',
+    offlineTitle: 'No connection',
+    offlineText: 'This page needs the internet to open. Check your connection and try again.',
+    tryAgain: 'Try again',
   },
   de: {
     eyebrow: 'Fitnessprofil',
@@ -185,6 +190,10 @@ export const UI: Record<Lang, {
     thanksText: 'Deine Antworten sind bei Pieter. Er nutzt sie, um dein Trainingsprogramm zu erstellen. Du kannst diese Seite schließen.',
     goneTitle: 'Dieser Link kann nicht mehr verwendet werden',
     goneText: 'Er wurde entweder schon ausgefüllt oder ist nicht mehr aktiv. Wenn du deine Antworten noch senden möchtest, bitte Pieter um einen neuen Link.',
+    stillSending: 'Wird noch gesendet… bitte lass diese Seite offen.',
+    offlineTitle: 'Keine Verbindung',
+    offlineText: 'Diese Seite braucht eine Internetverbindung. Prüfe deine Verbindung und versuche es noch einmal.',
+    tryAgain: 'Noch einmal versuchen',
   },
 }
 
