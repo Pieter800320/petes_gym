@@ -35,10 +35,16 @@ export function duplicateProgramme(uid: string, p: Programme): string {
   return createProgramme(uid, { ...rest, title: `${p.title} (copy)`, status: 'draft', sessions: p.sessions.map(cloneSession), parentId: null })
 }
 
-/** "Strength Block 2" → "Strength Block 3"; otherwise appends "· next block". */
-function nextTitle(title: string): string {
+/** A block or phase number has at most this many digits; a longer number is a year ("Oct 2026"). */
+const MAX_BLOCK_NUMBER_DIGITS = 3
+
+/**
+ * "Strength Block 2" → "Strength Block 3", "Phase 10 (copy)" → "Phase 11 (copy)"; otherwise, and
+ * for a title that ends in a year ("Strength Oct 2026"), appends "· next block".
+ */
+export function nextTitle(title: string): string {
   const m = title.match(/^(.*?)(\d+)(\D*)$/)
-  if (m) return `${m[1]}${Number(m[2]) + 1}${m[3]}`
+  if (m && m[2].length <= MAX_BLOCK_NUMBER_DIGITS) return `${m[1]}${Number(m[2]) + 1}${m[3]}`
   return `${title} · next block`
 }
 
