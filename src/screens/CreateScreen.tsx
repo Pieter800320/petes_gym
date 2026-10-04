@@ -20,11 +20,9 @@ import { activateProgramme } from '../data/programmeActions'
 import { blankProgramme } from '../data/programmeUtils'
 import { createProgramme, restoreProgramme, saveProgramme, softDeleteProgramme, useClients, useNotes, useProgramme, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Programme } from '../data/types'
+import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import { getApiKey, getCreateProgrammeId, setCreateProgrammeId } from '../settings'
 import { canGoBack, leaveFor } from '../util/navHistory'
-
-/** Delay before a manual edit is written to Firestore, so typing doesn't write on every key. */
-const AUTOSAVE_MS = 700
 
 /**
  * What describeEdits leaves out, as one comparable text: its summary goes to Claude, who is never
@@ -200,9 +198,8 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   const { data: clientProgrammes } = useProgrammes(stored.clientId)
   const { data: workouts } = useWorkouts({ clientId: stored.clientId })
 
-  /** Local copy while Claude is working or Pete is editing; otherwise the stored programme. */
-  const [local, setLocal] = useState<Programme | null>(null)
-  const programme = local ?? stored
+  // The stored programme, or a local copy while Pete is editing (autosaved) or Claude is working (preview).
+  const { programme, change, flush, preview } = useProgrammeDraft(stored)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<{ name: string; text: string }[]>([])
@@ -214,9 +211,6 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   const abortRef = useRef<AbortController | null>(null)
   /** Streamed text not yet on screen: it arrives dozens of times a second and is shown once a frame. */
   const streamed = useRef({ text: '', frame: 0 })
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  /** Edit waiting for the autosave timer; written immediately if the screen closes first. */
-  const unsaved = useRef<Programme | null>(null)
   const chatLog = useRef<HTMLDivElement | null>(null)
   /** Whether the chat is scrolled to the latest message; reading further up stops the auto-scroll. */
   const following = useRef(true)
@@ -247,35 +241,8 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
     if (log && following.current) log.scrollTop = log.scrollHeight
   }, [display.length, pending?.replyText, pending?.tools.length])
 
-  // Leaving the screen: write any edit still waiting for the autosave timer.
-  useEffect(
-    () => () => {
-      clearTimeout(saveTimer.current)
-      if (unsaved.current && user) saveProgramme(user.uid, unsaved.current)
-    },
-    [user],
-  )
-
   if (!user) return null
   const uid = user.uid
-
-  function manualChange(next: Programme) {
-    setLocal(next)
-    unsaved.current = next
-    clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      saveProgramme(uid, next)
-      unsaved.current = null
-    }, AUTOSAVE_MS)
-  }
-
-  /** Writes pending edits now and goes back to showing the stored programme. */
-  function flushEdits() {
-    clearTimeout(saveTimer.current)
-    if (unsaved.current) saveProgramme(uid, unsaved.current)
-    unsaved.current = null
-    setLocal(null)
-  }
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return
@@ -306,7 +273,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
     // While a file is still being read it would miss this message and land in the next one.
     if ((!userText && !attachments.length) || busy || full || attaching) return
     const before = programme
-    flushEdits()
+    flush()
     setError(null)
     setInput('')
     const sentAttachments = attachments
@@ -336,7 +303,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
           })
         },
         onToolLabel: (l) => setPending((p) => (p ? { ...p, tools: [...p.tools, l] } : p)),
-        onProgramme: (p) => setLocal(p),
+        onProgramme: (p) => preview(p),
         signal: controller.signal,
       })
       const { changedAnything, reset } = recordTurn(uid, before, chat, result)
@@ -354,13 +321,13 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
       cancelAnimationFrame(streamed.current.frame)
       streamed.current = { text: '', frame: 0 }
       setPending(null)
-      setLocal(null)
+      preview(null)
     }
   }
 
   function startFreshChat() {
     if (!chat) return
-    flushEdits()
+    flush()
     setError(null)
     archiveAndResetChat(uid, stored.id, chat, programme)
     toast('Fresh chat started')
@@ -369,7 +336,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   function undo() {
     if (!chat?.undo) return
     // First, so no edit still waiting for the autosave timer is written over the restored programme.
-    flushEdits()
+    flush()
     saveProgramme(uid, JSON.parse(chat.undo) as Programme)
     // Baseline stays as Claude's view, so Claude is told what was reverted on the next message.
     clearUndo(uid, stored.id, chat)
@@ -377,7 +344,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   }
 
   function confirm() {
-    flushEdits()
+    flush()
     activateProgramme(uid, programme, clientProgrammes)
     setCreateProgrammeId(null)
     toast('Programme confirmed')
@@ -385,7 +352,7 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   }
 
   function deleteDraft() {
-    flushEdits()
+    flush()
     softDeleteProgramme(uid, programme.id)
     setCreateProgrammeId(null)
     toast('Draft moved to Recently deleted')
@@ -515,12 +482,13 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
       <ProgrammeSheet
         open={sheetOpen}
         onClose={() => {
-          flushEdits()
+          // While Claude works there is nothing of Pete's to write, and flush() would drop the live preview.
+          if (!busy) flush()
           setSheetOpen(false)
         }}
         programme={programme}
         clientName={client?.isSelf ? 'You' : client?.name}
-        onChange={manualChange}
+        onChange={change}
         locked={busy}
         claude={claudeMarks}
         mine={mineMarks}

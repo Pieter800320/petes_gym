@@ -16,12 +16,15 @@ export function useProgrammeDraft(stored: Programme) {
   const [local, setLocal] = useState<Programme | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const unsaved = useRef<Programme | null>(null)
+  /** True while preview() is showing a programme that is not stored yet (Claude at work). */
+  const previewing = useRef(false)
   const uid = user?.uid
 
   const flush = useCallback(() => {
     clearTimeout(timer.current)
     if (unsaved.current && uid) saveProgramme(uid, unsaved.current)
     unsaved.current = null
+    previewing.current = false
     setLocal(null)
   }, [uid])
 
@@ -40,8 +43,9 @@ export function useProgrammeDraft(stored: Programme) {
 
   // Once our edits are written (or another device changed it), show the stored programme again,
   // so later edits start from the latest version instead of an old copy.
+  // Not during a preview: a save landing meanwhile must not flip the screen back to the stored one.
   useEffect(() => {
-    if (!unsaved.current) setLocal(null)
+    if (!unsaved.current && !previewing.current) setLocal(null)
   }, [stored])
 
   // Leaving the screen: write any edit still waiting for the timer.
@@ -53,8 +57,11 @@ export function useProgrammeDraft(stored: Programme) {
     [uid],
   )
 
-  /** Shows a programme without saving it (used while Claude streams its edits). */
-  const preview = useCallback((p: Programme | null) => setLocal(p), [])
+  /** Shows a programme without saving it (used while Claude streams its edits); null ends the preview. */
+  const preview = useCallback((p: Programme | null) => {
+    previewing.current = p !== null
+    setLocal(p)
+  }, [])
 
   return { programme: local ?? stored, change, flush, preview }
 }
