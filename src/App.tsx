@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, Navigate, Route, Routes, matchPath, useLocation, useMatch, useNavigationType } from 'react-router-dom'
 import { useAuth } from './auth/useAuth'
 import { isFirebaseConfigured } from './firebase'
+import { OWNER_EMAIL } from './firebaseConfig'
 import { NoteSheet } from './components/NoteSheet'
 import { onOpenNote, onOpenSettings, type NoteRequest } from './components/noteEvents'
 import { SettingsSheet } from './components/SettingsSheet'
@@ -16,7 +17,7 @@ import { backupIfDue } from './data/backups'
 import { useInvites, watchNotifyUrl } from './data/invites'
 import { DeletedScreen } from './screens/DeletedScreen'
 import { FitnessProfileScreen } from './screens/FitnessProfileScreen'
-import { LoadingScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
+import { LoadingScreen, NoAccessScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
 import { ImportScreen } from './screens/ImportScreen'
 import { NotesScreen } from './screens/NotesScreen'
 import { ProfileImportScreen } from './screens/ProfileImportScreen'
@@ -46,6 +47,8 @@ export default function App() {
   if (fit?.params.uid && fit.params.token) return <FitnessProfileScreen uid={fit.params.uid} token={fit.params.token} />
   if (loading) return <LoadingScreen />
   if (!user) return <SignInScreen />
+  // Someone else's Google account: stop before the shell, so none of its listeners start.
+  if (user.email?.toLowerCase() !== OWNER_EMAIL) return <NoAccessScreen />
   return <Shell />
 }
 

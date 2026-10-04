@@ -38,6 +38,20 @@ export function SignInScreen() {
   )
 }
 
+/** Signed in with a Google account that isn't Pieter's. */
+export function NoAccessScreen() {
+  const { user, signOut } = useAuth()
+  return (
+    <div className="center-screen">
+      <div className="screen" style={{ maxWidth: 380, width: '100%', textAlign: 'center', alignItems: 'center' }}>
+        <h1 className="display" style={{ fontSize: '3.2rem' }}>No access</h1>
+        <p className="muted" style={{ margin: 0 }}>This app belongs to Pieter. You are signed in as {user?.email ?? 'another account'}.</p>
+        <button type="button" className="btn-cta btn-block" onClick={() => { signOut().catch(console.error) }}>Sign out</button>
+      </div>
+    </div>
+  )
+}
+
 export function NotConfiguredScreen() {
   return (
     <div className="center-screen">
