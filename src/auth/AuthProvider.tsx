@@ -7,7 +7,7 @@ import {
   signOut as fbSignOut,
   type User,
 } from 'firebase/auth'
-import { isFirebaseConfigured, requireAuth } from '../firebase'
+import { isFirebaseConfigured, requireAuth, wipeDevice } from '../firebase'
 import { AuthContext } from './useAuth'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -43,5 +43,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fbSignOut(requireAuth())
   }
 
-  return <AuthContext.Provider value={{ user, loading, signIn, signOut }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, loading, signIn, signOut, signOutAndWipe: wipeDevice }}>{children}</AuthContext.Provider>
 }

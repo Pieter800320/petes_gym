@@ -1,9 +1,21 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/useAuth'
+import { WIPE_NOTE_KEY } from '../firebase'
+
+/** What the last "sign out and remove everything" left to say, shown once. */
+function takeWipeNote(): string | null {
+  try {
+    const note = sessionStorage.getItem(WIPE_NOTE_KEY)
+    sessionStorage.removeItem(WIPE_NOTE_KEY)
+    return note
+  } catch {
+    return null
+  }
+}
 
 export function SignInScreen() {
   const { signIn } = useAuth()
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(takeWipeNote)
   const [busy, setBusy] = useState(false)
 
   return (

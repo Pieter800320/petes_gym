@@ -7,6 +7,8 @@ export interface AuthState {
   loading: boolean
   signIn: () => Promise<void>
   signOut: () => Promise<void>
+  /** Signs out and removes all app data from this device; see wipeDevice. Rejects with UnsyncedChangesError unless forced. */
+  signOutAndWipe: (force?: boolean) => Promise<void>
 }
 
 export const AuthContext = createContext<AuthState | null>(null)

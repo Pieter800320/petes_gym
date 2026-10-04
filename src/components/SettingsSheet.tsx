@@ -1,11 +1,13 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BackupSheet } from './BackupSheet'
+import { ConfirmButton } from './ConfirmButton'
 import { IconChevronRight } from './Icons'
 import { NotifySheet } from './NotifySheet'
 import { PlaybookSheet } from './PlaybookSheet'
 import { Sheet } from './Sheet'
 import { useAuth } from '../auth/useAuth'
+import { UnsyncedChangesError } from '../firebase'
 import { getApiKey, getHaptics, setApiKey, setHaptics, useTheme, type ThemeSetting } from '../settings'
 import { canVibrate, haptic } from '../haptics'
 import { formatUsd } from '../claude/cost'
@@ -15,6 +17,9 @@ import { download } from '../export/share'
 import { toast } from './toast'
 
 const COST_LABELS = { create: 'Create', translate: 'German exports', import: 'Imports' } as const
+
+/** After "some changes haven't synced", this long to tap once more and wipe anyway. */
+const WIPE_ANYWAY_MS = 8000
 
 const THEMES: { value: ThemeSetting; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -70,7 +75,7 @@ function CostRow({ label, month }: { label: string; month: CostMonth }) {
 }
 
 function SettingsForm({ onDone }: { onDone: () => void }) {
-  const { user, signOut } = useAuth()
+  const { user, signOut, signOutAndWipe } = useAuth()
   const navigate = useNavigate()
   const [theme, setTheme] = useTheme()
   const [vibrate, setVibrate] = useState(getHaptics)
@@ -82,6 +87,28 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
   const [backupsOpen, setBackupsOpen] = useState(false)
   const [notifyOpen, setNotifyOpen] = useState(false)
   const notifyUrl = useNotifyUrl()
+  /** Sign out and remove everything: idle, at work, or stopped because changes haven't synced. */
+  const [wipe, setWipe] = useState<'idle' | 'busy' | 'unsynced'>('idle')
+  const wipeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(wipeTimer.current), [])
+
+  async function wipeDevice(force: boolean) {
+    clearTimeout(wipeTimer.current)
+    setWipe('busy')
+    try {
+      // Ends in a reload of the page.
+      await signOutAndWipe(force)
+    } catch (err) {
+      if (err instanceof UnsyncedChangesError) {
+        setWipe('unsynced')
+        wipeTimer.current = setTimeout(() => setWipe('idle'), WIPE_ANYWAY_MS)
+        return
+      }
+      console.error(err)
+      setWipe('idle')
+      toast('Could not remove the data. Try again.')
+    }
+  }
 
   /** One file with everything in the app, to keep somewhere safe. */
   async function backup() {
@@ -179,6 +206,22 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
             <span className="setting-note">Pete's Gym v{__APP_VERSION__}</span>
           </span>
           <button type="button" className="btn-ghost danger" onClick={() => { onDone(); signOut() }}>Sign out</button>
+        </div>
+        {/* For a borrowed computer: plain Sign out leaves the offline copy of every client on it. */}
+        <div className="setting stack">
+          {wipe === 'unsynced' ? (
+            <>
+              <span className="setting-note" role="alert">Some changes haven't synced yet. Connect first, or wipe anyway: those changes are then lost.</span>
+              <button type="button" className="danger-link" data-haptic="strong" onClick={() => wipeDevice(true)}>Wipe anyway</button>
+            </>
+          ) : (
+            <>
+              <ConfirmButton className="text-link quiet" armedLabel="Tap again: removes all app data here" disabled={wipe === 'busy'} onConfirm={() => wipeDevice(false)}>
+                {wipe === 'busy' ? 'Removing…' : 'Sign out and remove everything from this device'}
+              </ConfirmButton>
+              <span className="setting-note">For a computer that isn't yours. Nothing is deleted from your account; you'll enter the Anthropic key again.</span>
+            </>
+          )}
         </div>
       </Group>
     </div>
