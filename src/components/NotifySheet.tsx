@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Sheet } from './Sheet'
 import { toast } from './toast'
 import { useAuth } from '../auth/useAuth'
-import { isNotifyUrl, pingNotify, saveNotifyUrl, useNotifyUrl } from '../data/invites'
+import { isNotifyUrl, pingNotify, saveNotifyUrl, useInvites, useNotifyUrl } from '../data/invites'
 
 /**
  * The script Pete pastes into his own Google account (script.google.com). The questionnaire calls
@@ -36,6 +36,7 @@ export function NotifySheet({ open, onClose }: { open: boolean; onClose: () => v
 function NotifyForm() {
   const { user } = useAuth()
   const saved = useNotifyUrl()
+  const invites = useInvites()
   const [typed, setTyped] = useState<string | null>(null)
   const url = typed ?? saved
   const valid = isNotifyUrl(url)
@@ -74,13 +75,14 @@ function NotifyForm() {
             setTyped(e.target.value)
             // Saved as soon as it is a usable address, or cleared when emptied.
             const next = e.target.value.trim()
-            if (next === '' || isNotifyUrl(next)) saveNotifyUrl(user.uid, next)
+            if (next === '' || isNotifyUrl(next)) saveNotifyUrl(user.uid, next, invites)
           }}
         />
         <span className="muted small">
-          {url.trim() === '' ? 'Empty: no emails are sent.' : valid ? 'Saved. Links you send from now on will email you; links sent earlier will not.' : 'This is not a Google script address (it starts with https://script.google.com/macros/ and ends in /exec).'}
+          {url.trim() === '' ? 'Empty: no emails are sent.' : valid ? 'Saved. Every link that is not answered yet will email you, also the ones you sent earlier.' : 'This is not a Google script address (it starts with https://script.google.com/macros/ and ends in /exec).'}
         </span>
       </label>
+      <p className="muted small" style={{ margin: 0 }}>Each link carries this address, so someone holding one of your links could make it send you this email. That is all it can do.</p>
       <button type="button" className="btn-acc" style={{ alignSelf: 'flex-start' }} disabled={!valid} onClick={() => { pingNotify(url); toast('Test sent. Check your email in a minute.') }}>Send a test email</button>
     </div>
   )

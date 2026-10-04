@@ -6,7 +6,7 @@
  * link is dead: the answers can be read by Pete only.
  */
 import { useEffect, useState } from 'react'
-import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc, updateDoc, waitForPendingWrites } from 'firebase/firestore'
+import { collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, setDoc, updateDoc, waitForPendingWrites } from 'firebase/firestore'
 import { reportWriteError } from './store'
 import { useAuth } from '../auth/useAuth'
 import { requireDb } from '../firebase'
@@ -117,7 +117,8 @@ export function useInvites(): Invite[] {
 // ── Email when answers arrive ────────────────────────────────────────
 //
 // users/{uid}/meta/settings.notifyUrl is the address of a script in Pete's own Google account that
-// emails him. Each new invite carries it, so the client's page can call it after sending.
+// emails him. Each invite carries it, so the client's page can call it after sending: new ones get
+// it when they are made, and the ones still unanswered when the address is saved or changed.
 
 const settingsRef = (uid: string) => doc(requireDb(), 'users', uid, 'meta', 'settings')
 /** The saved address, kept current while the app is open (watchNotifyUrl), for new invites. */
@@ -140,8 +141,17 @@ export function useNotifyUrl(): string {
   return url
 }
 
-export function saveNotifyUrl(uid: string, url: string) {
-  setDoc(settingsRef(uid), { notifyUrl: url.trim() }, { merge: true }).catch(reportWriteError)
+/**
+ * Saves the address (empty switches the emails off) and gives it to the links already sent and
+ * not yet answered, so they email Pete too and none keeps calling an address he has replaced.
+ */
+export function saveNotifyUrl(uid: string, url: string, invites: Invite[]) {
+  const next = url.trim()
+  setDoc(settingsRef(uid), { notifyUrl: next }, { merge: true }).catch(reportWriteError)
+  for (const invite of invites) {
+    if (invite.answeredAt !== null || (invite.notifyUrl ?? '') === next) continue
+    updateDoc(doc(invitesOf(uid), invite.id), { notifyUrl: next || deleteField() }).catch(reportWriteError)
+  }
 }
 
 /** Calls the script. Nothing is sent with it and nothing comes back; a failure is not the client's concern. */
