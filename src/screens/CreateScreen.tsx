@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom'
+import { ConfirmButton } from '../components/ConfirmButton'
 import { IconAttach, IconBack, IconPen, IconSend } from '../components/Icons'
 import { openNote } from '../components/noteEvents'
 import { LibraryBrowser } from '../components/LibraryBrowser'
@@ -13,7 +14,7 @@ import { describeClaudeError, formatUsd } from '../claude/client'
 import { CHAT_DOC_WARN_BYTES, archiveAndResetChat, chatCost, chatDocBytes, clearUndo, clientHistoryText, parseHistory, recordTurn, runTurn, toDisplay, useChat, type ChatDoc, type DisplayItem } from '../claude/chat'
 import { ACCEPTED_FILES, extractText } from '../claude/extract'
 import { usePlaybook } from '../claude/playbook'
-import { changedRowIds } from '../claude/programmeTools'
+import { changedRowIds, describeEdits } from '../claude/programmeTools'
 import { checkProgramme } from '../data/health'
 import { activateProgramme } from '../data/programmeActions'
 import { blankProgramme } from '../data/programmeUtils'
@@ -24,6 +25,15 @@ import { canGoBack, leaveFor } from '../util/navHistory'
 
 /** Delay before a manual edit is written to Firestore, so typing doesn't write on every key. */
 const AUTOSAVE_MS = 700
+
+/**
+ * What describeEdits leaves out, as one comparable text: its summary goes to Claude, who is never
+ * told Pete's weights or private notes. Also the order of the rows, the markers and the start date.
+ */
+function untoldEdits(p: Programme): string {
+  const rows = p.sessions.flatMap((s) => s.sections.flatMap((sec) => sec.rows.map((r) => [r.id, r.load ?? '', r.memo ?? ''])))
+  return JSON.stringify([p.successMarkers ?? [], p.startDate ?? null, rows])
+}
 
 export function CreateScreen() {
   const { id } = useParams()
@@ -190,6 +200,11 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   const baseline = useMemo(() => (chat?.baseline ? (JSON.parse(chat.baseline) as Programme) : null), [chat])
   const claudeMarks = useMemo(() => new Set(chat?.lastChanged ?? []), [chat])
   const mineMarks = useMemo(() => (baseline ? changedRowIds(baseline, programme) : new Set<string>()), [baseline, programme])
+  /** Pete changed the programme by hand after Claude's last reply: Undo would take those changes along. */
+  const editedSince = useMemo(
+    () => baseline !== null && (describeEdits(baseline, programme) !== '' || untoldEdits(baseline) !== untoldEdits(programme)),
+    [baseline, programme],
+  )
   const issues = useMemo(() => checkProgramme(programme, client), [programme, client])
   const busy = pending !== null
   /** The stored chat is near Firestore's document limit: no more messages until a fresh one is started. */
@@ -309,6 +324,8 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
 
   function undo() {
     if (!chat?.undo) return
+    // First, so no edit still waiting for the autosave timer is written over the restored programme.
+    flushEdits()
     saveProgramme(uid, JSON.parse(chat.undo) as Programme)
     // Baseline stays as Claude's view, so Claude is told what was reverted on the next message.
     clearUndo(uid, stored.id, chat)
@@ -397,8 +414,17 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
         )}
         {chat?.undo && !busy && (
           <div className="undo-line">
-            <span>Claude changed {changedCount || 'some'} exercise{changedCount === 1 ? '' : 's'}</span>
-            <button type="button" className="text-link" onClick={undo}>Undo</button>
+            {editedSince ? (
+              <>
+                <span>Undo also removes your edits since Claude's reply</span>
+                <ConfirmButton className="text-link" armedLabel="Tap again: also removes your edits since" onConfirm={undo}>Undo</ConfirmButton>
+              </>
+            ) : (
+              <>
+                <span>Claude changed {changedCount || 'some'} exercise{changedCount === 1 ? '' : 's'}</span>
+                <button type="button" className="text-link" onClick={undo}>Undo</button>
+              </>
+            )}
           </div>
         )}
         <button type="button" className="programme-peek" onClick={() => setSheetOpen(true)}>
