@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Navigate, Route, Routes, matchPath, useLocation, useMatch, useNavigationType } from 'react-router-dom'
 import { useAuth } from './auth/useAuth'
 import { isFirebaseConfigured } from './firebase'
@@ -140,7 +140,8 @@ function Shell() {
   }, [user])
 
   // Questionnaire answers waiting on Clients: a count on the tab, and a word when one arrives.
-  const waitingAnswers = useInvites().filter((i) => i.answeredAt !== null)
+  const invites = useInvites()
+  const waitingAnswers = useMemo(() => invites.filter((i) => i.answeredAt !== null), [invites])
   const announced = useRef(new Set<string>())
   const openedAt = useRef(0)
   useEffect(() => { openedAt.current = Date.now() }, [])

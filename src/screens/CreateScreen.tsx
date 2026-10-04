@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { IconAttach, IconBack, IconPen, IconSend } from '../components/Icons'
@@ -212,6 +212,8 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   const [pending, setPending] = useState<Pending | null>(null)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  /** Streamed text not yet on screen: it arrives dozens of times a second and is shown once a frame. */
+  const streamed = useRef({ text: '', frame: 0 })
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   /** Edit waiting for the autosave timer; written immediately if the screen closes first. */
   const unsaved = useRef<Programme | null>(null)
@@ -322,7 +324,17 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
         userText: userText || 'See the attached file.',
         attachments: sentAttachments,
         toolContext: { clientHistory: () => clientHistoryText(before, clientProgrammes, workouts) },
-        onText: (d) => setPending((p) => (p ? { ...p, replyText: p.replyText + d } : p)),
+        onText: (d) => {
+          const buffer = streamed.current
+          buffer.text += d
+          if (buffer.frame) return
+          buffer.frame = requestAnimationFrame(() => {
+            const text = buffer.text
+            buffer.text = ''
+            buffer.frame = 0
+            setPending((p) => (p ? { ...p, replyText: p.replyText + text } : p))
+          })
+        },
         onToolLabel: (l) => setPending((p) => (p ? { ...p, tools: [...p.tools, l] } : p)),
         onProgramme: (p) => setLocal(p),
         signal: controller.signal,
@@ -339,6 +351,8 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
       setAttachments(sentAttachments)
     } finally {
       abortRef.current = null
+      cancelAnimationFrame(streamed.current.frame)
+      streamed.current = { text: '', frame: 0 }
       setPending(null)
       setLocal(null)
     }
@@ -419,17 +433,17 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
           const cost = chat?.costs?.[m.turn]
           const endOfTurn = display[i + 1]?.turn !== m.turn
           return (
-            <Fragment key={i}>
-              <Bubble item={m} />
+            <Fragment key={`${m.turn}-${i}`}>
+              <Bubble role={m.role} text={m.text} />
               {endOfTurn && cost !== undefined && <div className="msg-cost mono">{formatUsd(cost)}</div>}
             </Fragment>
           )
         })}
         {pending && (
           <>
-            <Bubble item={{ role: 'user', text: pending.userText }} />
-            {pending.tools.map((t, i) => <Bubble key={i} item={{ role: 'tool', text: t }} />)}
-            <Bubble item={{ role: 'assistant', text: pending.replyText || 'Thinking…' }} />
+            <Bubble role="user" text={pending.userText} />
+            {pending.tools.map((t, i) => <Bubble key={i} role="tool" text={t} />)}
+            <Bubble role="assistant" text={pending.replyText || 'Thinking…'} />
           </>
         )}
       </div>
@@ -518,10 +532,13 @@ function WorkspaceLoaded({ programme: stored, chat }: { programme: Programme; ch
   )
 }
 
-/** Pete's messages as dark bubbles; Claude's replies as plain text on paper. */
-function Bubble({ item }: { item: Omit<DisplayItem, 'turn'> }) {
-  if (item.role === 'tool') return <div className="msg-tool mono">{item.text}</div>
-  const blocks = item.text.split(/\n{2,}/)
+/**
+ * Pete's messages as dark bubbles; Claude's replies as plain text on paper. Memoised on its two
+ * plain props, so a long chat isn't parsed again for every piece of a streaming reply.
+ */
+const Bubble = memo(function Bubble({ role, text }: Pick<DisplayItem, 'role' | 'text'>) {
+  if (role === 'tool') return <div className="msg-tool mono">{text}</div>
+  const blocks = text.split(/\n{2,}/)
   const body = blocks.map((b, i) => {
     const lines = b.split('\n')
     if (lines.every((l) => /^\s*[-•*]\s+/.test(l))) {
@@ -529,11 +546,11 @@ function Bubble({ item }: { item: Omit<DisplayItem, 'turn'> }) {
     }
     return <p key={i}>{b.replace(/\*\*/g, '')}</p>
   })
-  if (item.role === 'user') return <div className="msg-user">{body}</div>
+  if (role === 'user') return <div className="msg-user">{body}</div>
   return (
     <div className="msg-claude">
       <span className="msg-label mono">CLAUDE</span>
       {body}
     </div>
   )
-}
+})

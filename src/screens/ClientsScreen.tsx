@@ -44,13 +44,24 @@ export function ClientsScreen() {
   /** When the page was opened: what "inactive" is measured against. */
   const [openedAt] = useState(() => Date.now())
 
-  const others = clients.filter((c) => !c.isSelf)
+  const others = useMemo(() => clients.filter((c) => !c.isSelf), [clients])
+  /** Per client: the current programme and when any of its programmes last changed. */
+  const byClient = useMemo(() => {
+    const map = new Map<string, { current?: Programme; touched: number }>()
+    for (const p of programmes) {
+      const entry = map.get(p.clientId) ?? { touched: 0 }
+      if (p.status === 'active' && !entry.current) entry.current = p
+      entry.touched = Math.max(entry.touched, p.updatedAt)
+      map.set(p.clientId, entry)
+    }
+    return map
+  }, [programmes])
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
     return others.filter((c) => !q || `${c.name} ${c.goals} ${c.injuries}`.toLowerCase().includes(q))
   }, [others, search])
-  const currentOf = (id: string): Programme | undefined => programmes.find((p) => p.clientId === id && p.status === 'active')
-  const lastTouched = (c: Client) => Math.max(c.updatedAt, ...programmes.filter((p) => p.clientId === c.id).map((p) => p.updatedAt))
+  const currentOf = (id: string): Programme | undefined => byClient.get(id)?.current
+  const lastTouched = (c: Client) => Math.max(c.updatedAt, byClient.get(c.id)?.touched ?? 0)
   // A reminder only: whether to delete them is Pete's decision, nothing is removed automatically.
   const inactive = others.filter((c) => openedAt - lastTouched(c) > KEEP_MS)
   const shown = inactiveOnly && inactive.length > 0 ? visible.filter((c) => inactive.includes(c)) : visible

@@ -35,6 +35,20 @@ export interface ExerciseFilter {
 
 const humanise = (s: string) => s.replace(/_/g, ' ')
 
+/** What a search runs against, per exercise key: built once, not on every keystroke. */
+const SEARCH_TEXT = new Map(
+  EXERCISES.map((e) => [
+    e.key,
+    [e.name, ...e.patterns, ...e.equipment, ...e.tags, ...e.joint_stress, ...e.goals]
+      .map(humanise)
+      .join(' ')
+      .toLowerCase()
+      .replace(/\bdumbbell\b/g, 'dumbbell db')
+      .replace(/\bkettlebell\b/g, 'kettlebell kb')
+      .replace(/\bbarbell\b/g, 'barbell bb'),
+  ]),
+)
+
 /**
  * Every search word must appear somewhere in the exercise's name, patterns, equipment or tags,
  * so "db row" and "knee friendly" both work.
@@ -46,13 +60,7 @@ export function searchExercises(f: ExerciseFilter): Exercise[] {
     if (f.equipment && !e.equipment.includes(f.equipment)) return false
     if (f.avoid.some((c) => e.contraindications.includes(c))) return false
     if (!words.length) return true
-    const hay = [e.name, ...e.patterns, ...e.equipment, ...e.tags, ...e.joint_stress, ...e.goals]
-      .map(humanise)
-      .join(' ')
-      .toLowerCase()
-      .replace(/\bdumbbell\b/g, 'dumbbell db')
-      .replace(/\bkettlebell\b/g, 'kettlebell kb')
-      .replace(/\bbarbell\b/g, 'barbell bb')
+    const hay = SEARCH_TEXT.get(e.key) ?? ''
     return words.every((w) => hay.includes(w))
   })
 }

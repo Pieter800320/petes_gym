@@ -8,7 +8,7 @@
  *           name to add an exercise (changes stick to the programme)
  *   edit  — the same card as train, plus alternative, superset, move, delete, section and day titles
  */
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
 import { ExercisePicker } from './ExercisePicker'
 import { IconMore } from './Icons'
@@ -49,7 +49,8 @@ interface DayListProps {
   programmeBlock?: ProgressionBlock | null
 }
 
-export function DayList({ session: s, index, mode, onChange, onEditBlock, onDayMenu, onMoveRowToDay, hideHeader, claude, mine, changed, programmeBlock }: DayListProps) {
+/** Memoised: with stable props (see DayEditor in ProgrammeSheet) an edit to one day leaves the other days alone. */
+export const DayList = memo(function DayList({ session: s, index, mode, onChange, onEditBlock, onDayMenu, onMoveRowToDay, hideHeader, claude, mine, changed, programmeBlock }: DayListProps) {
   /** Edit: the section whose ⋯ menu is open. */
   const [sectionMenu, setSectionMenu] = useState<string | null>(null)
   const [openRow, setOpenRow] = useState<string | null>(null)
@@ -200,7 +201,7 @@ export function DayList({ session: s, index, mode, onChange, onEditBlock, onDayM
       />
     </section>
   )
-}
+})
 
 interface CardProps {
   row: ExerciseRow

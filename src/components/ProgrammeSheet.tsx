@@ -3,7 +3,7 @@
  * Every line can be edited in place (tap it). Used by Create (the Programme bar) and the
  * programme page (Edit programme).
  */
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BlockSheet } from './BlockSheet'
 import { ConfirmButton } from './ConfirmButton'
 import { DayList } from './DayList'
@@ -12,7 +12,7 @@ import { toast } from './toast'
 import type { HealthIssue } from '../data/health'
 import { cloneSession, mapBlock, mapSession, move, moveRowToSession, programmeCounts } from '../data/programmeEdits'
 import { newProgressionBlock, newSession, sessionRows } from '../data/programmeUtils'
-import type { ExerciseRow, Programme } from '../data/types'
+import type { ExerciseRow, Programme, ProgrammeSession } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
 
 /** " and its 3 exercises": what a delete takes with it. */
@@ -51,6 +51,49 @@ function deletedWhat(before: Programme, after: Programme): string | null {
   return null
 }
 
+/** The ids of `marks` that are rows of this day, as a Set that only changes when that selection does. */
+function useDayMarks(marks: Set<string> | undefined, session: ProgrammeSession): Set<string> | undefined {
+  const key = marks?.size ? sessionRows(session).filter((r) => marks.has(r.id)).map((r) => r.id).join(',') : ''
+  return useMemo(() => (key ? new Set(key.split(',')) : undefined), [key])
+}
+
+interface DayEditorProps {
+  session: ProgrammeSession
+  index: number
+  changeDay: (sessionId: string, fn: (s: ProgrammeSession) => ProgrammeSession) => void
+  editBlock: (sessionId: string, blockId: string) => void
+  openDayMenu: (sessionId: string) => void
+  onMoveRowToDay?: (row: ExerciseRow) => void
+  claude?: Set<string>
+  mine?: Set<string>
+}
+
+/**
+ * One day of the sheet. It binds the sheet's handlers to this day once, so DayList (memoised)
+ * renders again only when its own day changed: typing in one day no longer redraws all of them.
+ */
+function DayEditor({ session, index, changeDay, editBlock, openDayMenu, onMoveRowToDay, claude, mine }: DayEditorProps) {
+  const id = session.id
+  const onChange = useCallback((fn: (s: ProgrammeSession) => ProgrammeSession) => changeDay(id, fn), [changeDay, id])
+  const onEditBlock = useCallback((blockId: string) => editBlock(id, blockId), [editBlock, id])
+  const onDayMenu = useCallback(() => openDayMenu(id), [openDayMenu, id])
+  const claudeHere = useDayMarks(claude, session)
+  const mineHere = useDayMarks(mine, session)
+  return (
+    <DayList
+      session={session}
+      index={index}
+      mode="edit"
+      onChange={onChange}
+      onEditBlock={onEditBlock}
+      onDayMenu={onDayMenu}
+      onMoveRowToDay={onMoveRowToDay}
+      claude={claudeHere}
+      mine={mineHere}
+    />
+  )
+}
+
 export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChange: save, locked = false, claude, mine, issues = [], onConfirm, onDelete }: ProgrammeSheetProps) {
   const [block, setBlock] = useState<{ sessionId: string | null; blockId: string } | null>(null)
   const [showIssues, setShowIssues] = useState(false)
@@ -79,6 +122,13 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
     saveTimer.current = setTimeout(() => setSaveNote('Saved'), SAVED_AFTER_MS)
   }
   const set = <K extends keyof Programme>(k: K, v: Programme[K]) => onChange({ ...p, [k]: v })
+  // The latest programme and onChange, for the handlers below that must not change between renders.
+  const latest = useRef({ p, onChange })
+  useEffect(() => {
+    latest.current = { p, onChange }
+  })
+  const changeDay = useCallback((sessionId: string, fn: (s: ProgrammeSession) => ProgrammeSession) => latest.current.onChange(mapSession(latest.current.p, sessionId, fn)), [])
+  const editBlock = useCallback((sessionId: string, blockId: string) => setBlock({ sessionId, blockId }), [])
   const menuIndex = p.sessions.findIndex((s) => s.id === dayMenu)
   const menuDay = menuIndex >= 0 ? p.sessions[menuIndex] : null
   const blockData = block ? (block.sessionId ? p.sessions.find((s) => s.id === block.sessionId)?.progressionBlocks.find((b) => b.id === block.blockId) : p.progression) ?? null : null
@@ -178,13 +228,12 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
 
         {p.sessions.map((s, i) => (
           <div key={s.id} className="doc-day">
-            <DayList
+            <DayEditor
               session={s}
               index={i}
-              mode="edit"
-              onChange={(fn) => onChange(mapSession(p, s.id, fn))}
-              onEditBlock={(blockId) => setBlock({ sessionId: s.id, blockId })}
-              onDayMenu={() => setDayMenu(s.id)}
+              changeDay={changeDay}
+              editBlock={editBlock}
+              openDayMenu={setDayMenu}
               onMoveRowToDay={p.sessions.length > 1 ? setMoveRow : undefined}
               claude={claude}
               mine={mine}
