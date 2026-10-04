@@ -115,10 +115,14 @@ export function describeSessionChanges(before: RowSnapshot[], after: RowSnapshot
   return lines
 }
 
-/** Records the session as it stands now (including mid-session changes) and stops the clock. */
+/**
+ * Records the session as it stands now (including mid-session changes) and stops the clock.
+ * Without the session (its programme was deleted meanwhile) the exercises it started with are
+ * recorded, and no changes: what was changed can no longer be told.
+ */
 export function finishWorkout(uid: string, active: ActiveWorkout, session: ProgrammeSession | undefined): { durationSec: number; workoutId: string } {
   const endedAt = Date.now()
-  const rows = session ? snapshotRows(session) : []
+  const rows = session ? snapshotRows(session) : (active.baseline ?? [])
   const durationSec = Math.round(activeMs(active, endedAt) / 1000)
   const workoutId = saveWorkout(uid, {
     programmeId: active.programmeId,
@@ -129,7 +133,7 @@ export function finishWorkout(uid: string, active: ActiveWorkout, session: Progr
     endedAt,
     durationSec,
     entries: rows.map((r) => ({ rowId: r.id, exerciseName: r.name, prescription: r.prescription, sets: [] })),
-    changes: describeSessionChanges(active.baseline ?? [], rows),
+    changes: session ? describeSessionChanges(active.baseline ?? [], rows) : [],
     note: '',
   })
   write(null)

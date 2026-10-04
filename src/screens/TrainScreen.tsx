@@ -36,6 +36,18 @@ function nextSessionIndex(p: Programme, workouts: Workout[]): number {
   return i < 0 ? 0 : (i + 1) % p.sessions.length
 }
 
+/** "Session saved", with Undo for as long as the message shows: the session then runs on as it was. */
+function toastSaved(uid: string, previous: ActiveWorkout, saved: { durationSec: number; workoutId: string }) {
+  toast(`Session saved · ${Math.max(1, Math.round(saved.durationSec / 60))} min`, {
+    label: 'Undo',
+    run: () => {
+      // Only when the session can run again: with another one started meanwhile, the saved session stays.
+      if (restoreActiveWorkout(previous)) deleteWorkout(uid, saved.workoutId)
+      else toast('Another session is running, so this one stays saved')
+    },
+  })
+}
+
 const today = () => new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()
 
 /** Shows Pete's own current programme, unless a client's programme has been opened in Train. */
@@ -57,7 +69,7 @@ export function TrainScreen() {
   if (guestId !== null && !guestGone) {
     if (guestLoading || clientsLoading || !guest) return <TrainLoading />
     const owner = clients.find((c) => c.id === guest.clientId)
-    return <TrainProgramme key={guest.id} stored={guest} guestName={owner && !owner.isSelf ? owner.name : undefined} />
+    return <TrainProgramme key={guest.id} stored={guest} guestName={owner && !owner.isSelf ? owner.name : undefined} ownProgrammeId={programme?.id} />
   }
 
   if (clientsLoading || (self && loading)) return <TrainLoading />
@@ -80,7 +92,7 @@ export function TrainScreen() {
   }
 
   // Keyed so the day selection resets when the current programme changes.
-  return <TrainProgramme key={programme.id} stored={programme} />
+  return <TrainProgramme key={programme.id} stored={programme} ownProgrammeId={programme.id} />
 }
 
 /** Shown while the programme loads: START keeps its place (greyed out) instead of popping in later. */
@@ -95,13 +107,17 @@ function TrainLoading() {
   )
 }
 
-/** guestName: the client whose programme this is, when it isn't Pete's own. */
-function TrainProgramme({ stored, guestName }: { stored: Programme; guestName?: string }) {
+/** guestName: the client whose programme this is, when it isn't Pete's own. ownProgrammeId: Pete's own current programme. */
+function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Programme; guestName?: string; ownProgrammeId?: string }) {
   const { user } = useAuth()
   const { programme, change, flush } = useProgrammeDraft(stored)
   const { data: workouts, loading } = useWorkouts({ programmeId: stored.id })
   const active = useActiveWorkout()
   const running = active?.programmeId === stored.id ? active : null
+  // A session running on another programme: which one, and whose, so Pete can go to it.
+  const elsewhere = active && !running ? active : null
+  const { data: otherProgramme, loading: otherLoading } = useProgramme(elsewhere?.programmeId)
+  const { data: clients } = useClients()
   const upNext = nextSessionIndex(programme, workouts)
   const runningIndex = running ? programme.sessions.findIndex((s) => s.id === running.sessionId) : -1
   const [selected, setSelected] = useState<number | null>(null)
@@ -140,19 +156,14 @@ function TrainProgramme({ stored, guestName }: { stored: Programme; guestName?: 
   function finish() {
     if (!user || !running) return
     flush()
-    const { uid } = user
-    const previous = running
-    const { durationSec, workoutId } = finishWorkout(uid, running, programme.sessions.find((s) => s.id === running.sessionId))
+    const saved = finishWorkout(user.uid, running, programme.sessions.find((s) => s.id === running.sessionId))
     setSelected(null)
-    toast(`Session saved · ${Math.max(1, Math.round(durationSec / 60))} min`, {
-      label: 'Undo',
-      run: () => {
-        // Only when the session can run again: with another one started meanwhile, the saved session stays.
-        if (restoreActiveWorkout(previous)) deleteWorkout(uid, workoutId)
-        else toast('Another session is running, so this one stays saved')
-      },
-    })
+    toastSaved(user.uid, running, saved)
   }
+
+  const otherGone = !otherLoading && (!otherProgramme || Boolean(otherProgramme.deletedAt))
+  const otherOwner = clients.find((c) => c.id === otherProgramme?.clientId)
+  const otherSince = elsewhere ? new Date(elsewhere.startedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''
 
   return (
     <div className="screen has-dial">
@@ -226,10 +237,34 @@ function TrainProgramme({ stored, guestName }: { stored: Programme; guestName?: 
         </div>
       ) : (
         <div className="quiet-links">
-          {active && (
+          {elsewhere && !otherLoading && otherGone && (
             <>
-              <span className="muted small">A session on another programme is still open, so START is unavailable until it ends.</span>
-              <ConfirmButton className="btn-ghost small" armedLabel="Tap again to end it" onConfirm={() => { cancelWorkout(); toast('That session ended, nothing saved') }}>End that session</ConfirmButton>
+              <span className="muted small">A session is still running, but that programme was deleted.</span>
+              <button type="button" className="text-link" onClick={() => toastSaved(user.uid, elsewhere, finishWorkout(user.uid, elsewhere, undefined))}>Save what was done</button>
+              <ConfirmButton className="btn-ghost small" armedLabel="Tap again: nothing is saved" onConfirm={() => { cancelWorkout(); toast('Session discarded, nothing saved') }}>Discard</ConfirmButton>
+            </>
+          )}
+          {elsewhere && !otherGone && (
+            <>
+              <span className="muted small">
+                {otherProgramme
+                  ? `A session with ${otherOwner ? (otherOwner.isSelf ? 'you' : otherOwner.name) : 'a client'} is running (${otherProgramme.title}, since ${otherSince}).`
+                  : 'A session on another programme is running.'}
+              </span>
+              {otherProgramme && (
+                <button
+                  type="button"
+                  className="text-link"
+                  onClick={() => {
+                    flush()
+                    // Pete's own current programme is what Train shows by default; any other is opened by its id.
+                    setTrainProgrammeId(otherProgramme.id === ownProgrammeId ? null : otherProgramme.id)
+                  }}
+                >
+                  Go to that session ›
+                </button>
+              )}
+              <ConfirmButton className="btn-ghost small" armedLabel="Tap again: nothing is saved" onConfirm={() => { cancelWorkout(); toast('That session was discarded, nothing saved') }}>Discard that session</ConfirmButton>
             </>
           )}
           <button type="button" className="text-link" onClick={() => setEditOpen(true)}>Edit programme ›</button>
