@@ -69,14 +69,29 @@ const SECONDS_PER_UNPARSED_ROW = 60
 /** Transition time between exercises (setup, walking to the next station). */
 const SECONDS_BETWEEN_EXERCISES = 45
 
+const SECONDS_UNIT = String.raw`(min|mins|minutes|s|sec|secs|seconds)`
+/** Work and rest of an interval, "20s/40s" or "20/40s" (one unit counts for both). "8/side" is not one. */
+const WORK_REST = new RegExp(String.raw`(\d+(?:[.,]\d+)?)\s*${SECONDS_UNIT}?\s*\/\s*(\d+(?:[.,]\d+)?)\s*${SECONDS_UNIT}\b`, 'i')
+
+/** Seconds of one round of an interval prescription ("20s/40s" → 60); null when it isn't one. */
+function parseWorkRestSec(prescription: string): number | null {
+  const m = prescription.match(WORK_REST)
+  if (!m) return null
+  const sec = (amount: string, unit: string) => Number(amount.replace(',', '.')) * (/^m/i.test(unit) ? 60 : 1)
+  return sec(m[1], m[2] ?? m[4]) + sec(m[3], m[4])
+}
+
 /**
  * Number of sets in a prescription, using the top of any range.
- * "3–4 × 8–10" → 4, "4-6 x 20s/40s" → 6, "10 reps" → null.
+ * "3–4 × 8–10" → 4, "4-6 x 20s/40s" → 6, "20s/40s × 6" → 6, "20s/40s x 6 rounds" → 6, "10 reps" → null.
  */
 export function parseSets(prescription: string): number | null {
   const m = prescription.match(/(\d+)\s*(?:[–—-]\s*(\d+))?\s*[×x✕*]/i)
-  if (!m) return null
-  return Number(m[2] ?? m[1])
+  if (m) return Number(m[2] ?? m[1])
+  // An interval written first: the count follows the ×.
+  const [left, right] = prescription.split(/[×x✕*]/i)
+  const after = right !== undefined && WORK_REST.test(left) ? right.match(/^\s*(\d+)(?:\s*[–—-]\s*(\d+))?/) : null
+  return after ? Number(after[2] ?? after[1]) : null
 }
 
 /** Duration in seconds for timed prescriptions: "3–5 min" → 300, "30s" → 30. A bare "m" means metres, not minutes. */
@@ -97,6 +112,9 @@ export function parseRestSec(rest: string): number {
 /** Estimated seconds for one row: sets × (work + rest), or its stated duration. */
 export function estimateRowSec(row: ExerciseRow): number {
   const sets = parseSets(row.prescription)
+  const interval = parseWorkRestSec(row.prescription)
+  // An interval carries its own rest; the rest field (usually empty there) is added on top.
+  if (sets && interval !== null) return sets * (interval + parseRestSec(row.rest))
   if (sets) {
     const perSetWork = parseDurationSec(row.prescription.split(/[×x✕*]/i)[1] ?? '') ?? SECONDS_PER_SET
     return sets * (perSetWork + parseRestSec(row.rest))

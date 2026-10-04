@@ -11,33 +11,65 @@ export interface HealthIssue {
   text: string
 }
 
-/** Free-text injury keywords → library contraindication tags. */
+/**
+ * Free-text injury keywords → library contraindication tags. Whole words only: as bare fragments,
+ * "disc" also hit "discomfort", "tennis" a hobby and "balance" "work-life balance".
+ */
 const INJURY_KEYWORDS: [RegExp, string][] = [
-  [/knie|knee|patell|acl|menisc/i, 'knee_pain'],
-  [/schulter|shoulder|rotator|impinge/i, 'shoulder_pain'],
+  [/\b(knie\w*|knee\w*|patell\w*|acl|menisc\w*|kreuzband)\b/i, 'knee_pain'],
+  [/\b(schulter\w*|shoulder\w*|rotator|impinge\w*)\b/i, 'shoulder_pain'],
   // Scoliosis is deliberately not mapped to low back pain: single-arm carries and rows are often
   // exactly what a scoliosis client needs, so flagging them would be a false alarm.
-  [/rücken|ruecken|back pain|lower back|low back|lumbar|disc|bandscheibe|ischias|sciatica/i, 'low_back_pain'],
-  [/handgelenk|wrist/i, 'wrist_pain'],
-  [/ellbogen|elbow|tennis|golfer/i, 'elbow_pain'],
-  [/gleichgewicht|balance|vertigo|dizz/i, 'balance_deficit'],
-  [/overhead|über ?kopf/i, 'avoid_overhead'],
+  [/\b(rücken\w*|ruecken\w*|back pain|lower back|low back|lumbar|discs?|bandscheibe\w*|ischias|sciatica)\b/i, 'low_back_pain'],
+  [/\b(handgelenk\w*|wrists?)\b/i, 'wrist_pain'],
+  [/\b(ellbogen\w*|ellenbogen\w*|elbows?|tennis ?elbow|tennisarm|golfer'?s ?elbow)\b/i, 'elbow_pain'],
+  [/\b(gleichgewichtsst\w*|balance (problems?|issues?|deficit)|vertigo|dizz\w*|schwindel\w*)\b/i, 'balance_deficit'],
+  // No \b before "ü": JavaScript doesn't count it as a letter, so a boundary there never matches.
+  [/\boverhead\b|über ?kopf|ueber ?kopf/i, 'avoid_overhead'],
 ]
 
-export function contraindicationsFor(client: Pick<Client, 'injuries' | 'background'> | undefined): string[] {
-  if (!client) return []
-  const text = `${client.injuries} ${client.background}`
-  return [...new Set(INJURY_KEYWORDS.filter(([re]) => re.test(text)).map(([, tag]) => tag))]
+/** The whole injuries field says there is nothing to report. */
+const NO_INJURIES = /^\s*(none|no|nein|keine?|nothing|n\/a|-|—)\s*\.?\s*$/i
+
+/**
+ * Only the injuries field is read. The background also holds sports, lifestyle and "likes and
+ * avoids", where the same words mean something else.
+ */
+export function contraindicationsFor(client: Pick<Client, 'injuries'> | undefined): string[] {
+  if (!client || NO_INJURIES.test(client.injuries)) return []
+  return [...new Set(INJURY_KEYWORDS.filter(([re]) => re.test(client.injuries)).map(([, tag]) => tag))]
 }
 
-/** "45–70 min" → [45, 70]; "60 min" → [55, 65]; unparseable → null. */
+/** Minutes a single target may be missed by, either way (the playbook's tolerance). */
+const SINGLE_TOLERANCE_MIN = 5
+/** "Up to N minutes" is read as the range from N minus this to N. */
+export const UP_TO_TOLERANCE_MIN = 10
+
+const AMOUNT = String.raw`\d+(?:[.,]\d+)?`
+const TIME_UNIT = String.raw`(?:hours?|hrs?|h|stunden?|std|min(?:ute[ns]?|s)?)(?![a-zäöü])`
+const LENGTH = new RegExp(String.raw`(${AMOUNT})\s*(${TIME_UNIT})?\s*(?:(?:[–—-]|to|bis)\s*(${AMOUNT})\s*(${TIME_UNIT})?)?`, 'i')
+
+/**
+ * A session length as a range of minutes.
+ * "45–70 min" → [45, 70]; "60 min" → [55, 65]; "1 hour" → [55, 65]; "1–1.5 h" → [60, 90];
+ * "1,5 Std" → [85, 95]; "1:00" → [55, 65]; "up to 30 min" / "bis 30 Minuten" → [20, 30];
+ * unparseable → null.
+ */
 export function targetRange(sessionLength: string): [number, number] | null {
-  const m = sessionLength.match(/(\d+)\s*(?:[–—-]\s*(\d+))?/)
+  const single = (min: number): [number, number] => [min - SINGLE_TOLERANCE_MIN, min + SINGLE_TOLERANCE_MIN]
+  const clock = sessionLength.match(/(\d+):(\d{2})/)
+  if (clock) return single(Number(clock[1]) * 60 + Number(clock[2]))
+  const m = sessionLength.match(LENGTH)
   if (!m) return null
-  const lo = Number(m[1])
-  const hi = m[2] ? Number(m[2]) : lo
-  // A single target gets the playbook's ±5 minute tolerance.
-  return m[2] ? [lo, hi] : [lo - 5, hi + 5]
+  const isHours = (unit: string | undefined) => unit !== undefined && !/^min/i.test(unit)
+  const minutes = (amount: string, hours: boolean) => Math.round(Number(amount.replace(',', '.')) * (hours ? 60 : 1))
+  if (m[3] === undefined) {
+    const value = minutes(m[1], isHours(m[2]))
+    const upTo = /^\s*(up to|bis( zu)?|max\.?|maximal|höchstens)\s*$/i.test(sessionLength.slice(0, m.index))
+    return upTo ? [value - UP_TO_TOLERANCE_MIN, value] : single(value)
+  }
+  // "1–1.5 h": a unit written once, after the second number, counts for both.
+  return [minutes(m[1], isHours(m[2] ?? m[4])), minutes(m[3], isHours(m[4] ?? m[2]))]
 }
 
 export function checkProgramme(p: Programme, client: Client | undefined): HealthIssue[] {
