@@ -2,12 +2,11 @@ rules_version = '2';
 
 // Only Pieter's account can read and write, and only its own users/{uid} tree.
 // Paste this into Firebase console → Firestore Database → Rules → Publish.
-// Fill in PETE_UID first: published as it stands, these rules lock Pieter out too.
 service cloud.firestore {
   match /databases/{database}/documents {
-    // PETE_UID: copy Pieter's User UID from Firebase console → Authentication → Users
+    // The id is Pieter's User UID (Firebase console → Authentication → Users). A wrong id here locks Pieter out too.
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid && uid == 'PETE_UID';
+      allow read, write: if request.auth != null && request.auth.uid == uid && uid == 'Sq3GTmAXBpSTnFQZ8f4oqrj4hD03';
     }
 
     // Fitness Profile links. A client has no account: whoever holds the link (it contains the
