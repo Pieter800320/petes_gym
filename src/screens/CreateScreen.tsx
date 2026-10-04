@@ -18,7 +18,7 @@ import { changedRowIds, describeEdits } from '../claude/programmeTools'
 import { checkProgramme } from '../data/health'
 import { activateProgramme } from '../data/programmeActions'
 import { blankProgramme } from '../data/programmeUtils'
-import { createProgramme, saveProgramme, softDeleteProgramme, useClients, useNotes, useProgramme, useProgrammes, useWorkouts } from '../data/store'
+import { createProgramme, restoreProgramme, saveProgramme, softDeleteProgramme, useClients, useNotes, useProgramme, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Programme } from '../data/types'
 import { getApiKey, getCreateProgrammeId, setCreateProgrammeId } from '../settings'
 import { canGoBack, leaveFor } from '../util/navHistory'
@@ -133,14 +133,18 @@ function CreateHome() {
 // ── Workspace: the chat; the programme opens in a sheet ──────────────
 
 function Workspace({ id }: { id: string }) {
+  const { user } = useAuth()
   const { data: programme, loading } = useProgramme(id)
   const { chat, loading: chatLoading } = useChat(id)
+  const { data: deletedClients } = useClients(true)
   const missing = !loading && !programme
+  /** In Recently deleted: it can be restored, but not worked on. */
+  const deleted = Boolean(programme?.deletedAt)
 
   // A deleted programme shouldn't keep reopening from the Create tab.
   useEffect(() => {
-    if (missing && getCreateProgrammeId() === id) setCreateProgrammeId(null)
-  }, [missing, id])
+    if ((missing || deleted) && getCreateProgrammeId() === id) setCreateProgrammeId(null)
+  }, [missing, deleted, id])
 
   if (!programme || chatLoading) {
     return (
@@ -152,6 +156,24 @@ function Workspace({ id }: { id: string }) {
           </>
         ) : (
           <span className="label">Loading…</span>
+        )}
+      </div>
+    )
+  }
+  if (deleted) {
+    return (
+      <div className="screen">
+        <TopBar back={{ to: '/create', label: 'Create', state: { stay: true } }} />
+        {programme.deletedWithClient ? (
+          <>
+            <p className="lead">This programme was deleted with {deletedClients.find((c) => c.id === programme.clientId)?.name ?? 'its client'}. Restore the client from Recently deleted.</p>
+            <Link to="/deleted" className="text-link quiet">Recently deleted ›</Link>
+          </>
+        ) : (
+          <>
+            <p className="lead">This programme is in Recently deleted.</p>
+            {user && <button type="button" className="text-link" onClick={() => { restoreProgramme(user.uid, id); toast('Programme restored') }}>Restore</button>}
+          </>
         )}
       </div>
     )

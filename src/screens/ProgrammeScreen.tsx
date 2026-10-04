@@ -18,7 +18,7 @@ import { activateProgramme, createNextBlock, duplicateProgramme } from '../data/
 import { restoreProgramme, softDeleteProgramme, updateProgrammeFields, useClients, useProgramme, useProgrammes } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { Programme, ProgrammeStatus } from '../data/types'
-import { setTrainProgrammeId } from '../settings'
+import { getCreateProgrammeId, setCreateProgrammeId, setTrainProgrammeId } from '../settings'
 import { leaveFor } from '../util/navHistory'
 
 const STATUS_LABEL: Record<ProgrammeStatus, string> = { draft: 'Draft', active: 'Current', archived: 'Archived' }
@@ -42,6 +42,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { data: clients } = useClients()
+  const { data: deletedClients } = useClients(true)
   const { data: siblings } = useProgrammes(stored.clientId)
   const { programme, change, flush } = useProgrammeDraft(stored)
   const [editOpen, setEditOpen] = useState(false)
@@ -51,6 +52,8 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
   const client = clients.find((c) => c.id === programme.clientId)
   const isMine = Boolean(client?.isSelf)
   const firstName = client?.name.trim().split(/\s+/)[0] ?? 'client'
+  /** In Recently deleted: shown to be read (and restored), with nothing that edits, sends or trains it. */
+  const deleted = Boolean(programme.deletedAt)
 
   if (!user) return null
   const uid = user.uid
@@ -74,15 +77,20 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
       <TopBar
         back={{ to: client ? `/clients/${client.id}` : '/clients', label: isMine ? 'You' : client?.name ?? 'Clients' }}
         noteClientId={programme.clientId}
-        actions={<button type="button" className="icon-btn" aria-label="Programme menu" onClick={() => setMoreOpen(true)}><IconMore /></button>}
+        actions={deleted ? undefined : <button type="button" className="icon-btn" aria-label="Programme menu" onClick={() => setMoreOpen(true)}><IconMore /></button>}
       />
 
-      {programme.deletedAt && (
-        <div className="banner row-banner">
-          <span>This programme is in Recently deleted.</span>
-          <button type="button" className="text-link" onClick={() => { restoreProgramme(uid, programme.id); toast('Programme restored') }}>Restore</button>
-        </div>
-      )}
+      {deleted &&
+        (programme.deletedWithClient ? (
+          <div className="banner">
+            This programme was deleted with {deletedClients.find((c) => c.id === programme.clientId)?.name ?? 'its client'}. Restore the client from <Link to="/deleted" className="text-link">Recently deleted</Link>.
+          </div>
+        ) : (
+          <div className="banner row-banner">
+            <span>This programme is in Recently deleted.</span>
+            <button type="button" className="text-link" onClick={() => { restoreProgramme(uid, programme.id); toast('Programme restored') }}>Restore</button>
+          </div>
+        ))}
 
       <article className="paper-doc">
         <span className="paper-eyebrow">{STATUS_LABEL[programme.status]}{programme.durationWeeks ? ` · ${programme.durationWeeks}-week plan` : ''}</span>
@@ -99,6 +107,8 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
 
       {/* A pair of rectangles: the main action in red, Edit programme outlined beside it.
           Rework with Claude is a quiet link, so red appears once. */}
+      {!deleted && (
+      <>
       <div className="button-pair">
         {isMine ? (
           <button type="button" className="btn-cta" onClick={trainMine}>{programme.status === 'active' ? 'Open in Train' : 'Make current & train'}</button>
@@ -129,6 +139,8 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
             onConfirm={() => {
               flush()
               softDeleteProgramme(uid, programme.id)
+              // The Create tab must not reopen a deleted draft.
+              if (getCreateProgrammeId() === programme.id) setCreateProgrammeId(null)
               toast('Moved to Recently deleted')
               leaveFor(navigate, client ? `/clients/${client.id}` : '/clients')
             }}
@@ -140,6 +152,8 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
 
       <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} clientName={isMine ? 'You' : client?.name} onChange={change} />
       <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} programme={programme} client={client} />
+      </>
+      )}
     </div>
   )
 }
