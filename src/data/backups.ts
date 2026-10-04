@@ -7,8 +7,11 @@
  *
  * The one place besides submitAnswers that awaits its writes: a backup or a restore reported done
  * that isn't is worse than a slow one. Both need a connection, and every wait has a timeout.
+ *
+ * "Delete forever" also reaches into the snapshots (scrubDeleted): what Pete erases must not live
+ * on in a backup. The privacy notice (data/privacy.ts) promises exactly that.
  */
-import { collection, deleteDoc, doc, getDocs, setDoc, writeBatch } from 'firebase/firestore'
+import { arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, getDocsFromServer, setDoc, writeBatch } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { BACKUP_COLLECTIONS, readAllData, reportWriteError } from './store'
 
@@ -57,9 +60,12 @@ const partsOf = (uid: string, id: string) => collection(requireDb(), 'users', ui
 /** How many there are, not counting those in Recently deleted. */
 const count = (data: AppData, name: string) => Object.values(data[name] ?? {}).filter((d) => !(d as { deletedAt?: number | null }).deletedAt).length
 
-/** The complete ones, newest first. */
-export async function listSnapshots(uid: string): Promise<Snapshot[]> {
-  const snap = await getDocs(backupsOf(uid))
+/**
+ * The complete ones, newest first. fromServer: fail rather than answer from what the device has
+ * stored, for when a snapshot that is not listed would be a snapshot that is missed.
+ */
+export async function listSnapshots(uid: string, fromServer = false): Promise<Snapshot[]> {
+  const snap = await (fromServer ? getDocsFromServer : getDocs)(backupsOf(uid))
   return snap.docs
     .map((d) => ({ ...(d.data() as Omit<Snapshot, 'id'>), id: d.id }))
     .filter((s) => s.complete !== false)
@@ -71,19 +77,13 @@ function deleteSnapshot(uid: string, s: Snapshot) {
   deleteDoc(doc(backupsOf(uid), s.id)).catch(reportWriteError)
 }
 
-/**
- * Saves the account as it is now, then drops snapshots that are no longer needed. Resolves only
- * once the server has all of it; until then no older snapshot is deleted.
- */
-export async function takeSnapshot(uid: string, kind: Snapshot['kind']): Promise<Snapshot> {
-  if (!navigator.onLine) throw new Error('Backups need a connection.')
-  const data = await readAllData(uid)
-  const earlier = await listSnapshots(uid)
+/** Writes the data as one snapshot and resolves once the server has all of it; a failed one is taken back. */
+async function writeSnapshot(uid: string, data: AppData, about: Pick<Snapshot, 'createdAt' | 'kind' | 'version'>): Promise<Snapshot> {
   const json = JSON.stringify(data)
   const texts: string[] = []
   for (let i = 0; i < json.length; i += PART_CHARS) texts.push(json.slice(i, i + PART_CHARS))
   const ref = doc(backupsOf(uid))
-  const meta: Omit<Snapshot, 'id'> = { createdAt: Date.now(), kind, version: __APP_VERSION__, parts: texts.length, clients: count(data, 'clients'), programmes: count(data, 'programmes'), complete: true }
+  const meta: Omit<Snapshot, 'id'> = { ...about, parts: texts.length, clients: count(data, 'clients'), programmes: count(data, 'programmes'), complete: true }
   const partRefs = texts.map((_, i) => doc(partsOf(uid, ref.id), String(i)))
   try {
     await withTimeout(Promise.all(texts.map((text, i) => setDoc(partRefs[i], { text }))), WRITE_TIMEOUT_MS)
@@ -96,14 +96,105 @@ export async function takeSnapshot(uid: string, kind: Snapshot['kind']): Promise
     deleteDoc(ref).catch(console.error)
     throw err
   }
+  return { ...meta, id: ref.id }
+}
 
-  const all = [{ ...meta, id: ref.id }, ...earlier]
+/**
+ * Saves the account as it is now, then drops snapshots that are no longer needed. Resolves only
+ * once the server has all of it; until then no older snapshot is deleted.
+ */
+export async function takeSnapshot(uid: string, kind: Snapshot['kind']): Promise<Snapshot> {
+  if (!navigator.onLine) throw new Error('Backups need a connection.')
+  const data = await readAllData(uid)
+  const earlier = await listSnapshots(uid)
+  const made = await writeSnapshot(uid, data, { createdAt: Date.now(), kind, version: __APP_VERSION__ })
+
+  const all = [made, ...earlier]
   const regular = all.filter((s) => s.kind !== 'before-restore')
   const undo = all.filter((s) => s.kind === 'before-restore')
   // Keep the last few regular ones, and only the latest pre-restore state while it is recent.
   const drop = [...regular.slice(KEEP), ...undo.filter((s, i) => i > 0 || Date.now() - s.createdAt > UNDO_MS)]
   drop.forEach((s) => deleteSnapshot(uid, s))
-  return { ...meta, id: ref.id }
+  return made
+}
+
+// ── Erasing from the snapshots ───────────────────────────────────────
+
+/** What "Delete forever" erased: clients (with everything of theirs) and single programmes. */
+export interface ScrubTarget {
+  clientIds: string[]
+  programmeIds: string[]
+}
+
+/** The data without anything of the target, or null when it holds nothing of it. */
+function withoutTarget(data: AppData, target: ScrubTarget): AppData | null {
+  const clients = new Set(target.clientIds)
+  const programmes = new Set(target.programmeIds)
+  // A client's programmes go with the client, also ones only this snapshot still has.
+  for (const [id, p] of Object.entries(data.programmes ?? {})) if (clients.has(String((p as { clientId?: unknown }).clientId))) programmes.add(id)
+  let removed = 0
+  const next: AppData = { ...data }
+  const drop = (name: string, gone: (id: string, d: Record<string, unknown>) => boolean) => {
+    if (!data[name]) return
+    const kept = Object.entries(data[name]).filter(([id, d]) => !gone(id, d as Record<string, unknown>))
+    removed += Object.keys(data[name]).length - kept.length
+    next[name] = Object.fromEntries(kept)
+  }
+  // The same as purgeClientNow and purgeProgramme erase from the account itself (store.ts).
+  drop('clients', (id) => clients.has(id))
+  drop('programmes', (id) => programmes.has(id))
+  drop('chats', (id) => programmes.has(id))
+  drop('chatArchives', (_id, d) => programmes.has(String(d.programmeId)))
+  drop('notes', (_id, d) => clients.has(String(d.clientId)))
+  drop('workouts', (_id, d) => clients.has(String(d.clientId)))
+  return removed ? next : null
+}
+
+/**
+ * Removes the target from every snapshot. A snapshot can't be edited in place (its text is cut
+ * into parts), so one that holds any of it is written again without it, with its date and kind,
+ * and the old one is deleted once the new one is on the server. Needs a connection; throws when
+ * it could not finish, and can simply be run again.
+ */
+export async function scrubSnapshots(uid: string, target: ScrubTarget): Promise<void> {
+  if (!navigator.onLine) throw new Error('Backups need a connection.')
+  for (const s of await listSnapshots(uid, true)) {
+    const clean = withoutTarget(await readSnapshot(uid, s), target)
+    if (!clean) continue
+    await writeSnapshot(uid, clean, { createdAt: s.createdAt, kind: s.kind, version: s.version })
+    deleteSnapshot(uid, s)
+  }
+}
+
+const settingsOf = (uid: string) => doc(requireDb(), 'users', uid, 'meta', 'settings')
+/** One scrub at a time: two at once would each rewrite the same snapshot from its old text. */
+let scrubbing: Promise<void> = Promise.resolve()
+
+function scrubThenClear(uid: string, entry: string): Promise<void> {
+  const run = scrubbing.then(async () => {
+    await scrubSnapshots(uid, JSON.parse(entry) as ScrubTarget)
+    setDoc(settingsOf(uid), { pendingScrub: arrayRemove(entry) }, { merge: true }).catch(reportWriteError)
+  })
+  scrubbing = run.catch(() => undefined)
+  return run
+}
+
+/**
+ * After "Delete forever": removes it from the snapshots too, now when there is a connection. What
+ * is to be removed is first noted in meta/settings.pendingScrub (ids only), so a scrub that
+ * can't run or finish now is done when the app next starts online (runPendingScrubs).
+ */
+export function scrubDeleted(uid: string, target: ScrubTarget): void {
+  const entry = JSON.stringify(target)
+  setDoc(settingsOf(uid), { pendingScrub: arrayUnion(entry) }, { merge: true }).catch(reportWriteError)
+  scrubThenClear(uid, entry).catch((err) => console.error('Not yet removed from the backups', err))
+}
+
+/** At the start of the app: the scrubs still owed. */
+export async function runPendingScrubs(uid: string): Promise<void> {
+  if (!navigator.onLine) return
+  const pending = ((await getDoc(settingsOf(uid))).data() as { pendingScrub?: string[] } | undefined)?.pendingScrub ?? []
+  for (const entry of pending) await scrubThenClear(uid, entry)
 }
 
 /** One check at a time: two at once would each find no recent snapshot and both make one. */

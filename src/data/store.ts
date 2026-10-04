@@ -333,7 +333,7 @@ async function chatArchiveRefs(uid: string, programmeId: string) {
   return snap.docs.map((d) => d.ref)
 }
 
-/** Erases a client and everything that belongs to it: programmes, their chats, notes and sessions. */
+/** Erases a client and everything that belongs to it: programmes, their chats, notes, sessions and fitness profile links. */
 async function purgeClientNow(uid: string, clientId: string) {
   const batch = writeBatch(requireDb())
   batch.delete(doc(userCollection(uid, 'clients'), clientId))
@@ -342,7 +342,7 @@ async function purgeClientNow(uid: string, clientId: string) {
     batch.delete(doc(userCollection(uid, 'chats'), p.id))
     for (const ref of await chatArchiveRefs(uid, p.id)) batch.delete(ref)
   }
-  for (const name of ['notes', 'workouts']) {
+  for (const name of ['notes', 'workouts', 'invites']) {
     const snap = await getDocs(query(userCollection(uid, name), where('clientId', '==', clientId)))
     snap.docs.forEach((d) => batch.delete(d.ref))
   }

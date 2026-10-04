@@ -8,8 +8,12 @@ import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { deleteInvite, useInvites, type Invite } from '../data/invites'
+import { KEEP_YEARS } from '../data/privacy'
 import { useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
 import type { Client, Programme } from '../data/types'
+
+/** A profile untouched for this long is past the storage period the privacy notice gives. */
+const KEEP_MS = KEEP_YEARS * 365 * 86_400_000
 
 function shortDate(ms: number): string {
   const d = new Date(ms)
@@ -34,6 +38,9 @@ export function ClientsScreen() {
   const answered = invites.filter((i) => i.answeredAt !== null)
   const waiting = invites.filter((i) => i.answeredAt === null)
   const [openAnswers, setOpenAnswers] = useState<Invite | null>(null)
+  const [inactiveOnly, setInactiveOnly] = useState(false)
+  /** When the page was opened: what "inactive" is measured against. */
+  const [openedAt] = useState(() => Date.now())
 
   const others = clients.filter((c) => !c.isSelf)
   const visible = useMemo(() => {
@@ -42,6 +49,9 @@ export function ClientsScreen() {
   }, [others, search])
   const currentOf = (id: string): Programme | undefined => programmes.find((p) => p.clientId === id && p.status === 'active')
   const lastTouched = (c: Client) => Math.max(c.updatedAt, ...programmes.filter((p) => p.clientId === c.id).map((p) => p.updatedAt))
+  // A reminder only: whether to delete them is Pete's decision, nothing is removed automatically.
+  const inactive = others.filter((c) => openedAt - lastTouched(c) > KEEP_MS)
+  const shown = inactiveOnly && inactive.length > 0 ? visible.filter((c) => inactive.includes(c)) : visible
   // Programmes deleted along with their client are counted under that client.
   const binCount = deletedClients.length + deletedProgrammes.filter((p) => !p.deletedWithClient).length
   const mine = self ? currentOf(self.id) : undefined
@@ -112,7 +122,7 @@ export function ClientsScreen() {
         <input id="client-search" placeholder="Search clients" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search clients" />
       </label>
       <div className="lines">
-        {visible.map((c) => (
+        {shown.map((c) => (
           <Link key={c.id} to={`/clients/${c.id}`} className="line-link">
             <span className="grow">
               <span className="line-title">{c.name}</span>
@@ -121,10 +131,15 @@ export function ClientsScreen() {
             <span className="mono muted small">{shortDate(lastTouched(c))}</span>
           </Link>
         ))}
-        {!loading && search && !visible.length && <p className="muted small">No client matches “{search}”.</p>}
+        {!loading && search && !shown.length && <p className="muted small">No client matches “{search}”.</p>}
         {!loading && !search && !others.length && <p className="muted small">No clients yet. Tap ADD.</p>}
       </div>
 
+      {inactive.length > 0 && !search && (
+        <button type="button" className="text-link quiet" onClick={() => setInactiveOnly((on) => !on)}>
+          {inactiveOnly ? 'Show all clients ›' : `${inactive.length} client${inactive.length === 1 ? '' : 's'} inactive for ${KEEP_YEARS}+ years: review ›`}
+        </button>
+      )}
       {binCount > 0 && !search && <Link to="/deleted" className="text-link quiet">Recently deleted ({binCount})</Link>}
 
       <Dial label="ADD" longLabel="Add client" ariaLabel="New client" onClick={() => setNewClient('client')} />

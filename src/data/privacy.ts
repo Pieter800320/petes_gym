@@ -17,10 +17,10 @@ export const CONTROLLER = {
 }
 
 /** The date of this wording; saved with every consent, so it is clear what was agreed to. */
-export const PRIVACY_VERSION = '2026-10-04'
+export const PRIVACY_VERSION = '2026-10-05'
 
-/** How long a client's data is kept after the work together ends. */
-const KEEP_YEARS = 2
+/** How long a client's data is kept after the work together ends (Clients reminds Pete of profiles older than this). */
+export const KEEP_YEARS = 2
 
 /** The questionnaire is for people of this age and over (parental consent is needed below it). */
 export const MIN_AGE = 16
@@ -78,7 +78,7 @@ export function privacyNotice(lang: Lang): NoticeSection[] {
       },
       {
         title: 'Speicherdauer',
-        paragraphs: [`Deine Daten bleiben gespeichert, solange ihr zusammenarbeitet, und danach noch ${KEEP_YEARS} Jahre, falls du wieder einsteigen möchtest. Dann werden sie gelöscht. Wenn du es verlangst oder deine Einwilligung widerrufst, löscht Pieter sie sofort; aus den automatischen Sicherungskopien verschwinden sie spätestens nach vier Wochen.`],
+        paragraphs: [`Deine Daten bleiben gespeichert, solange ihr zusammenarbeitet, und danach noch ${KEEP_YEARS} Jahre, falls du wieder einsteigen möchtest. Dann werden sie gelöscht. Wenn du es verlangst oder deine Einwilligung widerrufst, löscht Pieter sie sofort. Aus den automatischen Sicherungskopien der App werden sie dabei gleich mit entfernt, spätestens beim nächsten Öffnen der App mit Internetverbindung. Sicherungsdateien, die Pieter auf seinen eigenen Computer herunterlädt, bewahrt er höchstens ebenso lange auf.`],
       },
       {
         title: 'Deine Rechte',
@@ -126,7 +126,7 @@ export function privacyNotice(lang: Lang): NoticeSection[] {
     },
     {
       title: 'How long it is kept',
-      paragraphs: [`Your data is kept for as long as you work together and for ${KEEP_YEARS} years afterwards, in case you want to start again. Then it is deleted. If you ask, or withdraw your consent, Pieter deletes it at once; it disappears from the automatic backups within four weeks at the latest.`],
+      paragraphs: [`Your data is kept for as long as you work together and for ${KEEP_YEARS} years afterwards, in case you want to start again. Then it is deleted. If you ask, or withdraw your consent, Pieter deletes it at once. It is removed from the app's automatic backups at the same time, or at the latest the next time the app is opened with an internet connection. Backup files that Pieter downloads to his own computer are kept by him for no longer than the same period.`],
     },
     {
       title: 'Your rights',

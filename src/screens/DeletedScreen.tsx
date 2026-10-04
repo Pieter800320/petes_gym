@@ -2,6 +2,7 @@ import { ConfirmButton } from '../components/ConfirmButton'
 import { BigTitle, TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
+import { scrubDeleted } from '../data/backups'
 import { purgeClient, purgeProgramme, restoreClient, restoreProgramme, useClients, useProgrammes } from '../data/store'
 
 /** Recently deleted clients and programmes: restore them, or delete them forever. */
@@ -38,7 +39,7 @@ export function DeletedScreen() {
               </div>
               <div className="toolbar">
                 <button type="button" className="btn-acc" onClick={() => { restoreClient(uid, c.id); toast(`${c.name} restored`) }}>Restore</button>
-                <ConfirmButton onConfirm={() => { purgeClient(uid, c.id); toast(`${c.name} deleted forever`) }}>Delete forever</ConfirmButton>
+                <ConfirmButton onConfirm={() => { purgeClient(uid, c.id); scrubDeleted(uid, { clientIds: [c.id], programmeIds: [] }); toast(`${c.name} deleted forever`) }}>Delete forever</ConfirmButton>
               </div>
             </div>
           )
@@ -55,7 +56,7 @@ export function DeletedScreen() {
             </div>
             <div className="toolbar">
               <button type="button" className="btn-acc" onClick={() => { restoreProgramme(uid, p.id); toast('Programme restored') }}>Restore</button>
-              <ConfirmButton onConfirm={() => { purgeProgramme(uid, p.id); toast('Programme deleted forever') }}>Delete forever</ConfirmButton>
+              <ConfirmButton onConfirm={() => { purgeProgramme(uid, p.id); scrubDeleted(uid, { clientIds: [], programmeIds: [p.id] }); toast('Programme deleted forever') }}>Delete forever</ConfirmButton>
             </div>
           </div>
         ))}

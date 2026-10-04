@@ -13,7 +13,7 @@ import { ClientScreen } from './screens/ClientScreen'
 import { ClientsScreen } from './screens/ClientsScreen'
 import { CreateScreen } from './screens/CreateScreen'
 import { toast } from './components/toast'
-import { backupIfDue } from './data/backups'
+import { backupIfDue, runPendingScrubs } from './data/backups'
 import { useInvites, watchNotifyUrl } from './data/invites'
 import { DeletedScreen } from './screens/DeletedScreen'
 import { FitnessProfileScreen } from './screens/FitnessProfileScreen'
@@ -100,7 +100,12 @@ function Shell() {
   // The weekly backup, and the address new questionnaire links carry for the email to Pete.
   useEffect(() => {
     if (!user) return
-    backupIfDue(user.uid).catch((err) => console.error('Backup failed', err))
+    const { uid } = user
+    // First what "Delete forever" still owes the backups (it had no connection then), then the weekly one.
+    runPendingScrubs(uid)
+      .catch((err) => console.error('Not yet removed from the backups', err))
+      .then(() => backupIfDue(uid))
+      .catch((err) => console.error('Backup failed', err))
     return watchNotifyUrl(user.uid)
   }, [user])
 
