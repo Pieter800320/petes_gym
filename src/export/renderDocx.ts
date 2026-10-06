@@ -198,7 +198,7 @@ export async function renderDocx(d: ExportDoc): Promise<Blob> {
     creator: "Pete's Gym",
     title: d.documentTitle,
     // noProof: no red spelling squiggles under exercise names or German text when the client opens it.
-    styles: { default: { document: { run: { font: FONT, size: pt(10), color: INK, noProof: true, language: { value: d.lang === 'de' ? 'de-DE' : 'en-GB' } } } } },
+    styles: { default: { document: { run: { font: FONT, size: pt(10), color: INK, noProof: true, language: { value: d.lang === 'de' ? 'de-DE' : d.lang === 'af' ? 'af-ZA' : 'en-GB' } } } } },
     sections: [
       {
         properties: { page: { margin: { top: 1000, bottom: 1000, left: 1130, right: 1130 } } },

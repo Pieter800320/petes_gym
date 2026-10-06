@@ -55,7 +55,8 @@ get at them another way.
 5. `node draft.ts <file> --write` saves it. It is always a **draft**: it shows in the app under
    Create → Drafts and on the client's page, and Pieter makes it current himself there ("Make
    current" on the draft's page). Never change a programme's status from here.
-6. Fill the German cache (see below) when the client gets the programme in German.
+6. Fill the German or Afrikaans cache (see below) when the client gets the programme in that
+   language.
 7. Report: the days at a glance, every call you made on his behalf, time per day, what is not in
    the library, any contraindication left in.
 
@@ -90,24 +91,29 @@ prefer "Build next block" in the app (a draft copy) for anything larger than a f
 - The personal note is Pete's. Leave it alone unless he asks for a draft.
 - Programme structure is free: no fixed phases or section names.
 
-## German for the export
+## German or Afrikaans for the export
 
-The export sheet takes its German from the programme's cache (`translationsDe`) and, since
-0.9.56, never calls Claude: with a string missing it says "German is missing for N texts… Ask
-Claude Code". Only Pete's personal note is exempt; it goes out as he typed it.
+The export sheet offers English, Deutsch and Afrikaans. It takes German and Afrikaans from the
+programme's cache for that language (`translationsDe`, `translationsAf`) and never calls Claude:
+with a string missing it says "German/Afrikaans is missing for N texts… Ask Claude Code". Only
+Pete's personal note is exempt; it goes out as he typed it. `<lang>` below is `de` or `af`.
 
-1. `node translate.ts missing <id>` into a scratchpad file: the strings still without German.
-2. Translate them by the rules of `src/claude/translate.ts`: natural German coaching language with
-   "du", as short as the English; exercise names and gym terms German gym-goers use in English
-   stay unchanged (an alternative that is an exercise name is saved as itself); numbers, ranges,
-   units and notation exactly as they are; `/side` → `/Seite`, `/leg` → `/Bein`, `/arm` → `/Arm`,
-   `reps` → `Wdh.`, `min` → `Min.`
-3. Write `[{ "src": …, "de": … }]` with every `src` copied exactly, and check before saving that
-   the numbers in each pair match.
-4. `node translate.ts save <id> <pairs.json>` checks, `--write` saves.
+1. `node translate.ts <lang> missing <id>` into a scratchpad file: the strings still to translate.
+2. Translate them, as short as the English. Exercise names stay unchanged (an alternative or a
+   table title that is an exercise name is saved as itself); numbers, ranges, units and notation
+   exactly as they are.
+   - German, by the rules of `src/claude/translate.ts`: natural coaching language with "du"; gym
+     terms German gym-goers use in English stay; `/side` → `/Seite`, `/leg` → `/Bein`,
+     `/arm` → `/Arm`, `reps` → `Wdh.`, `min` → `Min.`
+   - Afrikaans: plain, warm instructions, imperative where possible, "jy" otherwise;
+     `/side` → `/kant`, `/leg` → `/been`, `/foot` → `/voet`, `steps` → `treë`, `sets` → `stelle`,
+     `band` → `rek`, `dumbbell` → `handgewig`. Pieter is a native speaker: ask him to read it.
+3. Write `[{ "src": …, "text": … }]` with every `src` copied exactly, and check before saving
+   that the numbers in each pair match.
+4. `node translate.ts <lang> save <id> <pairs.json>` checks, `--write` saves.
 
 Do this again after any change to the programme's text, and tell Pieter: a text he edits in the
-app afterwards (a cue, the goal in the export sheet) has no German until it is translated here
+app afterwards (a cue, the goal in the export sheet) has no translation until it is done here
 again.
 
 ## Updating a client's profile

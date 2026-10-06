@@ -271,7 +271,7 @@ export function createProgramme(uid: string, draft: ProgrammeDraft, createdAt?: 
  * or on another device) must not bring back a half-empty document. That refusal is not an error.
  */
 export function saveProgramme(uid: string, programme: Programme) {
-  const { id, status: _s, deletedAt: _d, deletedWithClient: _w, clientId: _c, createdAt: _ca, updatedAt: _u, translationsDe: _t, ...content } = programme
+  const { id, status: _s, deletedAt: _d, deletedWithClient: _w, clientId: _c, createdAt: _ca, updatedAt: _u, translationsDe: _t, translationsAf: _a, ...content } = programme
   updateDoc(doc(userCollection(uid, 'programmes'), id), { ...encodeProgramme(content), updatedAt: Date.now() }).catch((err: unknown) => {
     if ((err as { code?: string } | null)?.code !== 'not-found') reportWriteError(err)
   })

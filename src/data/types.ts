@@ -71,6 +71,8 @@ export interface Programme {
   parentId: string | null
   /** Cached German translations of client-facing text (see claude/translate.ts). */
   translationsDe?: TranslationPair[]
+  /** Afrikaans text for the export, written only from Claude Code (tools/translate.ts). */
+  translationsAf?: { src: string; af: string }[]
   /** Set when moved to Recently deleted; null/absent otherwise. */
   deletedAt?: Millis | null
   /** True when it was deleted together with its client, so restoring the client restores it. */

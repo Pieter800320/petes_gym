@@ -20,7 +20,7 @@ const AUTO_BUILD_MS = 400
 /** The export as a file. The renderers are loaded on demand: the Word library is large and only needed here. */
 async function renderFile(p: Programme, opts: ExportOptions, format: ExportFormat, translate: (s: string) => string): Promise<File> {
   const doc = buildExportDoc(p, opts, translate)
-  const suffix = opts.lang === 'de' ? '_DE' : ''
+  const suffix = opts.lang === 'de' ? '_DE' : opts.lang === 'af' ? '_AF' : ''
   if (format === 'html') {
     const { renderHtml } = await import('../export/renderHtml')
     return new File([renderHtml(doc)], `${doc.fileBase}${suffix}.html`, { type: MIME.html })
@@ -130,6 +130,16 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
     return (s) => map.get(s) ?? s
   }
 
+  /** Afrikaans text for the export. It is only ever written in Claude Code on the PC (tools/translate.ts). */
+  function afrikaansText(): (s: string) => string {
+    const wanted = clientFacingStrings(p, opts.personalNote, opts.goal).concat([opts.frequency, opts.sessionLength].filter(Boolean))
+    const map = new Map((p.translationsAf ?? []).map((t) => [t.src, t.af]))
+    // The note is Pete's own and goes out as he typed it.
+    const missing = wanted.filter((s) => !map.has(s) && s !== opts.personalNote.trim())
+    if (missing.length) throw new Error(`Afrikaans is missing for ${missing.length} text${missing.length === 1 ? '' : 's'} of this programme. Ask Claude Code on the PC to translate it, then try again.`)
+    return (s) => map.get(s) ?? s
+  }
+
   /** Builds the file for the form as it is now (the tap for German, or another try after a failure). */
   async function prepare(): Promise<File | null> {
     setError(null)
@@ -140,6 +150,8 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
       if (opts.lang === 'de') {
         setBusy(CLAUDE_IN_APP ? 'Translating into German…' : 'Preparing…')
         translate = await germanText()
+      } else if (opts.lang === 'af') {
+        translate = afrikaansText()
       }
       setBusy('Building the document…')
       const file = await renderFile(p, opts, format, translate)
@@ -224,9 +236,9 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
       <div className="field">
         <span className="label">Language</span>
         <div className="chips" role="group" aria-label="Language">
-          {(['en', 'de'] as ExportLang[]).map((l) => (
+          {(['en', 'de', 'af'] as ExportLang[]).map((l) => (
             <button type="button" key={l} className="chip" aria-pressed={opts.lang === l} onClick={() => set('lang', l)}>
-              {l === 'en' ? 'English' : 'Deutsch'}
+              {l === 'en' ? 'English' : l === 'de' ? 'Deutsch' : 'Afrikaans'}
             </button>
           ))}
         </div>
@@ -235,6 +247,11 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
             {CLAUDE_IN_APP
               ? 'Claude translates the client-facing text once; exercise names stay as in the library. Needs internet and your API key.'
               : 'The German text is written in Claude Code on the PC; exercise names stay as in the library. Your note goes out as you type it, so write it in German.'}
+          </span>
+        )}
+        {opts.lang === 'af' && (
+          <span className="muted" style={{ fontSize: 'var(--type-sm)' }}>
+            The Afrikaans text is written in Claude Code on the PC; exercise names stay as in the library. Your note goes out as you type it, so write it in Afrikaans.
           </span>
         )}
       </div>

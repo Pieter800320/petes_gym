@@ -8,7 +8,7 @@ import { findExercise, videoUrl } from '../data/exercises'
 import type { Programme, ProgressionBlock } from '../data/types'
 import { stripDayPrefix } from '../util/dayTitle'
 
-export type ExportLang = 'en' | 'de'
+export type ExportLang = 'en' | 'de' | 'af'
 export type ExportFormat = 'html' | 'docx'
 
 export interface ExportOptions {
@@ -89,6 +89,17 @@ const LABELS = {
     headers: ['Übung', 'Sätze × Wdh.', 'Pause'] as [string, string, string],
     alternative: 'Oder',
     session: 'Einheit',
+  },
+  // Afrikaans (Pieter, 2026-10-06): for family and clients in South Africa.
+  af: {
+    plan: (w: number | null) => (w ? `Oefenprogram vir ${w} weke` : 'Oefenprogram'),
+    goal: 'Doel',
+    frequency: 'Hoe gereeld',
+    sessionLength: 'Sessielengte',
+    markers: 'Hoe jy sal weet dit werk',
+    headers: ['Oefening', 'Stelle × Herh.', 'Rus'] as [string, string, string],
+    alternative: 'Of',
+    session: 'Sessie',
   },
 }
 

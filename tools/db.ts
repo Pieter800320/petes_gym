@@ -64,7 +64,7 @@ export function decodeProgramme(raw: FirebaseFirestore.DocumentData, id: string)
 
 /** A programme as Claude may see it: no weights, no private notes, no translation cache. */
 export function forClaude(p: Programme): Programme {
-  const { translationsDe: _cache, ...rest } = p
+  const { translationsDe: _de, translationsAf: _af, ...rest } = p
   return {
     ...rest,
     sessions: p.sessions.map((s) => ({
