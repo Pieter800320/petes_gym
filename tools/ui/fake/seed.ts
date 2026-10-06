@@ -48,7 +48,8 @@ export const SEED: Record<string, Data> = {
 }
 NAMES.forEach((name, i) => {
   const cid = `c${i}`
-  SEED[`${U}/clients/${cid}`] = client(name, 40 + i * 9)
+  // The second client has a long text and contact details (the profile sheet shows every box in full).
+  SEED[`${U}/clients/${cid}`] = client(name, 40 + i * 9, i === 1 ? { mobile: '+49 000 0000000', email: 'ben@example.com', address: 'Musterweg 1\n00000 Musterstadt', background: Array.from({ length: 9 }, (_, n) => `Line ${n + 1}: a made-up remark about training, sleep and work, long enough to wrap on a phone.`).join('\n') } : {})
   if (i < 6) SEED[`${U}/programmes/p${i}`] = programme(cid, `Block ${1 + (i % 3)}`, i === 4 ? 'draft' : 'active', 5 + i)
   // The first client also has two earlier programmes (the "Earlier" list on their page).
   if (i === 0) {

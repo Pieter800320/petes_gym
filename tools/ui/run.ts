@@ -182,6 +182,35 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Close it', run: click('.ex-line'), waitMs: 600 },
     ],
   },
+  // A client's profile sheet: every box is as tall as its text.
+  'edit-profile': {
+    start: '/clients/c1',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'More', run: click('.icon-btn[aria-label^="More for"]'), waitMs: 700 },
+      { label: 'Edit profile', run: click('.sheet .line-link'), waitMs: 900 },
+      { label: 'Scroll the sheet to its end', run: `document.querySelector('#client-background').scrollIntoView({ block: 'end' })`, waitMs: 500 },
+    ],
+  },
+  // The same on the PC.
+  'desktop-card': {
+    start: '/train',
+    desktop: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'Open the first exercise', run: click('.ex-line'), waitMs: 1200 },
+      { label: 'Close it', run: click('.ex-line'), waitMs: 800 },
+    ],
+  },
+  // The PC again, seven times over: a fault at the end of the opening showed in about one opening
+  // in four. Every frame after loading should be about the same size on disk; a much smaller one is a broken picture.
+  'desktop-card-loop': {
+    start: '/train',
+    desktop: true,
+    settleMs: 2500,
+    steps: Array.from({ length: 14 }, (_, i) => ({ label: i % 2 ? 'Close' : 'Open', run: click('.ex-line'), waitMs: i % 2 ? 700 : 1000 })),
+  },
   // Train: with one exercise open, another is tapped: the first closes while the second opens.
   'switch-card': {
     start: '/train',

@@ -89,9 +89,18 @@ export function Drop({ open, children }: { open: boolean; children: ReactNode })
     animations[0].finished.then(
       () => {
         if (over) return
+        if (open) {
+          // The uncovering stays in place, finished, until the panel closes: where Chrome let go
+          // of it, the PC now and then drew one broken picture (the card half covered, nothing
+          // below it). The next movement cancels it like any other.
+          const [uncover, ...rest] = animations
+          rest.forEach((a) => a.cancel())
+          running.current = [uncover]
+          return
+        }
         // Closed: the content goes and the page takes its shorter layout in the same picture
         // as the slide lets go, so nothing jumps.
-        if (!open) flushSync(() => setPresent(false))
+        flushSync(() => setPresent(false))
         animations.forEach((a) => a.cancel())
         running.current = []
       },

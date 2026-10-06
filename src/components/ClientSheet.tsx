@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AutoTextarea } from './AutoTextarea'
 import { Sheet } from './Sheet'
 import { toast } from './toast'
 import { useProfileLink } from './useProfileLink'
@@ -89,7 +90,7 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
           </div>
           <label className="field">
             <span className="label">Address</span>
-            <textarea id="client-address" className="textarea" style={{ minHeight: 72 }} autoComplete="off" value={draft.address ?? ''} onChange={(e) => set('address', e.target.value)} />
+            <AutoTextarea id="client-address" className="textarea fits" autoComplete="off" value={draft.address ?? ''} onChange={(e) => set('address', e.target.value)} />
           </label>
         </>
       )}
@@ -106,10 +107,9 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
       {LONG_FIELDS.map((f) => (
         <label className="field" key={f.key}>
           <span className="label">{f.label}</span>
-          <textarea
+          <AutoTextarea
             id={`client-${f.key}`}
-            className="textarea"
-            style={{ minHeight: 72 }}
+            className="textarea fits"
             placeholder={f.placeholder}
             value={draft[f.key]}
             onChange={(e) => set(f.key, e.target.value)}
