@@ -305,3 +305,25 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 5. Update §0 above when a milestone lands.
 
 The deploy workflow runs lint, test and build in that order; a push that fails one is not deployed.
+
+## 4. Building programmes from Claude Code (`tools/`, since 2026-10-06)
+
+Pieter could not buy API credits, so the AI work moved here: programmes are built and reworked in
+Claude Code on his PC, which reads and writes the same Firestore the app uses. The app is
+unchanged (its Create chat stays, dormant). How to work is in `.claude/skills/programme/SKILL.md`.
+
+- `tools/` is not part of the app: its own `package.json` (`firebase-admin`), not in the bundle,
+  the tests or the deploy. Node runs the `.ts` files directly. `npm run lint` at the root covers it.
+- The service-account key lives outside the repo (`~/.petesgym/service-account.json`). It bypasses
+  `firestore.rules`. Never copy it into the repo, print it or read it.
+- `read.ts` reads; `draft.ts` creates one new programme, always as a draft; `change.ts` changes
+  one programme's content and can undo its last change (before-states in `~/.petesgym/undo`).
+  Nothing else writes. Weights and private notes are never shown to Claude and survive a change
+  by the 0.9.50 rule.
+- `shape.ts` and `db.ts` repeat four small rules of the app (`newId`, `exerciseKey`, the library
+  link, the `[{cells}]` table encoding) because the app's files don't load in plain Node. Change
+  one, change both.
+- Checked on 2026-10-06 against the real database: `node selftest.ts` (16 checks: change, weight
+  and note rule, stale file refused, undo, undo refused after an edit in the app). Open: the
+  privacy point at the top of the skill file; translations, profile updates and imports are not
+  built here yet.

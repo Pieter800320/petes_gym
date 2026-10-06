@@ -1,0 +1,17 @@
+{
+  "name": "petes-gym-tools",
+  "private": true,
+  "type": "module",
+  "description": "Scripts Claude Code runs on Pieter's PC to read (later: write) the app's Firestore data. Not part of the app's bundle or deploy.",
+  "scripts": {
+    "read": "node read.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "~6.0.2"
+  }
+}
