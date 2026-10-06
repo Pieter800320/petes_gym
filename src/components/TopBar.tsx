@@ -165,6 +165,7 @@ export function Dial({ label, longLabel, onClick, ariaLabel, time, disabled, pau
     }
   }
 
+  const running = Boolean(time)
   const shown = (armed && confirmLabel) || label
   const armedClass = armed ? ' armed' : ''
   // Own haptics when it confirms (the global tap tick would double up).
@@ -172,19 +173,23 @@ export function Dial({ label, longLabel, onClick, ariaLabel, time, disabled, pau
   const dial = (
     <div className="dial-dock">
       <div className="dial-wrap">
-        {time ? (
-          <button type="button" className={`dial dial-running${paused ? ' dial-paused' : ''}${armedClass}`} onClick={activate} aria-label={armed ? shown : ariaLabel ?? `${label}, ${time}`} data-haptic={hapticMode}>
-            <span className="dial-inner">
-              <span className="dial-time">{time}</span>
-              <span className="dial-sub">{shown}</span>
-            </span>
-          </button>
-        ) : (
-          <button type="button" className={`dial${armedClass}`} onClick={activate} aria-label={armed ? shown : ariaLabel} disabled={disabled} data-haptic={hapticMode}>
-            <span className="dial-short">{shown}</span>
-            <span className="dial-long">{armed ? shown : longLabel ?? label}</span>
-          </button>
-        )}
+        {/* One button for both states (a plain action, a running clock), so it changes from one to
+            the other instead of being swapped: the styles move between them (app.css, "The dial"). */}
+        <button
+          type="button"
+          className={`dial${running ? ' dial-running' : ''}${running && paused ? ' dial-paused' : ''}${armedClass}`}
+          onClick={activate}
+          aria-label={armed ? shown : running ? ariaLabel ?? `${label}, ${time}` : ariaLabel}
+          disabled={!running && disabled}
+          data-haptic={hapticMode}
+        >
+          <span className="dial-inner" aria-hidden={!running}>
+            <span className="dial-time">{time}</span>
+            <span className="dial-sub">{shown}</span>
+          </span>
+          <span className="dial-short" aria-hidden={running}>{shown}</span>
+          <span className="dial-long">{armed ? shown : longLabel ?? label}</span>
+        </button>
         {side && (
           <button type="button" className="dial-side" onClick={side.onClick} aria-label={side.label} title={side.label}>
             {side.icon}

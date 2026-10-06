@@ -192,6 +192,19 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Open the third', run: `document.querySelectorAll('.ex-line')[2].click()`, waitMs: 800 },
     ],
   },
+  // Train: start a session (the dial becomes the clock), then finish it with two taps.
+  session: {
+    start: '/train',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'START', run: click('.dial'), waitMs: 2000 },
+      { label: 'FINISH, first tap', run: click('.dial'), waitMs: 600 },
+      { label: 'FINISH, second tap', run: click('.dial'), waitMs: 1200 },
+    ],
+  },
+  // The same on the PC, where the dial is a button in the rail.
+  'desktop-session': { start: '/train', desktop: true, settleMs: 2500, steps: [{ label: 'Start session', run: click('.dial'), waitMs: 1500 }] },
   // From a list scrolled down: into a client near the bottom, and back to the same place.
   scrolled: {
     start: '/clients',

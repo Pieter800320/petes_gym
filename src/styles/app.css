@@ -26,9 +26,11 @@ html { overscroll-behavior-y: none; }
 html { scrollbar-gutter: stable; }
 /* Long-press on a button doesn't select its text or pop the link menu; no double-tap zoom delay. */
 button, a, .nav, .dial-dock, .day-picker { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
-/* Quick press feedback on every tappable line. */
-.line-link, .leader-link, .note-line, .session-line, .text-link, .btn-ghost, .chip, .paper-day { transition: opacity 0.12s var(--ease-standard); }
-.line-link:active, .leader-link:active, .note-line:active, .text-link:active, .btn-ghost:active, .chip:active, .paper-day:active { opacity: 0.6; }
+/* Quick press feedback on everything that can be tapped: it dims under the finger. (The red
+   buttons darken and the dial gives a little instead: see there.) A new kind of tappable thing
+   belongs in this list. */
+:is(.line-link, .leader-link, .note-line, .session-line, .text-link, .btn-ghost, .btn-acc, .chip, .paper-day, .paper-title, .ex-line, .row-link, .answers-line, .empty-card, .nav-link, .icon-btn, .topbar-back, .day-dot, .filter-btn, .send-btn, .section-toggle, .danger-link, .video-link, .snackbar-action, .fit-option, .ex-actions > button, .ex-actions > a) { transition: opacity var(--motion-press) var(--ease-standard); }
+:is(.line-link, .leader-link, .note-line, .session-line, .text-link, .btn-ghost, .btn-acc, .chip, .paper-day, .paper-title, .ex-line, .row-link, .answers-line, .empty-card, .nav-link, .icon-btn, .topbar-back, .day-dot, .filter-btn, .send-btn, .section-toggle, .danger-link, .video-link, .snackbar-action, .fit-option, .ex-actions > button, .ex-actions > a):active { opacity: 0.6; }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: default; }
@@ -179,21 +181,35 @@ svg { flex: none; }
   display: flex; justify-content: center;
   pointer-events: none;
 }
+/* One button for its two states: a plain action (START, NEW, ADD) and a running session's clock.
+   It is always the size of the clock; as a plain action it is drawn smaller, from its bottom edge
+   (`scale`, so nothing is laid out again and the press below still has `transform`). Between the
+   two states the ring's dark middle grows out of the red disc and the word gives way to the time. */
 .dial {
-  pointer-events: auto;
-  width: var(--dial-size); height: var(--dial-size); border-radius: 50%; border: 0;
+  pointer-events: auto; position: relative;
+  width: var(--dial-clock-size); height: var(--dial-clock-size); padding: 0; border-radius: 50%; border: 0;
   background: var(--color-accent); color: var(--color-on-accent);
-  font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 0.12em;
+  /* 18px as drawn at rest. */
+  font-family: var(--font-display); font-size: calc(18px / var(--dial-rest-scale)); font-weight: 600; letter-spacing: 0.12em;
   /* A small round shadow directly under the button, nothing sideways. */
   box-shadow: 0 6px 14px -4px var(--color-accent-shadow);
-  transition: transform 0.15s var(--ease-standard);
+  scale: var(--dial-rest-scale); transform-origin: 50% 100%;
+  transition: transform 0.15s var(--ease-standard), scale var(--motion-state) var(--ease-standard), background-color var(--motion-state) var(--ease-standard);
 }
 .dial:active { transform: scale(0.96); }
 .dial:disabled { opacity: 0.45; box-shadow: none; }
 /* Waiting for the second tap (Finish): a second ring around the button. */
 .dial.armed { outline: 3px solid var(--color-accent); outline-offset: 4px; }
-.dial-running { width: 112px; height: 112px; padding: 5px; background: var(--color-accent); }
-.dial-inner { width: 100%; height: 100%; border-radius: 50%; background: var(--color-bg); color: var(--color-text); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.dial-running { scale: 1; }
+.dial-short { display: block; transition: opacity var(--motion-state) var(--ease-standard); }
+.dial-running .dial-short { opacity: 0; }
+.dial-inner {
+  position: absolute; inset: 5px; border-radius: 50%; background: var(--color-bg); color: var(--color-text);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  transform: scale(0); opacity: 0;
+  transition: transform var(--motion-state) var(--ease-standard), opacity var(--motion-state) var(--ease-standard);
+}
+.dial-running .dial-inner { transform: scale(1); opacity: 1; }
 .dial-time { font-family: var(--font-mono); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; } /* steady digits while the clock ticks */
 .dial-sub { font-size: 12px; letter-spacing: 0.16em; color: var(--color-accent); }
 /* Desktop-only parts of the action button (see the desktop block further down). */
@@ -206,6 +222,7 @@ svg { flex: none; }
   font-weight: 600; font-size: 15px; text-decoration: none; text-align: center;
 }
 .btn-cta { border: 0; background: var(--color-accent); color: var(--color-on-accent); }
+.btn-cta { transition: filter var(--motion-press) var(--ease-standard); }
 .btn-cta:active { filter: brightness(0.92); }
 .btn-cta:disabled { opacity: 0.5; }
 .btn-acc { border: 1.5px solid var(--color-accent); background: none; color: var(--color-accent); min-height: 44px; }
@@ -214,6 +231,7 @@ svg { flex: none; }
 .btn-ghost.small { min-height: 36px; font-size: var(--type-sm); }
 .btn-ghost:disabled, .btn-acc:disabled, .btn-outline:disabled { opacity: 0.4; }
 .btn-outline { border: 1px solid var(--color-border); background: none; color: var(--color-text); }
+.btn-outline { transition: opacity var(--motion-press) var(--ease-standard); }
 .btn-outline:active { opacity: 0.6; }
 .btn-block { width: 100%; }
 /* The main action in red beside the second one, outlined: equal halves. */
@@ -314,6 +332,7 @@ svg { flex: none; }
 .day-dot.next { border-bottom: 3px solid var(--color-accent); }
 .up-next { font-size: 14px; font-weight: 700; letter-spacing: var(--label-tracking); text-transform: var(--label-case); color: var(--color-accent); }
 .up-next.other { color: var(--color-text-muted); }
+.up-next.held { visibility: hidden; }
 .day-dot.live { box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent); }
 .swipe-area { touch-action: pan-y; }
 
@@ -734,7 +753,10 @@ button.setting:disabled { opacity: 0.4; }
   background: var(--color-accent); color: var(--color-on-accent);
   box-shadow: 0 0 0 3px var(--color-bg);
   transition: transform 0.15s var(--ease-standard);
+  /* It comes with the running clock: out of nothing, not at once. */
+  animation: dial-side-in var(--motion-state) var(--ease-standard);
 }
+@keyframes dial-side-in { from { transform: scale(0); opacity: 0; } }
 .dial-side svg { width: 20px; height: 20px; }
 .dial-side:active { transform: scale(0.92); }
 /* Desktop: the main action is an ordinary button in the navigation rail, under the tabs (Dial
@@ -745,15 +767,16 @@ button.setting:disabled { opacity: 0.4; }
   .rail-action { display: block; margin-top: var(--space-4); }
   .dial-dock { position: static; display: block; pointer-events: auto; }
   .dial-wrap { flex-direction: column; gap: var(--space-2); }
-  .dial-short { display: none; }
+  .dial-short, .dial-running .dial-long { display: none; }
   .dial-long, .dial-side-text { display: inline; }
-  .dial { width: 100%; height: auto; min-height: 50px; padding: 0 var(--space-3); border-radius: var(--radius-pill); font-family: var(--font-body); font-size: 15px; letter-spacing: 0; box-shadow: none; }
+  .dial { width: 100%; height: auto; min-height: 50px; padding: 0 var(--space-3); border-radius: var(--radius-pill); font-family: var(--font-body); font-size: 15px; letter-spacing: 0; box-shadow: none; scale: none; }
   .dial:active { transform: none; filter: brightness(0.92); }
-  .dial-running { width: 100%; height: auto; padding: 12px var(--space-3); }
-  .dial-inner { border-radius: 0; background: none; color: inherit; gap: 0; }
+  .dial-running { padding: 12px var(--space-3); }
+  .dial-inner { display: none; position: static; border-radius: 0; background: none; color: inherit; gap: 0; transform: none; opacity: 1; transition: none; }
+  .dial-running .dial-inner { display: flex; }
   .dial-sub { color: inherit; }
   .dial-paused .dial-inner { color: var(--color-text); }
-  .dial-side { position: static; width: 100%; height: 44px; gap: var(--space-2); border-radius: var(--radius-pill); border: 1px solid var(--color-border); background: none; color: var(--color-text); box-shadow: none; font-size: 15px; font-weight: 600; }
+  .dial-side { animation: none; position: static; width: 100%; height: 44px; gap: var(--space-2); border-radius: var(--radius-pill); border: 1px solid var(--color-border); background: none; color: var(--color-text); box-shadow: none; font-size: 15px; font-weight: 600; }
   .dial-side svg { width: 16px; height: 16px; }
   .dial-side:active { transform: none; opacity: 0.6; }
 }

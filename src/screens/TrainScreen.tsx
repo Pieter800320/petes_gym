@@ -152,7 +152,8 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
   const { main, extra } = splitDayTitle(session.title, index)
   const minutes = estimateSessionMin(session)
   // Which day is due, on a line of its own: red when this is it, grey with its number when another day is open.
-  const nextNote = running || loading ? null : index === upNext ? <span className="up-next">Up next</span> : <span className="up-next other">Up next: day {upNext + 1}</span>
+  // During a session the line keeps its place, empty: the page below must not jump at Start and Finish.
+  const nextNote = loading ? null : running ? <span className="up-next held" aria-hidden="true">Up next</span> : index === upNext ? <span className="up-next">Up next</span> : <span className="up-next other">Up next: day {upNext + 1}</span>
 
   function finish() {
     if (!user || !running) return

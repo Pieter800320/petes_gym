@@ -89,6 +89,8 @@
   --motion-wait: 60ms;            /* the new page starts this long after the old one began to leave */
   --motion-arrive: 220ms;
   --motion-shift: 28px;           /* how far a page travels sideways */
+  --motion-press: 120ms;          /* something dims or gives under the finger */
+  --motion-state: 260ms;          /* the dial changing between START and the running clock */
   --motion-open: 300ms;           /* an exercise or a progression opening under its line */
   --motion-close: 220ms;          /* and closing again */
   /* The start frame (app.css .splash): the manifest's background colour, and the icon's size and
@@ -107,6 +109,8 @@
   --gutter: 24px;
   /* The round action button sits at one fixed height on every tab. */
   --dial-size: 96px;
+  --dial-clock-size: 112px;       /* the dial as a running session's clock */
+  --dial-rest-scale: 0.857;       /* --dial-size / --dial-clock-size: how the dial is drawn as a plain action */
   --dial-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 10px);
 
   color-scheme: dark;

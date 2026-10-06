@@ -60,7 +60,9 @@ function CreateHome() {
   const { data: programmes, loading } = useProgrammes('all')
   const { data: clients } = useClients()
   const [pickOpen, setPickOpen] = useState(false)
-  const drafts = programmes.filter((p) => p.status === 'draft')
+  /** The draft made a moment ago with NEW: its page is opening, so it isn't added to this list behind the closing sheet first. */
+  const [justMade, setJustMade] = useState<string | null>(null)
+  const drafts = programmes.filter((p) => p.status === 'draft' && p.id !== justMade)
   const clientName = (id: string) => clients.find((c) => c.id === id)?.name ?? ''
 
   // Tapping the Create tab reopens the programme Pete was working on. Coming back to this page
@@ -80,6 +82,7 @@ function CreateHome() {
   function start(client: Client) {
     if (!user) return
     const id = createProgramme(user.uid, blankProgramme(client.id, { frequency: client.frequency, sessionLength: client.sessionLength, goal: client.goals }))
+    setJustMade(id)
     setPickOpen(false)
     // A blank programme opens ready to be typed in.
     navigate(draftPath(id), CLAUDE_IN_APP ? undefined : { state: { edit: true } })
