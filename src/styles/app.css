@@ -354,24 +354,14 @@ svg { flex: none; }
 .ex-dots { flex: 1; min-width: 12px; border-bottom: 1px dotted var(--leader-color); transform: translateY(-4px); }
 .ex-rx { flex: none; white-space: nowrap; font-size: 14px; font-weight: 600; }
 .ex-rx.changed { color: var(--color-accent); font-weight: 500; }
-/* Open, and still while its card is closing (:has), so the panel keeps its ground until it is shut. */
-.ex { transition: margin-top var(--motion-close) var(--ease-standard), margin-bottom var(--motion-close) var(--ease-standard); }
-.ex.open, .ex:has(> .drop.closing) { margin: 6px -12px; padding: 0 12px; background: var(--color-surface); }
-.ex .drop-in { padding-bottom: 16px; }
-/* What opens under a line (Drop in DayList.tsx: an exercise's card, a progression's table) grows
-   to its own height instead of appearing at once. The row's track goes from nothing to its
-   content's height; the content is cut off at the edge only while it grows, so nothing that
-   reaches outside it (focus rings, the wide action row) is clipped afterwards. */
-.drop { display: grid; grid-template-columns: minmax(0, 1fr); animation: drop-open var(--motion-open) var(--ease-standard); }
-.drop-in { min-height: 0; animation: drop-clip var(--motion-open) step-end; }
-/* Closing is the same movement backwards, a little quicker; the content is gone when it ends. */
-.drop.closing { animation: drop-close var(--motion-close) var(--ease-standard) forwards; }
-.drop.closing .drop-in { overflow-y: clip; animation: none; }
-@keyframes drop-open { from { grid-template-rows: 0fr; opacity: 0; } to { grid-template-rows: 1fr; opacity: 1; } }
-@keyframes drop-close { from { grid-template-rows: 1fr; opacity: 1; } to { grid-template-rows: 0fr; opacity: 0; } }
-@keyframes drop-clip { from { overflow-y: clip; } }
-.ex.open .ex-line, .ex:has(> .drop.closing) .ex-line { border-bottom: 0; }
-.ex.open .ex-name { font-weight: 600; }
+/* Open: a panel from the line through its card. It is styled by its card being there (:has), so
+   it keeps its ground while the card closes. How it opens and closes: components/Drop.tsx. */
+.ex:has(> .drop) { margin: 0 -12px; padding: 0 12px; background: var(--color-surface); }
+.ex > .drop { padding-bottom: 16px; }
+/* flow-root: the content's own margins count towards the panel's height, which the movement uses. */
+.drop { display: flow-root; }
+.ex:has(> .drop) .ex-line { border-bottom: 0; }
+.ex:has(> .drop) .ex-name { font-weight: 600; }
 .ex.mark-claude:not(.open) .ex-line { margin: 0 -8px; padding-left: 8px; padding-right: 8px; width: calc(100% + 16px); background: var(--color-accent-wash); box-shadow: inset 3px 0 0 var(--color-accent); }
 .ex.mark-mine:not(.open) .ex-line { margin: 0 -8px; padding-left: 8px; padding-right: 8px; width: calc(100% + 16px); box-shadow: inset 3px 0 0 var(--color-accent-2); }
 .ex-card { display: flex; flex-direction: column; gap: 14px; }
@@ -393,7 +383,7 @@ svg { flex: none; }
 .block-line { margin-top: var(--space-2); border-top: 1px dashed var(--color-border); }
 .block-line .ex-name { color: var(--color-accent-2); }
 /* An open progression: a blue panel under its line, like the progression blocks in the exports. */
-.block-line.open .ex-line, .block-line:has(> .drop.closing) .ex-line { border-bottom: 0; }
+.block-line:has(> .drop) .ex-line { border-bottom: 0; }
 .block-body { container-type: inline-size; display: flex; flex-direction: column; gap: 14px; margin-bottom: var(--space-2); padding: 16px 16px 8px; background: var(--color-accent-2-wash); border-top: 3px solid var(--color-accent-2); font-size: var(--type-sm); }
 .block-rule { margin: 0; max-width: 62ch; line-height: 1.45; color: var(--color-text-muted); }
 .block-table { width: 100%; border-collapse: collapse; }

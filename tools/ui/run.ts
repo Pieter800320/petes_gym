@@ -34,7 +34,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // ── What runs inside the page ────────────────────────────────────────
 const RECORDER = `(() => {
-  const rec = (window.__rec = { states: [], shifts: [], marks: [] })
+  const rec = (window.__rec = { states: [], shifts: [], marks: [], ticks: [] })
   const describe = (node) => {
     const el = node && (node.nodeType === 1 ? node : node.parentElement)
     if (!el) return '?'
@@ -51,7 +51,8 @@ const RECORDER = `(() => {
     }
   }).observe({ type: 'layout-shift', buffered: true })
   let last = null
-  const tick = () => {
+  const tick = (now) => {
+    rec.ticks.push(Math.round(now * 10) / 10)
     if (document.body) {
       const bg = getComputedStyle(document.body).backgroundColor
       const text = (document.body.innerText || '').replace(/\\s+/g, ' ').trim()
@@ -62,7 +63,7 @@ const RECORDER = `(() => {
     }
     requestAnimationFrame(tick)
   }
-  tick()
+  requestAnimationFrame(tick)
 })()`
 
 // ── A small Chrome DevTools client ───────────────────────────────────
@@ -179,6 +180,16 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Close it', run: click('.ex-line'), waitMs: 600 },
     ],
   },
+  // Train: with one exercise open, another is tapped: the first closes while the second opens.
+  'switch-card': {
+    start: '/train',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'Open the first exercise', run: click('.ex-line'), waitMs: 700 },
+      { label: 'Open the third', run: `document.querySelectorAll('.ex-line')[2].click()`, waitMs: 800 },
+    ],
+  },
   // From a list scrolled down: into a client near the bottom, and back to the same place.
   scrolled: {
     start: '/clients',
@@ -188,6 +199,17 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Scroll down', run: 'window.scrollTo(0, 700)', waitMs: 400 },
       { label: 'Open a client', run: click('a.line-link[href="#/clients/c15"]'), waitMs: 900 },
       { label: 'Back to the list', run: 'history.back()', waitMs: 900 },
+    ],
+  },
+  // A client far down the list whose own page is long: in, scroll their page, and Back.
+  'tall-back': {
+    start: '/clients',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'Scroll the list down', run: 'window.scrollTo(0, 900)', waitMs: 400 },
+      { label: 'Open the client', run: click('a.line-link[href="#/clients/c18"]'), waitMs: 900 },
+      { label: 'Back', run: 'history.back()', waitMs: 900 },
     ],
   },
   // A page opened the moment the app is up, before the other screens were fetched in the background.
@@ -217,6 +239,8 @@ interface Recording {
   states: { t: number; bg: string; chars: number; text: string }[]
   shifts: { t: number; value: number; sources: { node: string; fromY: number; toY: number; fromH: number; toH: number }[] }[]
   marks: { t: number; label: string }[]
+  /** When each frame was drawn (ms), to see how evenly a movement ran. */
+  ticks: number[]
 }
 
 async function record(chrome: Chrome, name: string, scenario: Scenario): Promise<Recording & { frames: number }> {
@@ -260,6 +284,13 @@ function summarise(name: string, r: Recording & { frames: number }) {
     ...r.states.map((s) => ({ t: s.t, line: `state  ${s.bg.replace(/\s/g, '')}  ${s.chars} chars  ${s.text.slice(0, 90)}` })),
     ...r.shifts.map((s) => ({ t: s.t, line: `SHIFT  ${s.value}  ${s.sources.map((x) => `${x.node} y ${x.fromY}→${x.toY}`).join(' | ')}` })),
   ].sort((a, b) => a.t - b.t)
+  // How evenly the half second after each step was drawn: a smooth movement has no long gaps.
+  for (const m of r.marks) {
+    const times = r.ticks.filter((f) => f >= m.t && f <= m.t + 500)
+    const gaps = times.slice(1).map((f, i) => f - times[i])
+    if (gaps.length) events.push({ t: m.t, line: `   frames after "${m.label}": ${gaps.length} drawn, longest gap ${Math.round(Math.max(...gaps))} ms, ${gaps.filter((g) => g > 34).length} gaps over 34 ms` })
+  }
+  events.sort((a, b) => a.t - b.t)
   for (const e of events) console.log(`${String(e.t).padStart(6)} ms  ${e.line}`)
 }
 

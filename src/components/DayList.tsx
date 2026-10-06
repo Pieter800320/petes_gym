@@ -8,7 +8,8 @@
  *           name to add an exercise (changes stick to the programme)
  *   edit  — the same card as train, plus alternative, superset, move, delete, section and day titles
  */
-import { memo, useRef, useState, type ReactNode } from 'react'
+import { memo, useRef, useState } from 'react'
+import { Drop } from './Drop'
 import { AutoTextarea } from './AutoTextarea'
 import { ConfirmButton } from './ConfirmButton'
 import { ExercisePicker } from './ExercisePicker'
@@ -393,28 +394,6 @@ const MAX_COLUMNS_SIDE_BY_SIDE = 3
  * week-by-week table, the same look as in the exports. Wide tables turn into one block per row on
  * a phone, each value beside its column name, instead of five squeezed columns.
  */
-/**
- * What opens under a line (an exercise's card, a progression's table): it grows to its height
- * instead of appearing at once, and shrinks away again; the content stays until it has closed
- * (app.css ".drop").
- */
-function Drop({ open, children }: { open: boolean; children: ReactNode }) {
-  const [present, setPresent] = useState(open)
-  if (open && !present) setPresent(true)
-  if (!present) return null
-  return (
-    <div
-      className={`drop${open ? '' : ' closing'}`}
-      onAnimationEnd={(e) => {
-        // Its own closing has ended (not an animation of something inside it).
-        if (!open && e.target === e.currentTarget) setPresent(false)
-      }}
-    >
-      <div className="drop-in">{children}</div>
-    </div>
-  )
-}
-
 function BlockLine({ block: b, open, onToggle, fallbackTitle = 'Progression' }: { block: ProgressionBlock; open: boolean; onToggle: () => void; fallbackTitle?: string }) {
   const stacks = b.columns.length > MAX_COLUMNS_SIDE_BY_SIDE
   return (

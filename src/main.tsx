@@ -34,6 +34,11 @@ setTimeout(() => {
   }
 }, CHUNK_RELOAD_RESET_MS)
 
+// Scroll positions are ours to restore (useScrollMemory in App.tsx), when the page stepped back to
+// is on screen. Left to the browser, Back scrolled the page still on screen: the page being left
+// jumped to wherever the list behind it had been.
+if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'
+
 installTapHaptics()
 
 // HashRouter: GitHub Pages has no server-side rewrites, so /#/clients/abc survives a reload.
