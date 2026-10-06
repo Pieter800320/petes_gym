@@ -318,12 +318,14 @@ unchanged (its Create chat stays, dormant). How to work is in `.claude/skills/pr
   `firestore.rules`. Never copy it into the repo, print it or read it.
 - `read.ts` reads; `draft.ts` creates one new programme, always as a draft; `change.ts` changes
   one programme's content and can undo its last change (before-states in `~/.petesgym/undo`).
-  Nothing else writes. Weights and private notes are never shown to Claude and survive a change
-  by the 0.9.50 rule.
-- `shape.ts` and `db.ts` repeat four small rules of the app (`newId`, `exerciseKey`, the library
-  link, the `[{cells}]` table encoding) because the app's files don't load in plain Node. Change
-  one, change both.
+  `translate.ts` fills a programme's German cache (`translationsDe`), so the export sheet finds
+  every string and makes no API call. Nothing else writes. Weights and private notes are never
+  shown to Claude and survive a change by the 0.9.50 rule.
+- `shape.ts`, `db.ts` and `translate.ts` repeat five small rules of the app (`newId`,
+  `exerciseKey`, the library link, the `[{cells}]` table encoding, `clientFacingStrings`) because
+  the app's files don't load in plain Node. Change one, change both.
 - Checked on 2026-10-06 against the real database: `node selftest.ts` (16 checks: change, weight
   and note rule, stale file refused, undo, undo refused after an edit in the app). Open: the
-  privacy point at the top of the skill file; translations, profile updates and imports are not
-  built here yet.
+  privacy point at the top of the skill file; profile updates and imports are not built here
+  yet. The German cache was filled for one programme (158 strings); the export with it is not
+  yet seen in the app.

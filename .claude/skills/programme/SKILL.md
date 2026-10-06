@@ -87,11 +87,29 @@ prefer "Build next block" in the app (a draft copy) for anything larger than a f
 - The personal note is Pete's. Leave it alone unless he asks for a draft.
 - Programme structure is free: no fixed phases or section names.
 
+## German for the export
+
+The export sheet asks Claude only for strings the programme's cache (`translationsDe`) lacks. Fill
+the cache from here and "Translate & prepare" works in the app without an API call.
+
+1. `node translate.ts missing <id>` into a scratchpad file: the strings still without German.
+2. Translate them by the rules of `src/claude/translate.ts`: natural German coaching language with
+   "du", as short as the English; exercise names and gym terms German gym-goers use in English
+   stay unchanged (an alternative that is an exercise name is saved as itself); numbers, ranges,
+   units and notation exactly as they are; `/side` → `/Seite`, `/leg` → `/Bein`, `/arm` → `/Arm`,
+   `reps` → `Wdh.`, `min` → `Min.`
+3. Write `[{ "src": …, "de": … }]` with every `src` copied exactly, and check before saving that
+   the numbers in each pair match.
+4. `node translate.ts save <id> <pairs.json>` checks, `--write` saves.
+
+Do this again after any change to the programme's text, and tell Pieter: a string he edits or adds
+in the app afterwards (his personal note, the goal in the export sheet) has no German until then,
+and the app will then try the API.
+
 ## Not built yet
 
-German translations into the programme's cache, profile updates from Pete's notes, importing old
-programmes (Word/PDF/photos). Until they exist, those still run in the app (which needs API
-credits) or wait.
+Profile updates from Pete's notes, importing old programmes (Word/PDF/photos). Until they exist,
+those still run in the app (which needs API credits) or wait.
 
 ## Checking the tools
 
