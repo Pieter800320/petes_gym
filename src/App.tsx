@@ -1,5 +1,5 @@
 import { Suspense, createElement, use, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react'
-import { NavLink, Navigate, Route, Routes, matchPath, useLocation, useMatch, useNavigationType } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, matchPath, useLocation, useMatch, useNavigationType, type Location } from 'react-router-dom'
 import { useAuth } from './auth/useAuth'
 import { isFirebaseConfigured } from './firebase'
 import { OWNER_EMAIL } from './firebaseConfig'
@@ -20,6 +20,7 @@ import { TrainScreen } from './screens/TrainScreen'
 import { recordCost, useProgramme } from './data/store'
 import { setCostSink } from './claude/cost'
 import { recordPath } from './util/navHistory'
+import { useShownLocation } from './util/pageTransition'
 import { useTheme } from './settings'
 
 // Loaded when first opened, so the daily path (Train, Clients) and a client's questionnaire don't
@@ -71,6 +72,7 @@ const TABS = [
   { to: '/create', label: 'Create' },
   { to: '/clients', label: 'Clients' },
 ]
+const TAB_PATHS = TABS.map((t) => t.to)
 
 /** The lazily loaded screens the page at this address needs. */
 function screensFor(pathname: string): { load: () => Promise<unknown> }[] {
@@ -80,6 +82,12 @@ function screensFor(pathname: string): { load: () => Promise<unknown> }[] {
   if (pathname.startsWith('/notes')) return [screens.NotesScreen]
   if (pathname.startsWith('/deleted')) return [screens.DeletedScreen]
   return []
+}
+
+/** Fetches the code of the page at this address; null when there is nothing to fetch. */
+function loadScreensFor(pathname: string): Promise<unknown> | null {
+  const needed = screensFor(pathname)
+  return needed.length ? Promise.all(needed.map((screen) => screen.load())) : null
 }
 
 /** Every weight of the app's family (styles/fonts.css) is loaded: text is then drawn once, not weight by weight. */
@@ -155,9 +163,11 @@ export default function App() {
   return <Shell />
 }
 
-/** New pages open at the top; Back returns to where you were on the page you left. */
-function useScrollMemory() {
-  const location = useLocation()
+/**
+ * New pages open at the top; Back returns to where you were on the page you left.
+ * location is the page on screen (useShownLocation), so the old page isn't scrolled while it is still shown.
+ */
+function useScrollMemory(location: Location) {
   const navType = useNavigationType()
   const positions = useRef(new Map<string, number>())
   useLayoutEffect(() => {
@@ -198,7 +208,9 @@ function Shell() {
     setCostSink((kind, usd) => recordCost(uid, kind, usd))
     return () => setCostSink(null)
   }, [user])
-  useScrollMemory()
+  // The page on screen: it follows the address inside a view transition (util/pageTransition.ts).
+  const shown = useShownLocation(TAB_PATHS, loadScreensFor)
+  useScrollMemory(shown)
 
   // Fetch the other screens once the first one is up, so opening them never waits.
   useEffect(() => {
@@ -260,7 +272,7 @@ function Shell() {
         {/* A screen's code is fetched in the background just after start; should one still be on its
             way, the page stays empty for that moment rather than flashing a word. */}
         <Suspense fallback={null}>
-        <Routes>
+        <Routes location={shown}>
           <Route path="/" element={<Navigate to="/train" replace />} />
           <Route path="/train" element={<TrainScreen />} />
           <Route path="/train/live" element={<Navigate to="/train" replace />} />

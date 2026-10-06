@@ -104,6 +104,36 @@ svg { flex: none; }
   .shell-main { padding-top: var(--space-5); padding-bottom: var(--space-6); }
 }
 
+/* ── Page changes ─────────────────────────────────────────────────── */
+/* The page changes inside a view transition (util/pageTransition.ts). Three parts are pictured
+   apart: the page moves, the navigation stays exactly where it is, and the dial changes its
+   word in place instead of travelling with the page. */
+.shell-main { view-transition-name: page; }
+.nav { view-transition-name: nav; }
+.dial-dock { view-transition-name: dial; }
+
+::view-transition-group(*) { animation-duration: var(--motion-arrive); animation-timing-function: var(--ease-arrive); }
+::view-transition-old(*), ::view-transition-new(*) { mix-blend-mode: normal; }
+/* The navigation: no cross-fade, the new picture simply stands there. */
+::view-transition-old(nav) { display: none; }
+::view-transition-new(nav) { animation: none; }
+/* The old page leaves quickly and the new one arrives after it, so two texts never lie over each other. */
+::view-transition-old(page), ::view-transition-old(dial) { animation: page-leave var(--motion-leave) var(--ease-standard) both; }
+::view-transition-new(page), ::view-transition-new(dial) { animation: page-arrive var(--motion-arrive) var(--ease-arrive) var(--motion-wait) both; }
+/* Opened from another page: in from the right. Back: in from the left. Between tabs: the fade alone. */
+:root[data-nav="forward"]::view-transition-old(page) { animation-name: page-leave-left; }
+:root[data-nav="forward"]::view-transition-new(page) { animation-name: page-arrive-from-right; }
+:root[data-nav="back"]::view-transition-old(page) { animation-name: page-leave-right; }
+:root[data-nav="back"]::view-transition-new(page) { animation-name: page-arrive-from-left; }
+@keyframes page-leave { to { opacity: 0; } }
+@keyframes page-arrive { from { opacity: 0; } }
+@keyframes page-leave-left { to { opacity: 0; transform: translateX(calc(var(--motion-shift) * -0.5)); } }
+@keyframes page-leave-right { to { opacity: 0; transform: translateX(calc(var(--motion-shift) * 0.5)); } }
+@keyframes page-arrive-from-right { from { opacity: 0; transform: translateX(var(--motion-shift)); } }
+@keyframes page-arrive-from-left { from { opacity: 0; transform: translateX(calc(var(--motion-shift) * -1)); } }
+/* The first screen after the start frame fades in the same way. */
+.shell:not(.splash) > .shell-main, .shell:not(.splash) > .nav > * { animation: page-arrive var(--motion-arrive) var(--ease-arrive) both; }
+
 /* ── Top bar, headings ────────────────────────────────────────────── */
 .topbar { display: flex; align-items: center; justify-content: space-between; min-height: 48px; gap: var(--space-2); }
 .overline { font-family: var(--font-mono); font-size: 12px; letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--color-text-muted); }

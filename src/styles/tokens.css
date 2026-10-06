@@ -83,6 +83,12 @@
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   /* Sheets: fast start, long soft landing, like native bottom sheets. */
   --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Page changes (app.css): the old page leaves quickly, the new one arrives and settles. */
+  --ease-arrive: cubic-bezier(0.2, 0, 0, 1);
+  --motion-leave: 100ms;
+  --motion-wait: 60ms;            /* the new page starts this long after the old one began to leave */
+  --motion-arrive: 220ms;
+  --motion-shift: 28px;           /* how far a page travels sideways */
 
   /* Layout */
   --nav-height: 72px;

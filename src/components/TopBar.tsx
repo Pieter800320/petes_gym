@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { IconBack, IconPen, IconSettings } from './Icons'
 import { openNote, openSettings } from './noteEvents'
 import { haptic } from '../haptics'
@@ -22,8 +22,20 @@ export function TopBar({ overline, back, actions, noteClientId }: TopBarProps) {
   const navigate = useNavigate()
   // The arrow goes to the previous screen, wherever that was; `back.to` is only where it leads when
   // there is none (the app was opened on this page). A link with state always opens its own target.
-  const stepsBack = Boolean(back) && !back?.state && canGoBack()
-  const label = back && stepsBack && !previousIs(back.to) ? 'Back' : back?.label
+  // Worked out once per page, not on every render: while the next page is on its way in
+  // (util/pageTransition.ts) the history already points at it, and this page must not change its arrow.
+  const { key } = useLocation()
+  const hasBack = Boolean(back)
+  const hasState = Boolean(back?.state)
+  const above = back?.to
+  const readHistory = () => {
+    const steps = hasBack && !hasState && canGoBack()
+    return { key, hasBack, hasState, above, stepsBack: steps, fromElsewhere: steps && !previousIs(above ?? '') }
+  }
+  const [history, setHistory] = useState(readHistory)
+  if (history.key !== key || history.hasBack !== hasBack || history.hasState !== hasState || history.above !== above) setHistory(readHistory())
+  const { stepsBack, fromElsewhere } = history
+  const label = back && fromElsewhere ? 'Back' : back?.label
   return (
     <div className="topbar">
       {back ? (
