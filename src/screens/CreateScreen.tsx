@@ -14,6 +14,7 @@ import { useAuth } from '../auth/useAuth'
 import { describeClaudeError, formatUsd } from '../claude/client'
 import { CHAT_DOC_WARN_BYTES, archiveAndResetChat, chatCost, chatDocBytes, clearUndo, clientHistoryText, parseHistory, recordTurn, runTurn, toDisplay, useChat, type ChatDoc, type DisplayItem } from '../claude/chat'
 import { ACCEPTED_FILES, extractText } from '../claude/extract'
+import { CLAUDE_IN_APP, draftPath } from '../claude/inApp'
 import { usePlaybook } from '../claude/playbook'
 import { changedRowIds, describeEdits } from '../claude/programmeTools'
 import { checkProgramme } from '../data/health'
@@ -36,7 +37,9 @@ function untoldEdits(p: Programme): string {
 
 export function CreateScreen() {
   const { id } = useParams()
-  return id ? <Workspace id={id} /> : <CreateHome />
+  if (!id) return <CreateHome />
+  // Without the chat a programme has one page: its own.
+  return CLAUDE_IN_APP ? <Workspace id={id} /> : <Navigate to={`/programmes/${id}`} replace />
 }
 
 function relativeDay(ms: number): string {
@@ -47,7 +50,7 @@ function relativeDay(ms: number): string {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 }
 
-// ── Home: what's in progress, the library, and NEW ───────────────────
+// ── Home: the drafts, the library, and NEW ──────────────────────────
 
 function CreateHome() {
   const { user } = useAuth()
@@ -78,23 +81,24 @@ function CreateHome() {
     if (!user) return
     const id = createProgramme(user.uid, blankProgramme(client.id, { frequency: client.frequency, sessionLength: client.sessionLength, goal: client.goals }))
     setPickOpen(false)
-    navigate(`/create/${id}`)
+    // A blank programme opens ready to be typed in.
+    navigate(draftPath(id), CLAUDE_IN_APP ? undefined : { state: { edit: true } })
   }
 
-  if (!stay && last) return <Navigate to={`/create/${last}`} replace state={{ fromTab: true }} />
+  if (CLAUDE_IN_APP && !stay && last) return <Navigate to={`/create/${last}`} replace state={{ fromTab: true }} />
 
   return (
     <div className="screen has-dial">
-      <TopBar overline="WITH CLAUDE" />
+      <TopBar overline={CLAUDE_IN_APP ? 'WITH CLAUDE' : undefined} />
       <BigTitle text="Create" />
 
-      {!getApiKey() && <p className="lead">Add your Anthropic API key first: Settings (the gear at the top right).</p>}
+      {CLAUDE_IN_APP && !getApiKey() && <p className="lead">Add your Anthropic API key first: Settings (the gear at the top right).</p>}
 
-      <div className="section-label">In progress</div>
+      <div className="section-label">{CLAUDE_IN_APP ? 'In progress' : 'Drafts'}</div>
       <div className="lines">
         {drafts.map((p) => (
           <SwipeRow key={p.id} onDelete={() => removeDraft(p.id)}>
-            <Link to={`/create/${p.id}`} className="line-link">
+            <Link to={draftPath(p.id)} className="line-link">
               <span className="grow">
                 <span className="line-title">{clientName(p.clientId)}</span>
                 <span className="line-meta">{p.title}</span>
@@ -103,8 +107,9 @@ function CreateHome() {
             </Link>
           </SwipeRow>
         ))}
-        {!loading && !drafts.length && <p className="muted small lines-empty">Nothing in progress. Tap NEW to start a programme.</p>}
+        {!loading && !drafts.length && <p className="muted small lines-empty">{CLAUDE_IN_APP ? 'Nothing in progress. Tap NEW to start a programme.' : 'No drafts. Tap NEW to write one yourself; programmes built in Claude Code on the PC appear here too.'}</p>}
       </div>
+      {drafts.length > 0 && !CLAUDE_IN_APP && <p className="muted small" style={{ margin: 0 }}>Open a draft to check it, change it, and make it current.</p>}
       {drafts.length > 0 && <p className="muted small" style={{ margin: 0 }}><span className="swipe-hint-touch">Swipe a draft to the left to delete it.</span><span className="swipe-hint-pointer">Point at a draft and click the bin to delete it.</span></p>}
 
       <div className="section-label">Exercise library</div>

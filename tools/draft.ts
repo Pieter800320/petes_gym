@@ -1,12 +1,17 @@
 /*
- * Creates ONE new programme as a draft from a JSON file. It changes nothing that exists.
+ * Creates ONE new programme from a JSON file: a draft, or an old programme for the archive.
+ * It changes nothing that exists.
  *
  *   node draft.ts <file.json>            checks the file and prints a summary; writes nothing
  *   node draft.ts <file.json> --write    also saves it, as a draft
  *
  * The file holds a programme without ids (see Spec below). Ids are made here, exercise names
- * are linked to the library the way the app does it, and the status is always "draft": Pete
- * makes a programme current himself, in the app.
+ * are linked to the library the way the app does it, and the status is "draft": Pete makes a
+ * programme current himself, in the app.
+ *
+ * An old programme converted from a document is saved with "status": "archived" in the file,
+ * and may carry "createdAt" ("2025-03-14", the document's date, so it sorts into the history)
+ * and "personalNote" (the document's message to the client, word for word). Never "active".
  */
 import { readFileSync } from 'node:fs'
 import { userCollection } from './db.ts'
@@ -25,6 +30,10 @@ interface Spec {
   durationWeeks: number | null
   successMarkers: string[]
   coachNotes: string
+  /** Only for an old programme going into the archive. */
+  status?: 'archived'
+  createdAt?: string
+  personalNote?: string
   progression: SpecBlock | null
   sessions: {
     title: string
@@ -39,6 +48,11 @@ if (!file) throw new Error('Which file? node draft.ts <file.json> [--write]')
 const spec = JSON.parse(readFileSync(file, 'utf8')) as Spec
 
 const problems: string[] = []
+if (spec.status !== undefined && spec.status !== 'archived') problems.push('status: only "archived" may be given; anything else is saved as a draft and made current in the app')
+const archived = spec.status === 'archived'
+const createdAt = spec.createdAt ? Date.parse(spec.createdAt) : Date.now()
+if (Number.isNaN(createdAt) || createdAt > Date.now()) problems.push(`createdAt: "${spec.createdAt}" is not a past date like 2025-03-14`)
+if ((spec.createdAt || spec.personalNote) && !archived) problems.push('createdAt and personalNote are only for an old programme (status "archived")')
 const text = (value: unknown, where: string) => {
   if (typeof value !== 'string') problems.push(`${where}: not a text`)
   return typeof value === 'string' ? value : ''
@@ -55,13 +69,13 @@ function block(b: SpecBlock, where: string): ProgressionBlock {
 const programme: ProgrammeDraft = {
   clientId: text(spec.clientId, 'clientId'),
   title: text(spec.title, 'title'),
-  status: 'draft',
+  status: archived ? 'archived' : 'draft',
   goal: text(spec.goal, 'goal'),
   frequency: text(spec.frequency, 'frequency'),
   sessionLength: text(spec.sessionLength, 'sessionLength'),
   durationWeeks: spec.durationWeeks ?? null,
   startDate: null,
-  personalNote: '',
+  personalNote: archived ? (spec.personalNote ?? '') : '',
   successMarkers: spec.successMarkers ?? [],
   coachNotes: text(spec.coachNotes, 'coachNotes'),
   parentId: null,
@@ -111,6 +125,7 @@ console.log(
   JSON.stringify(
     {
       title: programme.title,
+      status: programme.status,
       days: programme.sessions.map((s) => `${s.title}: ${s.sections.reduce((n, sec) => n + sec.rows.length, 0)} exercises`),
       notInLibrary: [...new Set(rows.filter((r) => !r.exerciseKey).map((r) => r.name))],
       withoutCue: rows.filter((r) => !r.notes).map((r) => r.name),
@@ -122,10 +137,10 @@ console.log(
 )
 
 if (flag === '--write') {
-  const now = Date.now()
+  // An old programme is dated by its document, like the app's importer does it.
   const ref = userCollection('programmes').doc()
-  await ref.create({ ...programme, ...encodeTables(programme), createdAt: now, updatedAt: now })
-  console.log(`Saved as a draft: ${ref.id}`)
+  await ref.create({ ...programme, ...encodeTables(programme), createdAt, updatedAt: createdAt })
+  console.log(`Saved as ${archived ? 'an archived programme' : 'a draft'}: ${ref.id}`)
 } else {
-  console.log('Checked only; nothing was written. Add --write to save it as a draft.')
+  console.log('Checked only; nothing was written. Add --write to save it.')
 }

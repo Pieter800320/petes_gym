@@ -12,14 +12,15 @@
  */
 import { readFileSync } from 'node:fs'
 import { decodeProgramme, userCollection } from './db.ts'
-import type { Programme, TranslationPair } from '../src/data/types.ts'
+import type { Client, Programme, TranslationPair } from '../src/data/types.ts'
 
 /**
  * The strings the export translates: clientFacingStrings in src/claude/translate.ts plus the two
  * the export sheet adds (ExportSheet.tsx, germanText). Exercise names stay as in the library.
+ * Where the programme has no goal, frequency or session length, the sheet starts from the client's.
  */
-function wantedStrings(p: Programme): string[] {
-  const out: string[] = [p.title, p.goal, p.personalNote, ...p.successMarkers]
+function wantedStrings(p: Programme, client: Partial<Client>): string[] {
+  const out: string[] = [p.title, p.goal || client.goals || '', p.personalNote, ...p.successMarkers]
   const block = (b: Programme['progression']) => {
     if (b) out.push(b.title, b.rule, ...b.columns, ...b.rows.flat())
   }
@@ -34,7 +35,7 @@ function wantedStrings(p: Programme): string[] {
   }
   // Only strings with letters need translating ("3 × 8", "90s" pass through unchanged).
   const text = [...new Set(out.map((s) => s.trim()).filter((s) => /[a-zA-Z]{2,}/.test(s) && !/^\d+\s*s$/.test(s)))]
-  return text.concat([p.frequency, p.sessionLength].filter(Boolean))
+  return text.concat([p.frequency || client.frequency || '', p.sessionLength || client.sessionLength || ''].filter(Boolean))
 }
 
 const [command, id, file, flag] = process.argv.slice(2)
@@ -47,7 +48,8 @@ const ref = userCollection('programmes').doc(id)
 const snap = await ref.get()
 if (!snap.exists) throw new Error(`No programme with id ${id}.`)
 const programme = decodeProgramme(snap.data()!, snap.id)
-const wanted = wantedStrings(programme)
+const client = ((await userCollection('clients').doc(programme.clientId).get()).data() ?? {}) as Partial<Client>
+const wanted = wantedStrings(programme, client)
 const cache = programme.translationsDe ?? []
 const known = new Set(cache.map((t) => t.src))
 const missing = wanted.filter((s) => !known.has(s))

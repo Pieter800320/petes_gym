@@ -52,9 +52,11 @@ get at them another way.
    - `contraindications`: hold each line against the client's injuries. The playbook treats them
      as hard limits: regress or swap, or tell Pieter plainly which ones remain and why.
    - `withoutCue`: every row needs a cue unless it was copied from Pete's own rows.
-5. `node draft.ts <file> --write` saves it. It is always a **draft**; Pieter makes it current
-   himself in the app. Never change a programme's status from here.
-6. Report: the days at a glance, every call you made on his behalf, time per day, what is not in
+5. `node draft.ts <file> --write` saves it. It is always a **draft**: it shows in the app under
+   Create → Drafts and on the client's page, and Pieter makes it current himself there ("Make
+   current" on the draft's page). Never change a programme's status from here.
+6. Fill the German cache (see below) when the client gets the programme in German.
+7. Report: the days at a glance, every call you made on his behalf, time per day, what is not in
    the library, any contraindication left in.
 
 ## Changing an existing programme
@@ -90,8 +92,9 @@ prefer "Build next block" in the app (a draft copy) for anything larger than a f
 
 ## German for the export
 
-The export sheet asks Claude only for strings the programme's cache (`translationsDe`) lacks. Fill
-the cache from here and "Translate & prepare" works in the app without an API call.
+The export sheet takes its German from the programme's cache (`translationsDe`) and, since
+0.9.56, never calls Claude: with a string missing it says "German is missing for N texts… Ask
+Claude Code". Only Pete's personal note is exempt; it goes out as he typed it.
 
 1. `node translate.ts missing <id>` into a scratchpad file: the strings still without German.
 2. Translate them by the rules of `src/claude/translate.ts`: natural German coaching language with
@@ -103,9 +106,9 @@ the cache from here and "Translate & prepare" works in the app without an API ca
    the numbers in each pair match.
 4. `node translate.ts save <id> <pairs.json>` checks, `--write` saves.
 
-Do this again after any change to the programme's text, and tell Pieter: a string he edits or adds
-in the app afterwards (his personal note, the goal in the export sheet) has no German until then,
-and the app will then try the API.
+Do this again after any change to the programme's text, and tell Pieter: a text he edits in the
+app afterwards (a cue, the goal in the export sheet) has no German until it is translated here
+again.
 
 ## Updating a client's profile
 
@@ -124,13 +127,43 @@ three times a week"), or asks you to tidy a profile from his notes:
 Questionnaire answers still become a profile in the app (Clients → "New answers from …"), which
 needs no Claude.
 
+## Importing an old programme
+
+For a programme Pieter wrote before the app (Word, PDF, HTML, Markdown, a photo), so it shows in
+the client's history:
+
+1. Read the document: PDFs, photos, HTML and Markdown with the Read tool; Word with
+   `node docx.ts "<path>"` (HTML with its tables).
+2. Find the client with `node read.ts clients`. If the name fits more than one client, or none,
+   ask Pieter: never guess, and never create a client from here.
+3. `node read.ts programmes <clientId>`: if a programme with this title and these days is already
+   there, say so and stop; do not import it twice.
+4. Write the JSON file as for a new programme, plus `"status": "archived"`, `"createdAt"` (the
+   document's date, `YYYY-MM-DD`: the date written in it, else the file's modified date) and
+   `"personalNote"` (any message to the client, word for word). Rules, as in the app's importer:
+   - Keep Pete's own wording for notes, cues and titles. Do not invent, add or drop exercises, and
+     do not improve the programme: this is a record.
+   - The document's structure decides days and sections; `""` for a section without a title.
+   - Sets, reps, time and distance go in `prescription` in the app's notation; rest in `rest`, or
+     `""` when the document gives none. "Alternative: …" goes in `alternative`, labels like A1/B2
+     in `superset`.
+   - Where an exercise is clearly the same movement as one in the library, use the library's
+     exact name; otherwise keep the document's name.
+   - Weekly text for the whole programme becomes `progression` with columns `["Week", "Focus"]`;
+     a week-by-week table for one exercise goes on the day that exercise is trained.
+   - Limitations, injuries and coach-facing remarks go in `coachNotes`, ending with
+     `Imported from <file name>.`
+5. `node draft.ts <file>` to check, `--write` to save. It is saved as archived, never as current.
+6. Report what could not be read or was unclear, per programme. A document that is cut off or
+   illegible in part is not imported: say which part.
+
 ## Not built yet
 
-Importing old programmes (Word/PDF/photos) as archived programmes, and creating a new client
-from here. Until they exist, those run in the app or wait.
+Creating a new client from here (use Clients → ADD in the app, or the fitness profile link), and
+turning old Google Forms answers into profiles.
 
 ## Checking the tools
 
 `node selftest.ts` runs a change and an undo on a throwaway draft under `self` and on a throwaway
-client, and deletes both again (23 checks). Run it after changing anything in `tools/`. `npm run typecheck` in `tools/`
+client, saves one programme into the archive, and deletes all three again (25 checks). Run it after changing anything in `tools/`. `npm run typecheck` in `tools/`
 type-checks the scripts; the app's own `npm run lint` covers them too.

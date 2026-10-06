@@ -4,7 +4,7 @@
  * (Edit programme), a quiet link to Rework with Claude; the rarer actions are in ⋯.
  */
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { DayList } from '../components/DayList'
 import { ExportSheet } from '../components/ExportSheet'
@@ -14,6 +14,7 @@ import { Sheet } from '../components/Sheet'
 import { TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
+import { CLAUDE_IN_APP, draftPath } from '../claude/inApp'
 import { activateProgramme, createNextBlock, duplicateProgramme } from '../data/programmeActions'
 import { restoreProgramme, softDeleteProgramme, updateProgrammeFields, useClients, useProgramme, useProgrammes } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
@@ -45,7 +46,10 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
   const { data: deletedClients } = useClients(true)
   const { data: siblings } = useProgrammes(stored.clientId)
   const { programme, change, flush } = useProgrammeDraft(stored)
-  const [editOpen, setEditOpen] = useState(false)
+  const location = useLocation()
+  const navType = useNavigationType()
+  // A programme just started by hand opens ready to be typed in; coming back to the page (POP) doesn't reopen the sheet.
+  const [editOpen, setEditOpen] = useState(() => navType !== 'POP' && Boolean((location.state as { edit?: boolean } | null)?.edit))
   const [moreOpen, setMoreOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
 
@@ -54,9 +58,17 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
   const firstName = client?.name.trim().split(/\s+/)[0] ?? 'client'
   /** In Recently deleted: shown to be read (and restored), with nothing that edits, sends or trains it. */
   const deleted = Boolean(programme.deletedAt)
+  const draft = programme.status === 'draft'
 
   if (!user) return null
   const uid = user.uid
+
+  /** Pete's yes to a draft: it becomes the client's current programme, the one before it is archived. */
+  function makeCurrent() {
+    flush()
+    activateProgramme(uid, programme, siblings)
+    toast('Now the current programme')
+  }
 
   /** A client's programme: Train shows it (their session, their history) until Pete goes back to his own. */
   function openInTrain() {
@@ -106,18 +118,22 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
       </article>
 
       {/* A pair of rectangles: the main action in red, Edit programme outlined beside it.
-          Rework with Claude is a quiet link, so red appears once. */}
+          Rework with Claude is a quiet link, so red appears once. A client's draft is first made
+          current (Pete's yes to it); Send follows once it is. */}
       {!deleted && (
       <>
+      {draft && <div className="banner live-note">This is a draft. Check it, change what you like, then make it current.</div>}
       <div className="button-pair">
         {isMine ? (
           <button type="button" className="btn-cta" onClick={trainMine}>{programme.status === 'active' ? 'Open in Train' : 'Make current & train'}</button>
+        ) : draft ? (
+          <button type="button" className="btn-cta" onClick={makeCurrent}>Make current</button>
         ) : (
           <button type="button" className="btn-cta" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
         )}
         <button type="button" className="btn-outline" onClick={() => setEditOpen(true)}>Edit programme</button>
       </div>
-      <Link to={`/create/${programme.id}`} className="text-link quiet" onClick={flush}>Rework with Claude ›</Link>
+      {CLAUDE_IN_APP && <Link to={`/create/${programme.id}`} className="text-link quiet" onClick={flush}>Rework with Claude ›</Link>}
 
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title={programme.title}>
         <div className="lines">
@@ -126,9 +142,9 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
           ) : (
             <MenuLine title="Open in Train" meta={`Run ${firstName}'s session: clock, tweaks and notes`} onClick={openInTrain} />
           )}
-          <MenuLine title="Build next block" meta="A new draft based on this one, in Create" onClick={() => { flush(); navigate(`/create/${createNextBlock(uid, programme)}`) }} />
+          <MenuLine title="Build next block" meta="A new draft based on this one, in Create" onClick={() => { flush(); navigate(draftPath(createNextBlock(uid, programme))) }} />
           {programme.status !== 'active' && (
-            <MenuLine title="Make current" meta={`${isMine ? 'Your' : `${firstName}'s`} current programme is archived`} onClick={() => { activateProgramme(uid, programme, siblings); setMoreOpen(false); toast('Now the current programme') }} />
+            <MenuLine title="Make current" meta={`${isMine ? 'Your' : `${firstName}'s`} current programme is archived`} onClick={() => { setMoreOpen(false); makeCurrent() }} />
           )}
           {programme.status !== 'archived' && (
             <MenuLine title="Archive" meta="Keeps it in the history" onClick={() => { updateProgrammeFields(uid, programme.id, { status: 'archived' }); setMoreOpen(false); toast('Programme archived') }} />

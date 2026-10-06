@@ -11,6 +11,7 @@ import { BigTitle, TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
 import { useProfileLink } from '../components/useProfileLink'
 import { useAuth } from '../auth/useAuth'
+import { CLAUDE_IN_APP, draftPath } from '../claude/inApp'
 import { activateProgramme, createNextBlock } from '../data/programmeActions'
 import { blankProgramme, sessionRows } from '../data/programmeUtils'
 import { createProgramme, deleteClient, deleteWorkout, useClients, useNotes, useProgrammes, useWorkouts } from '../data/store'
@@ -102,7 +103,7 @@ export function ClientScreen() {
                 ? `Last programme · ${monthYear(programmeDate(featured))}`
                 : `Draft · started ${dayMonth(featured.createdAt)}`
           }
-          onOpen={() => navigate(featured.status === 'draft' ? `/create/${featured.id}` : `/programmes/${featured.id}`)}
+          onOpen={() => navigate(featured.status === 'draft' ? draftPath(featured.id) : `/programmes/${featured.id}`)}
         />
       ) : (
         <button type="button" className="empty-card" onClick={() => setNewOpen(true)}>
@@ -116,17 +117,21 @@ export function ClientScreen() {
       {featured?.status === 'active' && !self && (
         <div className="button-pair">
           <button type="button" className="btn-cta" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
-          <Link to={`/create/${featured.id}`} className="btn-outline">Rework with Claude</Link>
+          {CLAUDE_IN_APP ? (
+            <Link to={`/create/${featured.id}`} className="btn-outline">Rework with Claude</Link>
+          ) : (
+            <Link to={`/programmes/${featured.id}`} state={{ edit: true }} className="btn-outline">Edit programme</Link>
+          )}
         </div>
       )}
       {featured?.status === 'archived' && (
         <div className="button-pair">
           <button type="button" className="btn-cta" onClick={() => { activateProgramme(user.uid, featured, programmes); toast('Now the current programme') }}>Make current</button>
-          <button type="button" className="btn-outline" onClick={() => navigate(`/create/${createNextBlock(user.uid, featured)}`)}>Build next block</button>
+          <button type="button" className="btn-outline" onClick={() => navigate(draftPath(createNextBlock(user.uid, featured)))}>Build next block</button>
         </div>
       )}
       {featured?.status === 'draft' && (
-        <Link to={`/create/${featured.id}`} className="btn-cta btn-block">Continue in Create</Link>
+        <Link to={draftPath(featured.id)} className="btn-cta btn-block">{CLAUDE_IN_APP ? 'Continue in Create' : 'Check draft'}</Link>
       )}
 
       {workouts.length > 0 && (
@@ -160,7 +165,7 @@ export function ClientScreen() {
           <div className="section-label">Earlier</div>
           <div className="lines">
             {[...earlier].sort(newestFirst).map((p) => (
-              <Link key={p.id} to={p.status === 'draft' ? `/create/${p.id}` : `/programmes/${p.id}`} className="leader-link">
+              <Link key={p.id} to={p.status === 'draft' ? draftPath(p.id) : `/programmes/${p.id}`} className="leader-link">
                 <span>{p.title}{p.status === 'draft' && <span className="tag accent">Draft</span>}</span>
                 <span className="ex-dots" aria-hidden="true" />
                 <span className="mono muted small">{monthYear(programmeDate(p))}</span>
@@ -285,14 +290,17 @@ function NewProgrammeSheet({ open, onClose, client }: { open: boolean; onClose: 
     if (!user) return
     const id = createProgramme(user.uid, blankProgramme(client.id, { frequency: client.frequency, sessionLength: client.sessionLength, goal: client.goals }))
     onClose()
-    navigate(withClaude ? `/create/${id}` : `/programmes/${id}`)
+    // A blank programme opens ready to be typed in.
+    if (withClaude) navigate(`/create/${id}`)
+    else navigate(`/programmes/${id}`, { state: { edit: true } })
   }
   return (
     <Sheet open={open} onClose={onClose} title="New programme">
       <div className="lines">
-        <MenuLine title="Build with Claude" meta="Chat it through; Claude drafts and edits it" onClick={() => create(true)} />
+        {CLAUDE_IN_APP && <MenuLine title="Build with Claude" meta="Chat it through; Claude drafts and edits it" onClick={() => create(true)} />}
         <MenuLine title="Blank programme" meta="Type it in yourself" onClick={() => create(false)} />
       </div>
+      {!CLAUDE_IN_APP && <p className="muted small">Or have it built in Claude Code on the PC: it appears here and in Create as a draft.</p>}
     </Sheet>
   )
 }

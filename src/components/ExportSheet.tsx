@@ -3,6 +3,7 @@ import { Sheet } from './Sheet'
 import { toast } from './toast'
 import { useAuth } from '../auth/useAuth'
 import { describeClaudeError } from '../claude/client'
+import { CLAUDE_IN_APP } from '../claude/inApp'
 import { clientFacingStrings, translateToGerman } from '../claude/translate'
 import { updateProgrammeFields } from '../data/store'
 import type { Client, Programme } from '../data/types'
@@ -113,11 +114,18 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
   async function germanText(): Promise<(s: string) => string> {
     const wanted = clientFacingStrings(p, opts.personalNote, opts.goal).concat([opts.frequency, opts.sessionLength].filter(Boolean))
     const cache = p.translationsDe ?? []
-    const pairs = await translateToGerman(wanted, cache)
+    if (!CLAUDE_IN_APP) {
+      // German is written in Claude Code on the PC. The note is Pete's own and goes out as he typed it.
+      const known = new Set(cache.map((t) => t.src))
+      const missing = wanted.filter((s) => !known.has(s) && s !== opts.personalNote.trim())
+      if (missing.length) throw new Error(`German is missing for ${missing.length} text${missing.length === 1 ? '' : 's'} of this programme. Ask Claude Code on the PC to translate it, then try again.`)
+    }
+    const pairs = CLAUDE_IN_APP ? await translateToGerman(wanted, cache) : cache
     // Saved without strings the programme no longer contains, so the cache doesn't grow with every edit.
     const inUse = new Set(wanted)
     const kept = pairs.filter((t) => inUse.has(t.src))
-    if (user && JSON.stringify(kept) !== JSON.stringify(cache)) updateProgrammeFields(user.uid, p.id, { translationsDe: kept })
+    // Without Claude in the app the cache is left alone: what is dropped here could not be translated again here.
+    if (CLAUDE_IN_APP && user && JSON.stringify(kept) !== JSON.stringify(cache)) updateProgrammeFields(user.uid, p.id, { translationsDe: kept })
     const map = new Map(pairs.map((t) => [t.src, t.de]))
     return (s) => map.get(s) ?? s
   }
@@ -130,7 +138,7 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
     try {
       let translate = (s: string) => s
       if (opts.lang === 'de') {
-        setBusy('Translating into German…')
+        setBusy(CLAUDE_IN_APP ? 'Translating into German…' : 'Preparing…')
         translate = await germanText()
       }
       setBusy('Building the document…')
@@ -173,7 +181,7 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
 
   // English is on its way by itself; anything else waits for a tap.
   const building = opts.lang === 'en' && !current && failedKey !== key
-  const mainLabel = busy ?? (current ? 'Share' : building ? 'Preparing…' : opts.lang === 'de' ? 'Translate & prepare' : 'Prepare')
+  const mainLabel = busy ?? (current ? 'Share' : building ? 'Preparing…' : opts.lang === 'de' && CLAUDE_IN_APP ? 'Translate & prepare' : 'Prepare')
 
   return (
     <div className="form">
@@ -224,7 +232,9 @@ function ExportForm({ programme: p, client, onDone }: { programme: Programme; cl
         </div>
         {opts.lang === 'de' && (
           <span className="muted" style={{ fontSize: 'var(--type-sm)' }}>
-            Claude translates the client-facing text once; exercise names stay as in the library. Needs internet and your API key.
+            {CLAUDE_IN_APP
+              ? 'Claude translates the client-facing text once; exercise names stay as in the library. Needs internet and your API key.'
+              : 'The German text is written in Claude Code on the PC; exercise names stay as in the library. Your note goes out as you type it, so write it in German.'}
           </span>
         )}
       </div>

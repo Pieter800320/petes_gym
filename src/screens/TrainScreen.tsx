@@ -14,6 +14,7 @@ import { BigTitle, Dial, TopBar } from '../components/TopBar'
 import { IconPause, IconPlay } from '../components/Icons'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
+import { CLAUDE_IN_APP } from '../claude/inApp'
 import { activeMs, cancelWorkout, finishWorkout, pauseWorkout, restoreActiveWorkout, resumeWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
 import { mapSession } from '../data/programmeEdits'
 import { estimateSessionMin, formatClock, sessionRows } from '../data/programmeUtils'
@@ -268,7 +269,7 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
             </>
           )}
           <button type="button" className="text-link" onClick={() => setEditOpen(true)}>Edit programme ›</button>
-          <Link to={`/create/${programme.id}`} className="text-link quiet" onClick={flush}>Rework with Claude ›</Link>
+          {CLAUDE_IN_APP && <Link to={`/create/${programme.id}`} className="text-link quiet" onClick={flush}>Rework with Claude ›</Link>}
         </div>
       )}
 

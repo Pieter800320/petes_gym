@@ -11,6 +11,7 @@ import { UnsyncedChangesError } from '../firebase'
 import { getApiKey, getHaptics, setApiKey, setHaptics, useTheme, type ThemeSetting } from '../settings'
 import { canVibrate, haptic } from '../haptics'
 import { formatUsd } from '../claude/cost'
+import { CLAUDE_IN_APP } from '../claude/inApp'
 import { useNotifyUrl } from '../data/invites'
 import { readAllData, useCostLedger, type CostMonth } from '../data/store'
 import { download } from '../export/share'
@@ -160,6 +161,8 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
       </Group>
 
       <Group title="Claude">
+        {CLAUDE_IN_APP && (
+        <>
         <div className="setting stack">
           <label className="setting-name" htmlFor="api-key">Anthropic API key</label>
           <div className="setting-key">
@@ -185,7 +188,9 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
         </div>
         <CostRow label="Cost this month (USD)" month={costs.thisMonth} />
         <CostRow label="Cost last month (USD)" month={costs.lastMonth} />
-        <ActionRow name="Coach Playbook" note="The standards Claude follows for every programme" onClick={() => setPlaybookOpen(true)} />
+        </>
+        )}
+        <ActionRow name="Coach Playbook" note={CLAUDE_IN_APP ? 'The standards Claude follows for every programme' : 'The standards Claude Code follows for every programme it builds on the PC'} onClick={() => setPlaybookOpen(true)} />
         <PlaybookSheet open={playbookOpen} onClose={() => setPlaybookOpen(false)} />
       </Group>
 
@@ -195,8 +200,9 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
         <ActionRow name="Email when answers arrive" note={notifyUrl ? 'On: new questionnaire answers email you' : 'Off. Set up once, about ten minutes'} onClick={() => setNotifyOpen(true)} />
         <BackupSheet open={backupsOpen} onClose={() => setBackupsOpen(false)} />
         <NotifySheet open={notifyOpen} onClose={() => setNotifyOpen(false)} />
-        <ActionRow name="Import old programmes" note="Word, PDF, HTML or photos" onClick={() => { onDone(); navigate('/import') }} />
-        <ActionRow name="Import questionnaire answers" note="Older Fitness Profile responses from Google Forms" onClick={() => { onDone(); navigate('/import-profiles') }} />
+        {/* Both read files with Claude: without it in the app, old programmes are imported in Claude Code. */}
+        {CLAUDE_IN_APP && <ActionRow name="Import old programmes" note="Word, PDF, HTML or photos" onClick={() => { onDone(); navigate('/import') }} />}
+        {CLAUDE_IN_APP && <ActionRow name="Import questionnaire answers" note="Older Fitness Profile responses from Google Forms" onClick={() => { onDone(); navigate('/import-profiles') }} />}
       </Group>
 
       <Group title="Account">

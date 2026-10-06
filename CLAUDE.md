@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.55 (2026-10-04). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.56 (2026-10-06). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -191,6 +191,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - 0.9.53 (Pieter, 2026-10-04): the email notice covers links already sent. Saving or changing the script address in Settings (`saveNotifyUrl` in `data/invites.ts`, now given the invites) also writes it into every invite that is not answered yet, and clearing it removes it from them; before, only links created afterwards carried it, and a changed address left old links calling the old one. Answered invites are left alone. The sheet's text says so, and adds one line: someone holding a link could make it send Pete that email, nothing more. `firestore.rules` unchanged (Pete's own writes fall under the owner rule). Checked in Node on a stand-in for Firestore (9 checks), not against the real one.
   - 0.9.54 (Pieter, 2026-10-04): two small leaks closed. Coach Playbook: unsaved text is kept on the device (`pg_playbook_draft_v1`, written 500 ms after typing stops and when the sheet closes); reopening starts from it with "Unsaved changes restored · Discard". Save and Discard clear it; "Reset to the default text" leaves the default as the unsaved text until it is saved. Import programmes: one queue (`queue` + `working` refs in `ImportScreen.tsx`); files added while others convert, and "Try again", join it instead of starting a second loop, which doubled the calls to Claude and showed "Save all" while it still ran. The third part of this audit item, `ConfirmButton`'s `disabled`, came with 0.9.31. Type-checked and linted; not yet seen in the app.
   - 0.9.55 (Pieter, 2026-10-04): tooling. `strict` is on in both tsconfigs (the code already passed it). `npm test` runs vitest (new devDependency) over `src/**/*.test.ts`: 111 tests in 8 files for the helpers where this audit's bugs lived (`programmeUtils` steppers, sets and interval time; `health` injury words and session length; `clientMatch`; `programmeTools` id rules and the weight/note rule; `programmeIds` repair; `importProfiles` CSV splitting and profile merge; `fitnessProfile` required answers and answers → profile; `backups.parseBackupFile`; `nextTitle`). They run in Node; modules that reach Firebase are mocked. The deploy workflow now runs lint, then test, then build: a push that fails one is not deployed. §3 lists the new step. No UI test framework (audit: avoid for now). `vite.config.ts` takes `defineConfig` from `vitest/config` for the `test` block.
+  - 0.9.56 (Pieter, 2026-10-06): Claude no longer works inside the app; programmes are built in Claude Code on the PC (§4) and land in the app as drafts. One switch, `CLAUDE_IN_APP` in `src/claude/inApp.ts` (false): nothing was removed, true brings it all back. With it off: Create is the list of drafts plus the library; a draft opens on its own page (`draftPath`; `/create/:id` forwards to `/programmes/:id`), where a client's draft has "Make current" as its red button (Send follows once it is current) and a line saying it is a draft; NEW and "+ New programme" start a blank programme with the Edit sheet open (`state.edit`). Hidden: the chat, every "Rework with Claude" (the client page shows "Edit programme" in its place), "Build with Claude", the API key and costs in Settings, and both importers (their routes still exist). The Coach Playbook stays in Settings: Claude Code reads it. Export in German takes its text only from the programme's cache and never calls Claude; a missing text gives "German is missing for N texts… Ask Claude Code on the PC"; the personal note is exempt and goes out as typed. Privacy notice (EN + DE): the sentence on AI training now says Pieter switched it off in his Claude account (it used to rest on the API's terms), `PRIVACY_VERSION` 2026-10-06; **Pieter should have the wording checked, and whether a personal Claude subscription needs a data-processing agreement.** Checked in Node: the programme page, Create and a client's page rendered to text with the store mocked (5 checks: buttons and links per status, nothing of Claude left). NOT seen in the app or on a phone; taps, the Edit sheet opening on a new programme and the German export are untested.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -309,14 +310,16 @@ The deploy workflow runs lint, test and build in that order; a push that fails o
 ## 4. Building programmes from Claude Code (`tools/`, since 2026-10-06)
 
 Pieter could not buy API credits, so the AI work moved here: programmes are built and reworked in
-Claude Code on his PC, which reads and writes the same Firestore the app uses. The app is
-unchanged (its Create chat stays, dormant). How to work is in `.claude/skills/programme/SKILL.md`.
+Claude Code on his PC, which reads and writes the same Firestore the app uses. In the app,
+Claude is switched off since 0.9.56 (`CLAUDE_IN_APP`); Create shows the drafts. How to work is in `.claude/skills/programme/SKILL.md`.
 
 - `tools/` is not part of the app: its own `package.json` (`firebase-admin`), not in the bundle,
   the tests or the deploy. Node runs the `.ts` files directly. `npm run lint` at the root covers it.
 - The service-account key lives outside the repo (`~/.petesgym/service-account.json`). It bypasses
   `firestore.rules`. Never copy it into the repo, print it or read it.
-- `read.ts` reads; `draft.ts` creates one new programme, always as a draft; `change.ts` changes
+- `read.ts` reads; `draft.ts` creates one new programme, as a draft (or, for an old programme
+  converted from a document, as archived with the document's date; `docx.ts` reads Word
+  files); `change.ts` changes
   one programme's content and can undo its last change (before-states in `~/.petesgym/undo`).
   `translate.ts` fills a programme's German cache (`translationsDe`), so the export sheet finds
   every string and makes no API call. `profile.ts` changes a client's six profile texts, with
@@ -325,9 +328,9 @@ unchanged (its Create chat stays, dormant). How to work is in `.claude/skills/pr
 - `shape.ts`, `db.ts` and `translate.ts` repeat five small rules of the app (`newId`,
   `exerciseKey`, the library link, the `[{cells}]` table encoding, `clientFacingStrings`) because
   the app's files don't load in plain Node. Change one, change both.
-- Checked on 2026-10-06 against the real database: `node selftest.ts` (23 checks, for a
-  programme and for a profile: change, weight and note rule, stale file refused, undo, undo
+- Checked on 2026-10-06 against the real database: `node selftest.ts` (25 checks, for a
+  programme, a profile and an archived import: change, weight and note rule, stale file refused, undo, undo
   refused after an edit in the app). Client data is processed under Pieter's Claude subscription;
-  he switched model training off there on 2026-10-06. Importing old programmes is not built here
-  yet. The German cache was filled for one programme (158 strings); the export with it is not
+  he switched model training off there on 2026-10-06. No old programme has been imported this
+  way yet. The German cache was filled for one programme (158 strings); the export with it is not
   yet seen in the app.

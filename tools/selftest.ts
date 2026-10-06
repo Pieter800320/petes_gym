@@ -100,6 +100,23 @@ try {
   rmSync(dir, { recursive: true, force: true })
 }
 
+// ── An old programme for the archive ────────────────────────────────────
+const oldDir = mkdtempSync(join(tmpdir(), 'pg-undo-'))
+const oldFile = join(oldDir, 'old.json')
+const oldSpec = { clientId: 'self', title: 'ZZ archive test (delete me)', goal: '', frequency: '', sessionLength: '', durationWeeks: null, successMarkers: [], coachNotes: 'Imported from test.docx.', progression: null, status: 'archived', createdAt: '2024-03-01', personalNote: 'Hi!', sessions: [{ title: 'Day 1', focus: '', progressionBlocks: [], sections: [{ title: '', duration: '', note: '', rows: [row('Pull-Up', '3 × 5')] }] }] }
+let oldId: string | undefined
+try {
+  writeFileSync(oldFile, JSON.stringify({ ...oldSpec, status: 'active' }))
+  check('archive: a file asking for "active" is refused', run('draft.ts', oldFile, '--write').startsWith('FAILED'))
+  writeFileSync(oldFile, JSON.stringify(oldSpec))
+  oldId = /Saved as an archived programme: (\S+)/.exec(run('draft.ts', oldFile, '--write'))?.[1]
+  const old = oldId ? (await userCollection('programmes').doc(oldId).get()).data() : undefined
+  check('archive: saved as archived, dated by its document, with its note', old?.status === 'archived' && old?.createdAt === Date.parse('2024-03-01') && old?.personalNote === 'Hi!')
+} finally {
+  if (oldId) await userCollection('programmes').doc(oldId).delete()
+  rmSync(oldDir, { recursive: true, force: true })
+}
+
 // ── A client's profile: change and undo, on a throwaway client ─────────
 const clientRef = userCollection('clients').doc()
 const clientDir = mkdtempSync(join(tmpdir(), 'pg-undo-'))
