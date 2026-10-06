@@ -205,6 +205,18 @@ const SCENARIOS: Record<string, Scenario> = {
   },
   // The same on the PC, where the dial is a button in the rail.
   'desktop-session': { start: '/train', desktop: true, settleMs: 2500, steps: [{ label: 'Start session', run: click('.dial'), waitMs: 1500 }] },
+  // A client's page: an earlier programme opened for the first time, back, and opened again.
+  earlier: {
+    start: '/clients',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'Open the client', run: click('a.line-link[href="#/clients/c0"]'), waitMs: 900 },
+      { label: 'Earlier programme, first time', run: click('a.leader-link'), waitMs: 1000 },
+      { label: 'Back', run: 'history.back()', waitMs: 800 },
+      { label: 'Earlier programme, second time', run: click('a.leader-link'), waitMs: 1000 },
+    ],
+  },
   // From a list scrolled down: into a client near the bottom, and back to the same place.
   scrolled: {
     start: '/clients',

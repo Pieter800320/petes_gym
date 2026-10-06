@@ -50,6 +50,11 @@ NAMES.forEach((name, i) => {
   const cid = `c${i}`
   SEED[`${U}/clients/${cid}`] = client(name, 40 + i * 9)
   if (i < 6) SEED[`${U}/programmes/p${i}`] = programme(cid, `Block ${1 + (i % 3)}`, i === 4 ? 'draft' : 'active', 5 + i)
+  // The first client also has two earlier programmes (the "Earlier" list on their page).
+  if (i === 0) {
+    SEED[`${U}/programmes/p0old1`] = programme(cid, 'Autumn Block', 'archived', 80)
+    SEED[`${U}/programmes/p0old2`] = programme(cid, 'Summer Block', 'archived', 160)
+  }
   // One client far down the list with a long page of their own (many notes).
   if (cid === 'c18') for (let k = 0; k < 14; k++) SEED[`${U}/notes/c18n${k}`] = { clientId: cid, text: `Session ${k + 1}: felt strong, added a set to the main lift and finished with carries.`, pinnedToNextSession: false, createdAt: NOW - k * DAY, updatedAt: NOW - k * DAY }
   if (i < 3) SEED[`${U}/notes/c${i}n`] = { clientId: cid, text: 'Felt strong today.', pinnedToNextSession: false, createdAt: NOW - i * DAY, updatedAt: NOW - i * DAY }

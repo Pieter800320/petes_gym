@@ -96,12 +96,12 @@
   /* The start frame (app.css .splash): the manifest's background colour, and the icon's size and
      place on it. Measured on 2026-10-06 in a screen recording of Pete's phone, so that the frame
      sits exactly on the picture Android shows while the app starts: there the red disc is 180px
-     across (275px for the whole drawing) and in the middle of the screen, which is 6px below the
+     across (274px for the whole drawing) and in the middle of the screen, which is 6.5px below the
      middle of the page (the navigation buttons at the bottom are taller than the status bar).
      Another phone, or gesture navigation on this one, needs measuring again. */
   --splash-bg: #121212;
-  --splash-icon: 275px;
-  --splash-shift: 6px;
+  --splash-icon: 274px;
+  --splash-shift: 6.5px;
 
   /* Layout */
   --nav-height: 72px;

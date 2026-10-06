@@ -1,5 +1,5 @@
 import { Suspense, createElement, use, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react'
-import { NavLink, Navigate, Route, Routes, matchPath, useLocation, useMatch, useNavigationType, type Location } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, matchPath, useLocation, useMatch, useNavigationType, type Location } from 'react-router-dom'
 import { useAuth } from './auth/useAuth'
 import { isFirebaseConfigured } from './firebase'
 import { OWNER_EMAIL } from './firebaseConfig'
@@ -71,6 +71,11 @@ const TABS = [
   { to: '/clients', label: 'Clients' },
 ]
 const TAB_PATHS = TABS.map((t) => t.to)
+
+/** The tab a page belongs to ("/clients/abc" is under Clients), or null for a page under none. */
+function tabOf(pathname: string): string | null {
+  return TAB_PATHS.find((to) => pathname === to || pathname.startsWith(`${to}/`)) ?? null
+}
 
 /** The lazily loaded screens the page at this address needs. */
 function screensFor(pathname: string): { load: () => Promise<unknown> }[] {
@@ -207,6 +212,12 @@ function Shell() {
   // The page on screen: it follows the address inside a view transition (util/pageTransition.ts).
   const shown = useShownLocation(TAB_PATHS, loadScreensFor)
   useScrollMemory(shown)
+  // The tab that is lit: the one the page on screen belongs to. It follows the shown page, not the
+  // address, so it doesn't change at the tap while the old page is still there; and a page under
+  // no tab (a programme) keeps the tab it was opened from.
+  const shownTab = tabOf(shown.pathname)
+  const [tab, setTab] = useState(shownTab)
+  if (shownTab && shownTab !== tab) setTab(shownTab)
 
   // Fetch the other screens once the first one is up, so opening them never waits.
   useEffect(() => {
@@ -252,13 +263,13 @@ function Shell() {
           Pete's <span>Gym</span>
         </div>
         {TABS.map((t) => (
-          <NavLink key={t.to} to={t.to} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+          <Link key={t.to} to={t.to} className={`nav-link${t.to === tab ? ' active' : ''}`} aria-current={t.to === tab ? 'page' : undefined}>
             <span className="nav-dot" aria-hidden="true" />
             <span className="nav-label">
               {t.label}
               {t.to === '/clients' && waitingAnswers.length > 0 && <span className="nav-count" aria-label={`${waitingAnswers.length} new`}>{waitingAnswers.length}</span>}
             </span>
-          </NavLink>
+          </Link>
         ))}
         {/* Desktop: the tab's main action (Start, New, Add) appears here, see Dial. */}
         <div id={RAIL_ACTION_ID} className="rail-action" />
