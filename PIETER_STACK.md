@@ -1,7 +1,7 @@
 # PIETER_STACK.md
 > Personal development standards and AI collaboration framework.  
 > Upload this at the start of every session across all projects.  
-> Last updated: 2026-07-12
+> Last updated: 2026-10-06
 
 ---
 
@@ -817,6 +817,68 @@ Output as a complete updated file, ready to replace the current one.
 - Run it while the chat is still open — the AI has full session context now, not tomorrow.
 - Keep one master copy of each context file locally (notes app, Google Drive, desktop folder).
 - Always upload the file you received at the end of the last session — that chain of custody is the system.
+
+---
+
+## 12. FOUNDATIONS FOR A NEW APP
+
+Before the first feature screen of a new app, put these four things in place. They decide how
+every later screen appears and moves. Added late, each one has to be retrofitted onto screens that
+were built on other assumptions, and every fix exposes the next assumption.
+
+Where this comes from: Pete's Gym (2026-10) had all five milestones built before any of this
+existed. Polishing it afterwards took a week of releases, and most of the flickers traced back to
+screens that each fetched their own data and handled their own scrolling. Cookie Noter's swipeable
+pages taught the same lesson earlier (§5.9: bind from data that is already there).
+
+### 12.1 Data is there before a screen is drawn
+
+- One shared store holds the app's everyday data for the whole session; screens read from it and
+  filter on the device. A screen never starts its own fetch or listener for data the store has.
+- The app shows one calm start frame until the store has answered, then the first screen appears
+  once, complete. No "Loading…" word, nothing arriving late that pushes its neighbours.
+- Give the wait a ceiling (a few seconds), after which the app shows what it has.
+
+### 12.2 One navigation layer owns page changes and scroll
+
+- A single place changes the page: every link, every programmatic navigation and the Back button
+  go through it. Transitions are defined there, never inside a screen.
+- That same layer owns scroll positions: where a new page opens, where Back returns to. Switch the
+  platform's automatic scroll restoration off, or the two will fight.
+- A screen must not change what it shows while it is leaving. Anything it reads from outside
+  itself (history, the address) is read once when it appears.
+
+### 12.3 Motion is a system, not decoration
+
+- Durations, distances and easings are tokens, like colours (`--motion-*`, `--ease-*`).
+- Each kind of change has one movement, used everywhere: deeper, back, sideways between tabs,
+  something opening in place.
+- **A movement changes how things are drawn, never the layout.** Animate `transform`, `translate`,
+  `opacity`, `clip-path`; never `height`, `margin` or grid tracks. The layout changes once, the
+  drawing moves. Laying the page out again for every picture is what stutters on a phone.
+- Prefer what the platform provides (view transitions on the web, the framework's own shared-axis
+  and container transitions on Android) over a library or a hand-rolled version (§2, "Don't fight
+  platform components").
+- Fonts are loaded before text is drawn, so text never appears in a fallback font first.
+- Reduced motion is respected from the first day (§6.4).
+
+### 12.4 A way to see it, from the start
+
+- Set up a recording of the real app on made-up data that shows, per step, what the screen showed
+  and what moved. A screen that appears well shows one picture per step and nothing shifting.
+  Record before and after every visual change.
+- Test page changes from a scrolled list and from a long page, with Back as well as the on-screen
+  arrow. Short, unscrolled test pages hide most of these bugs.
+- **The real phone early and often.** Some behaviour belongs to the device and no planning
+  prevents it: the picture the phone shows while an app starts, how Back restores scroll, how
+  fast a card is built. For anything seen on the phone that can't be reproduced on the PC, ask
+  for a screen recording before changing code again.
+
+### 12.5 When a fix doesn't hold
+
+If a visual fix needs a second patch, stop and decide whether that piece should be rebuilt on a
+sound base. Say which is recommended and why. This is the same rule as §2's "Don't fight platform
+components", applied to our own code: rebuild the piece, not the app.
 
 ---
 
