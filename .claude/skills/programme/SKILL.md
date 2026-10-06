@@ -12,14 +12,15 @@ programme written here appears in the app at once.
 All database access goes through the scripts in `tools/` (run them from that folder). Never read or
 write Firestore any other way, and never open the key file (`~/.petesgym/service-account.json`).
 
-## Before the first real client
+## Client data
 
-⚠️ Open point, not yet answered by Pieter: client data read here is processed under his Claude
-subscription, not under the API's commercial terms. Until he says he has checked the model-training
-setting in his Claude account, work only with his own profile (`self`) and do not run `clients`,
-`client`, `notes`, `sessions` or `programme` for anyone else. Ask him once, then note his answer
-here and remove this section. `src/data/privacy.ts` may need a line and a new `PRIVACY_VERSION`
-(repo rule: privacy texts must stay true).
+Client data read here is processed under Pieter's Claude subscription, not under the API's
+commercial terms. On 2026-10-06 he switched "Help Improve Our AI Models" off in his Claude
+account, so conversations are not used for training; client work here is allowed since then.
+
+Read only what the task needs: the one client being worked on, not every profile. Never copy
+client data into the repo, a commit message, a memory file or a published page; working files
+go in the scratchpad.
 
 ## Reading
 
@@ -106,13 +107,30 @@ Do this again after any change to the programme's text, and tell Pieter: a strin
 in the app afterwards (his personal note, the goal in the export sheet) has no German until then,
 and the app will then try the API.
 
+## Updating a client's profile
+
+When Pieter tells you something new about a client ("Anna's knee is fine again, she now trains
+three times a week"), or asks you to tidy a profile from his notes:
+
+1. `node read.ts client <id>` into a scratchpad file (and `notes <id>` when working from notes).
+2. Edit only the six texts: `goals`, `injuries`, `frequency`, `sessionLength`, `equipment`,
+   `background`. Nothing else is written, whatever the file holds.
+3. Earlier information is never lost: add to a text, with the date for anything about health
+   ("2026-10-06: …"), and keep the "From questionnaire (date):" blocks as they are. Remove or
+   rewrite a line only when Pieter says it no longer holds, and tell him which line.
+4. `node profile.ts apply <file>` prints which texts change and which got shorter; `--write`
+   saves. `node profile.ts undo <id> --write` takes the last change back.
+
+Questionnaire answers still become a profile in the app (Clients → "New answers from …"), which
+needs no Claude.
+
 ## Not built yet
 
-Profile updates from Pete's notes, importing old programmes (Word/PDF/photos). Until they exist,
-those still run in the app (which needs API credits) or wait.
+Importing old programmes (Word/PDF/photos) as archived programmes, and creating a new client
+from here. Until they exist, those run in the app or wait.
 
 ## Checking the tools
 
-`node selftest.ts` runs a change and an undo on a throwaway draft under `self` and deletes it
-again (16 checks). Run it after changing anything in `tools/`. `npm run typecheck` in `tools/`
+`node selftest.ts` runs a change and an undo on a throwaway draft under `self` and on a throwaway
+client, and deletes both again (23 checks). Run it after changing anything in `tools/`. `npm run typecheck` in `tools/`
 type-checks the scripts; the app's own `npm run lint` covers them too.

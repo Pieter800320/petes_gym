@@ -100,6 +100,42 @@ try {
   rmSync(dir, { recursive: true, force: true })
 }
 
+// ── A client's profile: change and undo, on a throwaway client ─────────
+const clientRef = userCollection('clients').doc()
+const clientDir = mkdtempSync(join(tmpdir(), 'pg-undo-'))
+const clientFile = join(clientDir, 'client.json')
+const profile = { name: 'ZZ undo test (delete me)', isSelf: false, goals: 'Get strong', injuries: 'Left knee', frequency: '2× / week', sessionLength: '45 min', equipment: 'Gym', background: '', questionnaire: 'Age: 40', createdAt: 1, updatedAt: 1 }
+await clientRef.set(profile)
+const editClient = () => {
+  const c = JSON.parse(run('read.ts', 'client', clientRef.id))
+  c.injuries = 'Left knee\n\n2026-10-06: shoulder impingement, right'
+  c.goals = 'Strong' // shorter than before
+  c.name = 'Renamed' // must be ignored
+  c.questionnaire = 'changed' // must be ignored
+  writeFileSync(clientFile, JSON.stringify(c))
+}
+try {
+  editClient()
+  const applied = run('profile.ts', 'apply', clientFile, '--write')
+  const after = (await clientRef.get()).data()!
+  check('profile: the two edited texts are written', applied.includes('Written.') && after.injuries.includes('shoulder impingement') && after.goals === 'Strong')
+  check('profile: a text that got shorter is pointed out', /"gotShorter": \[\s*"goals"/.test(applied))
+  check('profile: name and questionnaire are untouched', after.name === profile.name && after.questionnaire === profile.questionnaire)
+  check('profile: a stale file is refused', run('profile.ts', 'apply', clientFile, '--write').includes('changed in the app after this file was read'))
+  check('profile: undo reports put back', run('profile.ts', 'undo', clientRef.id, '--write').includes('Put back.'))
+  const { updatedAt: _u, ...back } = (await clientRef.get()).data()!
+  const { updatedAt: _v, ...original } = profile
+  check('profile: after undo everything is as before', isDeepStrictEqual(back, original))
+  editClient()
+  run('profile.ts', 'apply', clientFile, '--write')
+  await clientRef.update({ equipment: 'Home', updatedAt: Date.now() + 5 })
+  check('profile: undo is refused after an edit in the app', run('profile.ts', 'undo', clientRef.id, '--write').includes('Undoing would lose those edits'))
+} finally {
+  await clientRef.delete()
+  rmSync(join(homedir(), '.petesgym', 'undo', `client-${clientRef.id}`), { recursive: true, force: true })
+  rmSync(clientDir, { recursive: true, force: true })
+}
+
 for (const [what, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`)
-console.log(`${results.filter(([, ok]) => ok).length}/${results.length} passed; test draft deleted: ${!(await ref.get()).exists}`)
+console.log(`${results.filter(([, ok]) => ok).length}/${results.length} passed; test draft deleted: ${!(await ref.get()).exists}; test client deleted: ${!(await clientRef.get()).exists}`)
 
