@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, createElement, use, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { NavLink, Navigate, Route, Routes, matchPath, useLocation, useMatch, useNavigationType } from 'react-router-dom'
 import { useAuth } from './auth/useAuth'
 import { isFirebaseConfigured } from './firebase'
@@ -14,7 +14,8 @@ import { ClientsScreen } from './screens/ClientsScreen'
 import { toast } from './components/toast'
 import { backupIfDue, runPendingScrubs } from './data/backups'
 import { useInvites, watchNotifyUrl } from './data/invites'
-import { LoadingScreen, NoAccessScreen, NotConfiguredScreen, SignInScreen } from './screens/GateScreens'
+import { startLive, stopLive, useLiveReady } from './data/live'
+import { NoAccessScreen, NotConfiguredScreen, SignInScreen, Splash } from './screens/GateScreens'
 import { TrainScreen } from './screens/TrainScreen'
 import { recordCost, useProgramme } from './data/store'
 import { setCostSink } from './claude/cost'
@@ -24,24 +25,46 @@ import { useTheme } from './settings'
 // Loaded when first opened, so the daily path (Train, Clients) and a client's questionnaire don't
 // carry Create, the importers and the Anthropic SDK. The service worker has every file offline.
 const screens = {
-  CreateScreen: () => import('./screens/CreateScreen'),
-  DeletedScreen: () => import('./screens/DeletedScreen'),
-  FitnessProfileScreen: () => import('./screens/FitnessProfileScreen'),
-  ImportScreen: () => import('./screens/ImportScreen'),
-  NotesScreen: () => import('./screens/NotesScreen'),
-  ProfileImportScreen: () => import('./screens/ProfileImportScreen'),
-  ProgrammeScreen: () => import('./screens/ProgrammeScreen'),
+  CreateScreen: later(() => import('./screens/CreateScreen').then((m) => m.CreateScreen)),
+  DeletedScreen: later(() => import('./screens/DeletedScreen').then((m) => m.DeletedScreen)),
+  FitnessProfileScreen: later(() => import('./screens/FitnessProfileScreen').then((m) => m.FitnessProfileScreen)),
+  ImportScreen: later(() => import('./screens/ImportScreen').then((m) => m.ImportScreen)),
+  NotesScreen: later(() => import('./screens/NotesScreen').then((m) => m.NotesScreen)),
+  ProfileImportScreen: later(() => import('./screens/ProfileImportScreen').then((m) => m.ProfileImportScreen)),
+  ProgrammeScreen: later(() => import('./screens/ProgrammeScreen').then((m) => m.ProgrammeScreen)),
 }
-const CreateScreen = lazy(() => screens.CreateScreen().then((m) => ({ default: m.CreateScreen })))
-const DeletedScreen = lazy(() => screens.DeletedScreen().then((m) => ({ default: m.DeletedScreen })))
-const FitnessProfileScreen = lazy(() => screens.FitnessProfileScreen().then((m) => ({ default: m.FitnessProfileScreen })))
-const ImportScreen = lazy(() => screens.ImportScreen().then((m) => ({ default: m.ImportScreen })))
-const NotesScreen = lazy(() => screens.NotesScreen().then((m) => ({ default: m.NotesScreen })))
-const ProfileImportScreen = lazy(() => screens.ProfileImportScreen().then((m) => ({ default: m.ProfileImportScreen })))
-const ProgrammeScreen = lazy(() => screens.ProgrammeScreen().then((m) => ({ default: m.ProgrammeScreen })))
+const { CreateScreen, DeletedScreen, FitnessProfileScreen, ImportScreen, NotesScreen, ProfileImportScreen, ProgrammeScreen } = screens
 
-/** How long after the shell appears the other screens are fetched in the background. */
-const PRELOAD_SCREENS_MS = 1500
+type Loading<T> = Promise<T> & { status?: 'fulfilled'; value?: T }
+
+/**
+ * A screen whose code is fetched when first needed, like React's lazy(), with one difference:
+ * once `load()` has finished, the screen renders at once. lazy() waits one more turn even then,
+ * which showed as an empty page for a moment between the start frame and the first screen.
+ */
+function later<P extends object>(fetchScreen: () => Promise<ComponentType<P>>) {
+  let loading: Loading<ComponentType<P>> | null = null
+  const load = () => {
+    if (!loading) {
+      const started: Loading<ComponentType<P>> = fetchScreen()
+      // React's use() takes a promise marked like this without waiting.
+      started.then((screen) => Object.assign(started, { status: 'fulfilled', value: screen }), () => undefined)
+      loading = started
+    }
+    return loading
+  }
+  function Screen(props: P) {
+    return createElement(use(load() as Promise<ComponentType<P>>), props)
+  }
+  return Object.assign(Screen, { load })
+}
+
+/** How long after the first screen appears the other screens are fetched in the background. */
+const PRELOAD_SCREENS_MS = 400
+/** The start frame never stays longer than this: after it the app shows what it has. */
+const START_TIMEOUT_MS = 4000
+/** Read by index.html before anything is drawn: this device has been signed in, so the start frame shows the navigation. */
+const SIGNED_IN_KEY = 'pg_signed_in'
 
 const TABS = [
   { to: '/train', label: 'Train' },
@@ -49,26 +72,86 @@ const TABS = [
   { to: '/clients', label: 'Clients' },
 ]
 
+/** The lazily loaded screens the page at this address needs. */
+function screensFor(pathname: string): { load: () => Promise<unknown> }[] {
+  // A draft's address forwards to its programme page (CreateScreen).
+  if (pathname.startsWith('/create')) return [screens.CreateScreen, screens.ProgrammeScreen]
+  if (pathname.startsWith('/programmes')) return [screens.ProgrammeScreen]
+  if (pathname.startsWith('/notes')) return [screens.NotesScreen]
+  if (pathname.startsWith('/deleted')) return [screens.DeletedScreen]
+  return []
+}
+
+/** Every weight of the app's family (styles/fonts.css) is loaded: text is then drawn once, not weight by weight. */
+const fontsLoaded: Promise<unknown> =
+  typeof document !== 'undefined' && document.fonts
+    ? Promise.all([400, 500, 600, 700, 800].map((weight) => document.fonts.load(`${weight} 16px "Schibsted Grotesk"`))).catch(() => undefined)
+    : Promise.resolve()
+
+/**
+ * True when the first screen can appear complete: the fonts and that screen's own code are
+ * loaded and every collection has answered. Never later than START_TIMEOUT_MS.
+ */
+function useStartReady(uid: string | null): boolean {
+  const dataReady = useLiveReady()
+  const [restReady, setRestReady] = useState(false)
+  const [late, setLate] = useState(false)
+  const firstPath = useRef(useLocation().pathname)
+  useEffect(() => {
+    if (uid) startLive(uid)
+  }, [uid])
+  useEffect(() => {
+    let on = true
+    Promise.all([fontsLoaded, ...screensFor(firstPath.current).map((screen) => screen.load().catch(() => undefined))]).then(() => on && setRestReady(true))
+    const timer = setTimeout(() => setLate(true), START_TIMEOUT_MS)
+    return () => {
+      on = false
+      clearTimeout(timer)
+    }
+  }, [])
+  return (dataReady && restReady) || late
+}
+
+function setSignedInBefore(yes: boolean) {
+  try {
+    if (yes) localStorage.setItem(SIGNED_IN_KEY, '1')
+    else localStorage.removeItem(SIGNED_IN_KEY)
+  } catch {
+    // Storage blocked: the start frame just shows no navigation.
+  }
+}
+
 export default function App() {
-  useTheme() // applies the saved theme on startup
+  useTheme() // follows changes; index.html has already applied the saved theme
   const { user, loading } = useAuth()
   const location = useLocation()
+  // Someone else's Google account gets no listeners at all.
+  const owner = user?.email?.toLowerCase() === OWNER_EMAIL
+  const fit = matchPath('/fit/:uid/:token', location.pathname)
+  const ready = useStartReady(user && owner && !fit ? user.uid : null)
+
+  useEffect(() => {
+    if (loading || fit) return
+    setSignedInBefore(owner)
+    if (!owner) stopLive()
+  }, [loading, owner, fit])
 
   if (!isFirebaseConfigured) return <NotConfiguredScreen />
   // A client's Fitness Profile link: the questionnaire, for someone without an account, and
   // nothing else of the app.
-  const fit = matchPath('/fit/:uid/:token', location.pathname)
   if (fit?.params.uid && fit.params.token) {
     return (
-      <Suspense fallback={<LoadingScreen />}>
+      <Suspense fallback={<Splash />}>
         <FitnessProfileScreen uid={fit.params.uid} token={fit.params.token} />
       </Suspense>
     )
   }
-  if (loading) return <LoadingScreen />
+  if (loading) return <Splash />
   if (!user) return <SignInScreen />
-  // Someone else's Google account: stop before the shell, so none of its listeners start.
-  if (user.email?.toLowerCase() !== OWNER_EMAIL) return <NoAccessScreen />
+  // Stop before the shell.
+  if (!owner) return <NoAccessScreen />
+  // One calm frame until everything for the first screen is there; then it appears complete.
+  if (!ready) return <Splash />
   return <Shell />
 }
 
@@ -117,12 +200,12 @@ function Shell() {
   }, [user])
   useScrollMemory()
 
-  // Fetch the other screens once the first one is up, so opening them never shows "Loading…".
+  // Fetch the other screens once the first one is up, so opening them never waits.
   useEffect(() => {
     const timer = setTimeout(() => {
       // The questionnaire is for clients; Pete's app never shows it.
       const { FitnessProfileScreen: _clientsOnly, ...mine } = screens
-      for (const load of Object.values(mine)) load().catch(() => {})
+      for (const screen of Object.values(mine)) screen.load().catch(() => {})
     }, PRELOAD_SCREENS_MS)
     return () => clearTimeout(timer)
   }, [])
@@ -174,7 +257,9 @@ function Shell() {
       </nav>
 
       <main className="shell-main">
-        <Suspense fallback={<LoadingScreen />}>
+        {/* A screen's code is fetched in the background just after start; should one still be on its
+            way, the page stays empty for that moment rather than flashing a word. */}
+        <Suspense fallback={null}>
         <Routes>
           <Route path="/" element={<Navigate to="/train" replace />} />
           <Route path="/train" element={<TrainScreen />} />

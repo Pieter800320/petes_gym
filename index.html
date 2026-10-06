@@ -7,9 +7,34 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Pete's Gym</title>
+    <!--
+      Before the first picture is drawn: Pete's theme (settings.ts keeps it under pg_theme_v1; the
+      colours are --color-bg of tokens.css, for the phone's status bar), and whether this device
+      has been signed in before, which decides if the start frame below shows the navigation.
+      Without this the app started dark and turned light a moment later.
+    -->
+    <script>
+      ;(function () {
+        try {
+          var root = document.documentElement
+          var theme = localStorage.getItem('pg_theme_v1')
+          if (theme === 'light' || theme === 'dark') root.setAttribute('data-theme', theme)
+          var light = theme === 'light' || (theme !== 'dark' && matchMedia('(prefers-color-scheme: light)').matches)
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', light ? '#FBFBF9' : '#121212')
+          if (localStorage.getItem('pg_signed_in')) root.classList.add('signed-in-before')
+        } catch (e) {}
+      })()
+    </script>
+    <!-- The fonts are fetched alongside the script, so text is drawn once, in its own font (styles/fonts.css). -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-400-normal.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-500-normal.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-600-normal.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-700-normal.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-800-normal.woff2" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- The start frame: what is on screen until the app has its data (the same as <Splash /> in GateScreens.tsx). -->
+    <div id="root"><div class="shell splash" aria-busy="true"><nav class="nav"></nav><main class="shell-main"></main></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

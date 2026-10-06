@@ -5,8 +5,9 @@
  * link may read the invite while it is unanswered and fill in its answers once. After that the
  * link is dead: the answers can be read by Pete only.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, setDoc, updateDoc, waitForPendingWrites } from 'firebase/firestore'
+import { useLive } from './live'
 import { reportWriteError } from './store'
 import { useAuth } from '../auth/useAuth'
 import { requireDb } from '../firebase'
@@ -99,19 +100,9 @@ export function deleteInvite(uid: string, token: string) {
 
 /** Pete's invites, newest answers first. */
 export function useInvites(): Invite[] {
-  const { user } = useAuth()
-  const [invites, setInvites] = useState<Invite[]>([])
-  useEffect(() => {
-    if (!user) return
-    return onSnapshot(
-      invitesOf(user.uid),
-      // Also told when a write of this device reaches the server, for `pending`.
-      { includeMetadataChanges: true },
-      (snap) => setInvites(snap.docs.map((d) => ({ ...(d.data() as StoredInvite), id: d.id, pending: d.metadata.hasPendingWrites })).sort((a, b) => (b.answeredAt ?? 0) - (a.answeredAt ?? 0))),
-      (err) => console.error(err),
-    )
-  }, [user])
-  return invites
+  // From the shared live data (live.ts), which also sets `pending`: known the moment a screen opens.
+  const { docs } = useLive('invites')
+  return useMemo(() => [...(docs as Invite[])].sort((a, b) => (b.answeredAt ?? 0) - (a.answeredAt ?? 0)), [docs])
 }
 
 // ── Email when answers arrive ────────────────────────────────────────

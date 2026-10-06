@@ -9,7 +9,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
 ## 0. Current state
 
-- **Version:** 0.9.57 (2026-10-06). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.58 (2026-10-06). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -193,6 +193,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - 0.9.55 (Pieter, 2026-10-04): tooling. `strict` is on in both tsconfigs (the code already passed it). `npm test` runs vitest (new devDependency) over `src/**/*.test.ts`: 111 tests in 8 files for the helpers where this audit's bugs lived (`programmeUtils` steppers, sets and interval time; `health` injury words and session length; `clientMatch`; `programmeTools` id rules and the weight/note rule; `programmeIds` repair; `importProfiles` CSV splitting and profile merge; `fitnessProfile` required answers and answers → profile; `backups.parseBackupFile`; `nextTitle`). They run in Node; modules that reach Firebase are mocked. The deploy workflow now runs lint, then test, then build: a push that fails one is not deployed. §3 lists the new step. No UI test framework (audit: avoid for now). `vite.config.ts` takes `defineConfig` from `vitest/config` for the `test` block.
   - 0.9.56 (Pieter, 2026-10-06): Claude no longer works inside the app; programmes are built in Claude Code on the PC (§4) and land in the app as drafts. One switch, `CLAUDE_IN_APP` in `src/claude/inApp.ts` (false): nothing was removed, true brings it all back. With it off: Create is the list of drafts plus the library; a draft opens on its own page (`draftPath`; `/create/:id` forwards to `/programmes/:id`), where a client's draft has "Make current" as its red button (Send follows once it is current) and a line saying it is a draft; NEW and "+ New programme" start a blank programme with the Edit sheet open (`state.edit`). Hidden: the chat, every "Rework with Claude" (the client page shows "Edit programme" in its place), "Build with Claude", the API key and costs in Settings, and both importers (their routes still exist). The Coach Playbook stays in Settings: Claude Code reads it. Export in German takes its text only from the programme's cache and never calls Claude; a missing text gives "German is missing for N texts… Ask Claude Code on the PC"; the personal note is exempt and goes out as typed. Privacy notice (EN + DE): the sentence on AI training now says Pieter switched it off in his Claude account (it used to rest on the API's terms), `PRIVACY_VERSION` 2026-10-06; **Pieter should have the wording checked, and whether a personal Claude subscription needs a data-processing agreement.** Checked in Node: the programme page, Create and a client's page rendered to text with the store mocked (5 checks: buttons and links per status, nothing of Claude left). NOT seen in the app or on a phone; taps, the Edit sheet opening on a new programme and the German export are untested.
   - 0.9.57 (Pieter, 2026-10-06): the export has a third language, Afrikaans (his father is the first client for it). `ExportLang` `'af'` with its own labels in `exportModel.ts` (Oefenprogram vir N weke, Doel, Hoe gereeld, Sessielengte, Oefening / Stelle × Herh. / Rus, Of), file suffix `_AF`, Word language af-ZA. Its text lives in `Programme.translationsAf` (`{src, af}` pairs; `saveProgramme` leaves it out, like the German cache) and is only ever written from Claude Code (`tools/translate.ts af …`); the app never translates Afrikaans, also with `CLAUDE_IN_APP` on. A missing text gives "Afrikaans is missing for N texts…"; the personal note goes out as typed. Checked in Node: one sample programme built and rendered to HTML in Afrikaans (labels, translated text, exercise names kept). NOT seen in the app; the Word export in Afrikaans is not opened.
+  - 0.9.58 (Pieter, 2026-10-06), polish pass 1 and 2: measure, then nothing jumps. Measured first with `tools/ui` (§5): at start the app showed four pictures in a row (blank, "Loading…", Train's frame in a system font, the fonts swapping in weight by weight, then the data); with the light theme chosen on a dark phone it started dark and turned light; Clients moved its list down 64 px on every visit when the "fitness profile links sent" line arrived; a client's page and the programme page filled in in two steps. Now: (1) `data/live.ts` listens to the five everyday collections (clients, programmes, notes, workouts, invites) once for as long as the app is open; every hook in `store.ts` and `useInvites` reads from it and filters on the device, so a screen has its data when it opens (`lastResults`, the per-screen listeners and the second invites listener are gone; unchanged documents keep their object, programmes are decoded once). (2) The start frame: `index.html` carries the app's empty outline (`.shell.splash`, the same as `<Splash />`) and a script that sets the theme and the status-bar colour before anything is drawn; `App.tsx` keeps that frame until sign-in, all five collections, the fonts and the first screen's code are there (`useStartReady`, at most 4 s), then the first screen appears once, complete. A device never signed in shows no navigation in the frame (`pg_signed_in`). (3) Fonts: own `@font-face` rules with `font-display: block` (`styles/fonts.css`), preloaded from `index.html`; text is never drawn in a system font first. (4) Screens fetched on demand use `later()` in `App.tsx` instead of `lazy()`: once loaded they render at once; all are fetched 0.4 s after the first screen; the Suspense fallback is empty, not "Loading…". (5) Desktop: the rail's action button is there in the first frame (`useLayoutEffect` in `useRailSlot`). `useProgramme` treats a programme as "not there" only after 0.5 s, so one created a moment ago doesn't flash "isn't here any more". Recorded after: every start is two pictures (frame, then the complete screen) and every tab switch or page change one, with 0 layout shifts, on phone and desktop, dark and light, signed out, and first-ever start. `tools/livecheck.ts` ran the same listener calls against the real database under its rules (5 collections answer, counts only). One jump is left: a new draft's row shows in Create's list behind the closing sheet just before its page opens. NOT seen on a phone; the first start after this update reads notes and sessions whole once, so offline it may show less until it has been online.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -238,7 +239,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 | Auth | Firebase Auth, Google sign-in | |
 | Hosting | GitHub Pages via `.github/workflows/deploy.yml`, base `/petes_gym/` | Free, deploys on push to `main` |
 | Routing | `HashRouter` | GitHub Pages has no rewrites |
-| Fonts | Schibsted Grotesk via `@fontsource` (latin, 400–800), also embedded in each HTML export; Arial in Word exports | One family for app and HTML export; bundled for offline; the export fetches nothing; Arial is on every client PC |
+| Fonts | Schibsted Grotesk, the latin files of `@fontsource` (400–800) through our own `styles/fonts.css` (`font-display: block`, preloaded), also embedded in each HTML export; Arial in Word exports | One family for app and HTML export; bundled for offline; no swap from a system font at start; the export fetches nothing; Arial is on every client PC |
 
 ## 2. Rules specific to this repo
 
@@ -262,8 +263,17 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 - **Privacy texts must stay true** (`data/privacy.ts`). Whenever client data starts going somewhere
   new (another provider, another Claude feature, analytics), or the storage period changes, update
   the notice and the consent and set `PRIVACY_VERSION` to the new date.
-- **Avoid composite indexes.** Don't combine `where()` with `orderBy()` on another field; filter in
-  Firestore, sort on the device (see `useNotes`).
+- **Screens read through `data/live.ts`.** Clients, programmes, notes, sessions and invites are
+  each listened to once, whole, for as long as the app is open; the hooks in `store.ts` filter and
+  sort on the device. Don't start another `onSnapshot` on one of these in a screen or a hook: it
+  answers later than the page opens and the page then fills in piece by piece. A new everyday
+  collection goes into `LIVE_COLLECTIONS`.
+- **Nothing jumps.** A screen appears once, complete: no "Loading…" word, nothing arriving late
+  that moves its neighbours, text only in its own font. Check a change to a screen with
+  `node tools/ui/run.ts` (§5): the screen's step should stay one state with 0 layout shifts.
+  `index.html`'s start frame and `<Splash />` are the same markup; change both.
+- **Avoid composite indexes.** In the one-off reads that remain (`getDocs`), don't combine
+  `where()` with `orderBy()` on another field; filter in Firestore, sort on the device.
 - **The Anthropic API key never leaves the device.** It lives in localStorage (`src/settings.ts`).
   Never write it to Firestore, logs, or the repo.
 - **Programme structure is free-shaped** (`src/data/types.ts`): Claude decides sessions, section titles
@@ -335,3 +345,28 @@ Claude is switched off since 0.9.56 (`CLAUDE_IN_APP`); Create shows the drafts. 
   he switched model training off there on 2026-10-06. No old programme has been imported this
   way yet. The German cache was filled for one programme (158 strings); the export with it is not
   yet seen in the app.
+- `livecheck.ts` signs in as the owner (a token made by the service account) with the browser SDK
+  and listens the way `src/data/live.ts` does, against the real database and its rules. It prints
+  counts and times only. Run it after changing how the app listens.
+
+## 5. Looking at the UI (`tools/ui`, since 2026-10-06)
+
+`node tools/ui/run.ts [scenario…]` (from the repo root) builds the real app on a stand-in backend
+and records how its screens appear in a headless Chrome the size of a phone, slowed down four
+times. Nothing of it is deployed.
+
+- `tools/ui/vite.config.ts` swaps `firebase/app`, `firebase/auth`, `firebase/firestore` and the
+  service worker for the files in `tools/ui/fake/`; everything else is the app's own code. The
+  data is made up (`fake/seed.ts`): no real person is in it. The stand-in answers each listener
+  after a delay (`fake/options.ts`: `?auth=…&cold=…&db=…&jitter=…`), like a cold start on a phone.
+- Per scenario it writes `tools/ui/out/<name>/frames/*.jpg` (every picture the screen showed, named
+  by its time) and `report.json`, and prints a timeline: each state of the page (text and
+  background) and each layout shift with the element that moved and by how much. `out/` is not in
+  git. Scenarios are in `run.ts` (`SCENARIOS`): cold starts (dark, light chosen, on Clients,
+  first-ever, signed out, desktop), tab switches, into a client and a programme and back, opening
+  a tab the moment the app is up, creating a programme.
+- A screen that appears well: one state per step, 0 layout shifts. Add a scenario for a screen
+  before polishing it, and compare the timeline before and after.
+- When the app uses a Firestore call the stand-in lacks, add it to `fake/firestore.ts`.
+- Limits: it shows order and jumps, not real speed (no Firebase SDK to load, no service worker);
+  animations are recorded frame by frame but not judged; nothing replaces a look on the phone.

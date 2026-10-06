@@ -1,0 +1,43 @@
+/*
+ * Schibsted Grotesk, the app's one family: the latin files of @fontsource, bundled and precached
+ * for offline use. Declared here rather than through the package's own CSS because of one word:
+ * `font-display: block`. With the package's `swap`, text is first drawn in a system font and then
+ * redrawn weight by weight as each file arrives, which is the flicker at start. With `block` text
+ * waits for its font; the files are preloaded (index.html) and the app waits for them before its
+ * first screen (App.tsx), so in practice nothing is ever drawn twice.
+ */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-display: block;
+  font-weight: 400;
+  src: url('../../node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-display: block;
+  font-weight: 500;
+  src: url('../../node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-display: block;
+  font-weight: 600;
+  src: url('../../node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-display: block;
+  font-weight: 700;
+  src: url('../../node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-display: block;
+  font-weight: 800;
+  src: url('../../node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-800-normal.woff2') format('woff2');
+}

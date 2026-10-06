@@ -77,10 +77,16 @@ export function NotConfiguredScreen() {
   )
 }
 
-export function LoadingScreen() {
+/**
+ * The start frame: the app's empty outline, shown until sign-in, data and fonts are all there, so
+ * the first screen appears once and complete. index.html carries the same markup, which is what
+ * is on screen before this script has even loaded: keep the two the same.
+ */
+export function Splash() {
   return (
-    <div className="center-screen">
-      <span className="label">Loading…</span>
+    <div className="shell splash" aria-busy="true">
+      <nav className="nav" />
+      <main className="shell-main" />
     </div>
   )
 }

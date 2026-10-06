@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Recordings of the UI test runs (tools/ui/run.ts)
+tools/ui/out

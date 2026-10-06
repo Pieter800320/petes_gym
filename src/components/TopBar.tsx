@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { IconBack, IconPen, IconSettings } from './Icons'
@@ -88,11 +88,12 @@ const readRail = () => {
 
 /**
  * Whether this is the desktop layout, and the rail's slot there. Read straight away so the button
- * is in the rail from its first frame; the slot is only missing for the app's very first render.
+ * is in the rail from its first frame. For the app's very first render the slot doesn't exist yet
+ * (the rail is drawn in the same pass), so it is read again before that frame is shown.
  */
 function useRailSlot(): { desktop: boolean; slot: HTMLElement | null } {
   const [rail, setRail] = useState(readRail)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const media = window.matchMedia(DESKTOP)
     const update = () => setRail(readRail())
     update()

@@ -16,17 +16,16 @@ import {
   increment,
   writeBatch,
   onSnapshot,
-  orderBy,
   query,
   setDoc,
   updateDoc,
   where,
-  type QueryConstraint,
   type WriteBatch,
 } from 'firebase/firestore'
 import { requireDb } from '../firebase'
 import { useAuth } from '../auth/useAuth'
 import type { CostKind } from '../claude/cost'
+import { useLive, type LiveName } from './live'
 import { withUniqueIds } from './programmeIds'
 import type { Client, ClientDraft, Note, Programme, ProgrammeDraft, ProgressionBlock, Workout } from './types'
 
@@ -62,7 +61,7 @@ interface LiveQuery<T> {
   error: string | null
 }
 
-/** Query spec made of primitives so it can sit directly in a hook's dependency list. */
+/** What to take from a collection, made of primitives so it can sit in a hook's dependency list. */
 interface QuerySpec {
   whereField?: string
   whereValue?: string | null
@@ -70,44 +69,20 @@ interface QuerySpec {
 }
 
 /**
- * What each live query last returned, kept while the app is open. A screen opened again shows this
- * at once and complete, instead of starting empty and filling in piece by piece as every listener
- * answers; the listener still runs and replaces it with anything newer.
+ * Part of one of the account's collections. The whole collection is live for as long as the app
+ * is open (live.ts); filtering and sorting happen here, on the device. So a screen opened for the
+ * first time has its data at once and appears complete, and no query needs an index.
  */
-const lastResults = new Map<string, unknown[]>()
-const NOTHING_YET: never[] = []
-
-/** Live-subscribes to a user collection; re-subscribes when the user or the query changes. */
-function useLiveCollection<T extends { id: string }>(name: string, spec: QuerySpec): LiveQuery<T> {
-  const { user } = useAuth()
+function useLiveCollection<T extends { id: string }>(name: LiveName, spec: QuerySpec): LiveQuery<T> {
+  const entry = useLive(name)
   const { whereField, whereValue, orderField } = spec
-  /** Identifies the query, so an answer is never shown for a different one (another client's list). */
-  const key = [user?.uid ?? '', name, whereField ?? '', String(whereValue), orderField ?? ''].join('|')
-  const [state, setState] = useState<LiveQuery<T> & { key: string }>({ key: '', data: NOTHING_YET, loading: true, error: null })
-
-  useEffect(() => {
-    if (!user) return
-    const constraints: QueryConstraint[] = []
-    if (whereField) constraints.push(where(whereField, '==', whereValue ?? null))
-    if (orderField) constraints.push(orderBy(orderField))
-    return onSnapshot(
-      query(userCollection(user.uid, name), ...constraints),
-      (snap) => {
-        const data = snap.docs.map((d) => ({ ...(d.data() as WithoutId<T>), id: d.id }) as T)
-        lastResults.set(key, data)
-        setState({ key, data, loading: false, error: null })
-      },
-      (err) => {
-        console.error(err)
-        setState({ key, data: (lastResults.get(key) as T[] | undefined) ?? NOTHING_YET, loading: false, error: 'Could not load data. Reopen the app to retry.' })
-      },
-    )
-  }, [user, name, whereField, whereValue, orderField, key])
-
-  if (state.key === key) return state
-  // Not answered yet for this query: show what it returned last time, or nothing while it loads.
-  const remembered = lastResults.get(key) as T[] | undefined
-  return remembered ? { data: remembered, loading: false, error: null } : { data: NOTHING_YET, loading: true, error: null }
+  const data = useMemo(() => {
+    let docs = entry.docs as Record<string, unknown>[]
+    if (whereField) docs = docs.filter((d) => d[whereField] === (whereValue ?? null))
+    if (orderField) docs = docs.filter((d) => orderField in d).sort((a, b) => (a[orderField]! < b[orderField]! ? -1 : a[orderField]! > b[orderField]! ? 1 : 0))
+    return docs as unknown as T[]
+  }, [entry.docs, whereField, whereValue, orderField])
+  return { data, loading: !entry.ready, error: entry.error }
 }
 
 // ── Clients ─────────────────────────────────────────────────────────
@@ -207,6 +182,20 @@ function decodeProgramme(raw: WithoutId<Programme>, id: string): Programme {
   })
 }
 
+/**
+ * A stored programme, decoded once: the same stored document (live.ts keeps unchanged ones) gives
+ * the same programme, so an edit to one programme doesn't make every other one look new.
+ */
+const decodedOnce = new WeakMap<object, Programme>()
+function decoded(stored: Programme): Programme {
+  let programme = decodedOnce.get(stored)
+  if (!programme) {
+    programme = decodeProgramme(stored, stored.id)
+    decodedOnce.set(stored, programme)
+  }
+  return programme
+}
+
 /** clientId: one client's programmes, or 'all'. Sorted newest first on the device. */
 /** Programmes (newest first), without the ones in Recently deleted (pass true to get only those). */
 export function useProgrammes(clientId: string | 'all', deleted = false) {
@@ -214,7 +203,7 @@ export function useProgrammes(clientId: string | 'all', deleted = false) {
   const data = useMemo(
     () =>
       live.data
-        .map((p) => decodeProgramme(p, p.id))
+        .map(decoded)
         .filter((p) => Boolean(p.deletedAt) === deleted)
         .sort((a, b) => b.updatedAt - a.updatedAt),
     [live.data, deleted],
@@ -222,35 +211,23 @@ export function useProgrammes(clientId: string | 'all', deleted = false) {
   return { ...live, data }
 }
 
-/** Programmes as last seen by useProgramme (see lastResults). */
-const lastProgrammes = new Map<string, Programme | null>()
+/** How long a programme may be absent from the live data before its page says it is gone. */
+const NEW_PROGRAMME_GRACE_MS = 500
 
 /** Live single programme. data is null while loading or if it doesn't exist. */
-export function useProgramme(id: string | undefined) {
-  const { user } = useAuth()
-  const [state, setState] = useState<{ data: Programme | null; loading: boolean; forId?: string }>({ data: null, loading: true })
-
+export function useProgramme(id: string | undefined): { data: Programme | null; loading: boolean } {
+  const { docs, ready } = useLive('programmes')
+  const raw = id ? docs.find((d) => d.id === id) : undefined
+  // A programme created a moment ago is opened before the listener has told of it: "not there"
+  // only counts once it has stayed away for a moment.
+  const [goneId, setGoneId] = useState<string | null>(null)
+  const missing = Boolean(id) && ready && !raw
   useEffect(() => {
-    if (!user || !id) return
-    return onSnapshot(
-      doc(userCollection(user.uid, 'programmes'), id),
-      (snap) => {
-        const data = snap.exists() ? decodeProgramme(snap.data() as WithoutId<Programme>, snap.id) : null
-        lastProgrammes.set(`${user.uid}|${id}`, data)
-        setState({ data, loading: false, forId: id })
-      },
-      (err) => {
-        console.error(err)
-        setState({ data: null, loading: false, forId: id })
-      },
-    )
-  }, [user, id])
-
-  // Ignore a snapshot that belongs to the previously viewed programme.
-  if (state.forId === id) return state
-  // Opened before: show it at once while the listener catches up.
-  const remembered = user && id ? lastProgrammes.get(`${user.uid}|${id}`) : undefined
-  return remembered ? { data: remembered, loading: false } : { data: null, loading: true }
+    if (!missing || !id) return
+    const timer = setTimeout(() => setGoneId(id), NEW_PROGRAMME_GRACE_MS)
+    return () => clearTimeout(timer)
+  }, [missing, id])
+  return { data: raw ? decoded(raw as unknown as Programme) : null, loading: !id || !ready || (missing && goneId !== id) }
 }
 
 /** createdAt can be set for imported programmes, so history sorts by the original file's date. */
