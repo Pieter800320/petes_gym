@@ -17,7 +17,7 @@ export const CONTROLLER = {
 }
 
 /** The date of this wording; saved with every consent, so it is clear what was agreed to. */
-export const PRIVACY_VERSION = '2026-10-06'
+export const PRIVACY_VERSION = '2026-10-06 (2)'
 
 /** How long a client's data is kept after the work together ends (Clients reminds Pete of profiles older than this). */
 export const KEEP_YEARS = 2
@@ -51,6 +51,7 @@ export function privacyNotice(lang: Lang): NoticeSection[] {
         title: 'Welche Daten',
         paragraphs: [
           'Deine Antworten in diesem Fragebogen: Name, Alter, Geschlecht, Trainingsziele, Trainingsalltag, Ausstattung, Lebensstil sowie Angaben zu deiner Gesundheit (Verletzungen, Schmerzen und Erkrankungen).',
+          'Kontaktdaten, die du Pieter gibst (Handynummer, E-Mail-Adresse, Anschrift), wenn er sie in deinem Profil notiert. Sie werden nicht an Claude übermittelt.',
           'Beim Öffnen der Seite verarbeiten die technischen Anbieter deine IP-Adresse, um die Seite auszuliefern.',
           'Bis zum Absenden werden deine Antworten und die gewählte Sprache nur auf deinem Gerät gespeichert, damit beim Neuladen nichts verloren geht. Es gibt keine Cookies, keine Werbung und kein Tracking.',
         ],
@@ -99,6 +100,7 @@ export function privacyNotice(lang: Lang): NoticeSection[] {
       title: 'Which data',
       paragraphs: [
         'Your answers in this questionnaire: name, age, sex, training goals, current training, equipment, lifestyle, and information about your health (injuries, pain and medical conditions).',
+        'Contact details you give Pieter (mobile number, email address, postal address), if he notes them in your profile. They are not sent to Claude.',
         'When you open the page, the technical providers process your IP address in order to deliver it.',
         'Until you send them, your answers and the chosen language are stored only on your device, so that nothing is lost if the page reloads. There are no cookies, no advertising and no tracking.',
       ],

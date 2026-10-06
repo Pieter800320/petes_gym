@@ -163,6 +163,14 @@ the client's history:
 6. Report what could not be read or was unclear, per programme. A document that is cut off or
    illegible in part is not imported: say which part.
 
+## Two profiles of one person
+
+`node merge.ts <keepId> <dropId>` prints what would happen: the other profile's programmes, notes,
+sessions and links move to `<keepId>`, texts the kept profile lacks are taken over, and the emptied
+profile goes to Recently deleted. It refuses when both have a different text for the same field.
+A client has one current programme: look at the two (dates, source document) and name the one
+that stays with `--current=<programmeId>`; tell Pieter which you chose. `--write` does it.
+
 ## Not built yet
 
 Creating a new client from here (use Clients → ADD in the app, or the fitness profile link), and

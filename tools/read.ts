@@ -57,7 +57,9 @@ switch (command) {
     if (!arg) throw new Error('Which client? Give an id ("self" is Pete).')
     const snap = await userCollection('clients').doc(arg).get()
     if (!snap.exists) throw new Error(`No client with id ${arg}.`)
-    print({ ...snap.data(), id: snap.id })
+    // Contact details are not needed to build a programme: they are never shown to Claude.
+    const { mobile: _m, email: _e, address: _a, ...profile } = snap.data() as Omit<Client, 'id'>
+    print({ ...profile, id: snap.id })
     break
   }
   case 'programmes': {

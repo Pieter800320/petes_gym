@@ -78,6 +78,10 @@ export function ClientScreen() {
   const current = featured?.status === 'active' ? featured : null
   const earlier = programmes.filter((p) => p !== featured)
   const details = DETAIL_FIELDS.filter((f) => client[f.key].trim())
+  const mobile = client.mobile?.trim()
+  const email = client.email?.trim()
+  const address = client.address?.trim()
+  const hasContact = Boolean(mobile || email || address)
   const hours = workouts.reduce((n, w) => n + w.durationSec, 0) / 3600
   const meta = self ? 'Your own training' : [firstLine(client.goals), client.frequency, firstLine(client.injuries)].filter(Boolean).join(' · ')
 
@@ -193,6 +197,16 @@ export function ClientScreen() {
       </button>
       {showAbout && (
         <div className="about">
+          {hasContact && (
+            <div>
+              <div className="label">Contact</div>
+              <p className="prose">
+                {mobile && <><a href={`tel:${mobile.replace(/[^\d+]/g, '')}`}>{mobile}</a>{'\n'}</>}
+                {email && <><a href={`mailto:${email}`}>{email}</a>{'\n'}</>}
+                {address}
+              </p>
+            </div>
+          )}
           {details.length ? (
             details.map((f) => (
               <div key={f.key}>
@@ -200,7 +214,7 @@ export function ClientScreen() {
                 <p className="prose">{client[f.key]}</p>
               </div>
             ))
-          ) : (
+          ) : hasContact ? null : (
             <p className="muted small">No details yet. Use ⋯ → Edit profile{self ? '' : `, or send ${firstName} your fitness profile link`}.</p>
           )}
           {client.questionnaire && (
@@ -214,7 +228,7 @@ export function ClientScreen() {
 
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={self ? 'You' : client.name}>
         <div className="lines">
-          <MenuLine title="Edit profile" meta="Goals, injuries, equipment, background" onClick={() => { setMenuOpen(false); setEditing(true) }} />
+          <MenuLine title="Edit profile" meta={self ? 'Goals, injuries, equipment, background' : 'Contact, goals, injuries, equipment, background'} onClick={() => { setMenuOpen(false); setEditing(true) }} />
           <MenuLine title="New programme" meta="With Claude, or blank" onClick={() => { setMenuOpen(false); setNewOpen(true) }} />
           {!self && (
             <MenuLine

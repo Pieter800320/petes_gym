@@ -47,7 +47,7 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
 
   function save() {
     if (!user || !draft.name.trim()) return
-    const clean = { ...draft, name: draft.name.trim() }
+    const clean = { ...draft, name: draft.name.trim(), mobile: (draft.mobile ?? '').trim(), email: (draft.email ?? '').trim(), address: (draft.address ?? '').trim() }
     if (client) {
       updateClient(user.uid, client.id, clean)
       toast('Profile updated')
@@ -75,6 +75,24 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
         <span className="label">Name</span>
         <input id="client-name" className="input" value={draft.name} onChange={(e) => set('name', e.target.value)} data-autofocus={client ? undefined : true} />
       </label>
+      {!draft.isSelf && (
+        <>
+          <div className="form-row">
+            <label className="field">
+              <span className="label">Mobile</span>
+              <input id="client-mobile" className="input" type="tel" autoComplete="off" value={draft.mobile ?? ''} onChange={(e) => set('mobile', e.target.value)} />
+            </label>
+            <label className="field">
+              <span className="label">Email</span>
+              <input id="client-email" className="input" type="email" autoComplete="off" autoCapitalize="none" value={draft.email ?? ''} onChange={(e) => set('email', e.target.value)} />
+            </label>
+          </div>
+          <label className="field">
+            <span className="label">Address</span>
+            <textarea id="client-address" className="textarea" style={{ minHeight: 72 }} autoComplete="off" value={draft.address ?? ''} onChange={(e) => set('address', e.target.value)} />
+          </label>
+        </>
+      )}
       <div className="form-row">
         <label className="field">
           <span className="label">Frequency</span>

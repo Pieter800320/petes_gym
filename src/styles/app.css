@@ -283,6 +283,7 @@ svg { flex: none; }
 .note-line { border: 0; border-left: 2px solid var(--color-accent); background: none; padding: 4px 0 4px 12px; text-align: left; font-size: 14px; line-height: 1.5; color: var(--color-text); }
 .about { display: flex; flex-direction: column; gap: 14px; }
 .about summary { cursor: pointer; padding: 6px 0; }
+.about a { color: inherit; }
 .session-lines { display: flex; flex-direction: column; font-size: var(--type-sm); }
 .session-lines p { margin: var(--space-2) 0 0; }
 .session-line { display: flex; gap: var(--space-3); min-height: 44px; align-items: center; border-bottom: 1px solid var(--color-border); }

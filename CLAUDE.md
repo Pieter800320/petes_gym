@@ -7,9 +7,12 @@ features). This file holds only what is specific to this repo.
 Blueprint (decisions, wireframes, Coach Playbook draft, roadmap):
 https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
 
+Blueprint for a client version (Pieter's idea, 2026-10-06; drafted, nothing built, his answers to
+its open questions come first): https://claude.ai/artifact/FRsXaaH26n4kqvFNiRuJau
+
 ## 0. Current state
 
-- **Version:** 0.9.65 (2026-10-06). All five milestones built (2026-09-30), since refined:
+- **Version:** 0.9.66 (2026-10-06). All five milestones built (2026-09-30), since refined:
   - M1 Foundation: shell, Firebase sign-in + offline sync, clients, notes, settings, theme.
   - M2 Train: one screen — day list. The open exercise card (the same in Train and in Edit) has four bands: cue + alternative; a 2×2
     grid of pills Sets, Reps, Rest, Weight (−/+; "—" when empty; tap the value to type; Weight steps 0.5 kg
@@ -201,6 +204,7 @@ https://claude.ai/artifact/TLW5JR7EVsawbaVmp57uh1
   - 0.9.63 (Pieter, 2026-10-06), polish pass 4: feel. (1) Pressed look: everything that can be tapped dims under the finger, through one list in app.css ("Quick press feedback"); exercise lines, the tabs, the icons in the top bar, the back arrow and the day numbers had none. Red buttons darken and the dial gives a little, as before, now eased (`--motion-press`). (2) The dial is one button for both its states instead of two swapped ones: as a plain action it is the clock's size drawn smaller (`scale`, `--dial-rest-scale`), and between START and the running clock the ring's dark middle grows out of the red disc while the word gives way to the time (`--motion-state`); Pause comes out of nothing with it. Same look at rest as before, on phone and in the desktop rail. (3) Train no longer jumps at Start and Finish: the "Up next" line keeps its place, empty, during a session (it used to leave, moving the page 27 px). (4) A draft just made with NEW is not added to Create's list behind the closing sheet before its page opens (`justMade`). Toasts already eased in and out; unchanged. Recorded (`session`, `desktop-session`, `writes`): 0 layout shifts in all three; frames of the dial in each state looked at. NOT seen on a phone. **Open, parked by Pieter until after this pass: the start. The icon is slightly off when the app's frame appears and then settles a little lower, and once in a while it shakes. Ask for a new recording before touching it.**
   - 0.9.64 (Pieter, 2026-10-06): between the tabs the dial stays on screen and only its word changes; it used to fade out and in with the page. The word has its own view-transition name (`dial-word` on `.dial-short`), so the button is pictured without it and stays put while the word leaves and arrives. Where only one of the two pages has a dial, it still leaves or arrives with the page. Recorded (`tabs`, `deeper`), frames in mid-change looked at.
   - 0.9.65 (Pieter, 2026-10-06). (1) Opening an earlier programme from a client's page flickered on the first tap. Recorded (`earlier`): at the tap the lit tab went out at once (the address was already the programme's, which is under no tab) while the page itself only changed after the programme page was built, which takes longest the first time. The navigation now follows the page on screen, not the address (`tabOf(shown.pathname)` in App.tsx, plain `Link`s instead of `NavLink`), and a page under no tab keeps the tab it was opened from: Clients stays lit on a client's programme. The first build of the programme page is still slower than later ones (a stall before the page moves, no picture changes during it); whether that was all of the flicker is Pieter's to confirm. (2) The start, from a second recording measured frame by frame over three starts: the app's frame now sits on Android's picture within a pixel (`--splash-icon` 274 px, `--splash-shift` 6.5 px after this fine-tune) and fades into the app without a gap. **What Pieter still sees is Android's, before any of the app's code runs:** during the phone's opening animation the icon grows at one height and, when that animation ends, jumps 7 px down to where the start picture has it (every start); and once in three starts one single frame showed it back at the upper position. Nothing in a web app's manifest or page controls either. Closed unless a way to influence Android's own start picture turns up.
+  - 0.9.66 (Pieter, 2026-10-06): a client's profile has contact details: Mobile, Email, Address (`Client.mobile/email/address`, optional), in the New client / Edit profile sheet under the name (not on Pete's own profile) and as "Contact" at the top of "About [name]" on the client's page (the number dials, the email opens a mail). They are never shown to Claude: `tools/read.ts client` leaves them out. Privacy notice (EN + DE) names them under "Which data", `PRIVACY_VERSION` "2026-10-06 (2)"; **Pieter should have the wording checked.** `tools/merge.ts` makes one client of two profiles (§4); used once, on a real pair of duplicates. Lint, tests and build pass; the sheet and the Contact block are NOT seen in the app.
 - **Verified:** Claude turn and archive conversion tested against the real API (Node). Signed-in UI
   checked in Chrome for M1–M2; Create/Export/Import UI still needs a hands-on pass on phone + PC.
   0.6.x: import matching/CSV batching/merge logic unit-checked (Node); the 0.6.3 import changes and
@@ -354,7 +358,10 @@ Claude is switched off since 0.9.56 (`CLAUDE_IN_APP`); Create shows the drafts. 
   one programme's content and can undo its last change (before-states in `~/.petesgym/undo`).
   `translate.ts` fills a programme's German or Afrikaans cache (`translationsDe`,
   `translationsAf`), which is where the export sheet takes that language from. `profile.ts` changes a client's six profile texts, with
-  undo. Nothing else writes. Weights and private notes are never
+  undo. `merge.ts <keepId> <dropId>` makes one client of two profiles of the same person: the
+  other's programmes, notes, sessions and links move over, one programme stays current, the
+  emptied profile goes to Recently deleted (before-state in `~/.petesgym/undo`, no undo command).
+  Nothing else writes. Weights and private notes are never
   shown to Claude and survive a change by the 0.9.50 rule.
 - `shape.ts`, `db.ts` and `translate.ts` repeat five small rules of the app (`newId`,
   `exerciseKey`, the library link, the `[{cells}]` table encoding, `clientFacingStrings`) because

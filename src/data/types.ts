@@ -23,6 +23,10 @@ export interface Client {
   equipment: string
   /** Anything else worth knowing (sleep, stress, lifestyle, fears). */
   background: string
+  /** Contact details, typed by Pete. Optional: older profiles lack them. Never shown to Claude (tools/read.ts). */
+  mobile?: string
+  email?: string
+  address?: string
   /** Full answers from the Fitness Profile questionnaire, as "Question: answer" lines. Optional: older profiles lack it. */
   questionnaire?: string
   /** When the questionnaire was filled in (YYYY-MM-DD). */
