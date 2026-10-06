@@ -83,6 +83,7 @@ svg { flex: none; }
 .splash-icon { width: var(--splash-icon); height: var(--splash-icon); }
 @media (display-mode: standalone) {
   .splash { background: var(--splash-bg); }
+  .splash-icon { translate: 0 var(--splash-shift); }
 }
 .nav-brand { display: none; }
 .nav-link {

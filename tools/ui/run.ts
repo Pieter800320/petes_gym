@@ -142,6 +142,8 @@ const tab = (name: string) => click(`a.nav-link[href="#/${name}"]`)
 const SCENARIOS: Record<string, Scenario> = {
   // Opening the app, as on a phone in dark mode.
   'cold-start': { start: '/train', dark: true, settleMs: 2500 },
+  // As the installed app opens: at its root address, which forwards to Train.
+  'cold-start-root': { start: '/', dark: true, settleMs: 2500 },
   // The phone is dark, Pete chose the light theme.
   'cold-start-light-chosen': { start: '/train', dark: true, storage: { pg_theme_v1: 'light' }, settleMs: 2500 },
   'cold-start-clients': { start: '/clients', dark: true, settleMs: 2500 },

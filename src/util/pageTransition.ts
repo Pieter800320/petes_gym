@@ -27,6 +27,23 @@ if (typeof window !== 'undefined') {
   })
 }
 
+/**
+ * The view transition under way, if any. A page that only forwards to another (the root address
+ * to Train, a draft's old address to its page) changes the address a second time while the first
+ * change is still moving; starting a second transition for it would cut the first one off.
+ */
+let moving: ViewTransition | null = null
+function track(transition: ViewTransition, after: () => void) {
+  moving = transition
+  const done = () => {
+    if (moving === transition) moving = null
+    after()
+  }
+  transition.finished.then(done, done)
+  // A transition cut short by the next one rejects `ready`; that is expected.
+  transition.ready.catch(() => undefined)
+}
+
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
@@ -52,8 +69,10 @@ export function useShownLocation(tabs: string[], prepare: (pathname: string) => 
     const animatedAlready = browserAnimated
     browserAnimated = false
     const start = document.startViewTransition?.bind(document)
-    if (!start || animatedAlready || reducedMotion()) {
-      // No movement wanted or possible: the page changes before the next picture is drawn.
+    const forwarded = navType === 'REPLACE' && moving !== null
+    if (!start || animatedAlready || forwarded || reducedMotion()) {
+      // No movement wanted or possible, or one is already under way and this page joins it:
+      // the page changes before the next picture is drawn.
       // eslint-disable-next-line react/set-state-in-effect
       setShown(location)
       return
@@ -74,12 +93,9 @@ export function useShownLocation(tabs: string[], prepare: (pathname: string) => 
         // difference: otherwise a list scrolled down would jump back to its top as it leaves.
         root.style.setProperty('--leaving-shift', `${window.scrollY - scrolledTo}px`)
       })
-      const done = () => {
+      track(transition, () => {
         if (latest.current === location) delete root.dataset.nav
-      }
-      transition.finished.then(done, done)
-      // A transition cut short by the next one rejects `ready`; that is expected.
-      transition.ready.catch(() => undefined)
+      })
     }
     // The old page stays until the new one's code is there, so the new one is never pictured empty.
     const loading = prepare(location.pathname)
@@ -109,11 +125,9 @@ export function useReveal(ready: boolean): boolean {
     const root = document.documentElement
     root.dataset.nav = 'start'
     const transition = start(() => flushSync(() => setRevealed(true)))
-    const done = () => {
+    track(transition, () => {
       if (root.dataset.nav === 'start') delete root.dataset.nav
-    }
-    transition.finished.then(done, done)
-    transition.ready.catch(() => undefined)
+    })
   }, [ready])
   return revealed
 }

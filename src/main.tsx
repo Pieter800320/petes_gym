@@ -39,6 +39,13 @@ setTimeout(() => {
 // jumped to wherever the list behind it had been.
 if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'
 
+// The installed app opens at its root address, which the routes forward to Train. Done here,
+// before anything renders, the first screen is Train from the start; left to the routes, the app
+// first showed an empty page and changed it a moment later, which cut the start frame's fade.
+if (window.location.hash === '' || window.location.hash === '#' || window.location.hash === '#/') {
+  window.history.replaceState(window.history.state, '', '#/train')
+}
+
 installTapHaptics()
 
 // HashRouter: GitHub Pages has no server-side rewrites, so /#/clients/abc survives a reload.
