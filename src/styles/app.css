@@ -138,8 +138,17 @@ svg { flex: none; }
 :root[data-nav="start"]::view-transition-old(root) { animation: page-leave var(--motion-arrive) var(--ease-standard) both; }
 :root[data-nav="start"]::view-transition-new(root) { animation: page-arrive var(--motion-arrive) var(--ease-standard) both; }
 /* The old page leaves quickly and the new one arrives after it, so two texts never lie over each other. */
-::view-transition-old(page), ::view-transition-old(dial) { animation: page-leave var(--motion-leave) var(--ease-standard) both; }
-::view-transition-new(page), ::view-transition-new(dial) { animation: page-arrive var(--motion-arrive) var(--ease-arrive) var(--motion-wait) both; }
+::view-transition-old(page) { animation: page-leave var(--motion-leave) var(--ease-standard) both; }
+::view-transition-new(page) { animation: page-arrive var(--motion-arrive) var(--ease-arrive) var(--motion-wait) both; }
+/* The dial stays on screen from one page to the next and only its word changes: the button is
+   pictured without its word (the word has its own name, below), the old picture stays under the
+   new one, and the word leaves and arrives like a page. Where only one of the two pages has a
+   dial, it leaves or arrives with the page. */
+.dial-short { view-transition-name: dial-word; }
+::view-transition-old(dial) { animation: none; }
+::view-transition-new(dial) { animation: page-arrive var(--motion-leave) var(--ease-standard) both; }
+::view-transition-old(dial):only-child, ::view-transition-old(dial-word) { animation: page-leave var(--motion-leave) var(--ease-standard) both; }
+::view-transition-new(dial):only-child, ::view-transition-new(dial-word) { animation: page-arrive var(--motion-arrive) var(--ease-arrive) var(--motion-wait) both; }
 /* Opened from another page: in from the right. Back: in from the left. Between tabs: the fade alone. */
 :root[data-nav="forward"]::view-transition-old(page) { animation-name: page-leave-left; }
 :root[data-nav="forward"]::view-transition-new(page) { animation-name: page-arrive-from-right; }
