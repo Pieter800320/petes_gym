@@ -89,6 +89,11 @@
   --motion-wait: 60ms;            /* the new page starts this long after the old one began to leave */
   --motion-arrive: 220ms;
   --motion-shift: 28px;           /* how far a page travels sideways */
+  --motion-open: 300ms;           /* an exercise or a progression opening under its line */
+  --motion-close: 220ms;          /* and closing again */
+  /* The start frame (app.css .splash): the manifest's background colour and the icon's size on it. */
+  --splash-bg: #121212;
+  --splash-icon: 128px;
 
   /* Layout */
   --nav-height: 72px;

@@ -20,7 +20,7 @@ import { TrainScreen } from './screens/TrainScreen'
 import { recordCost, useProgramme } from './data/store'
 import { setCostSink } from './claude/cost'
 import { recordPath } from './util/navHistory'
-import { useShownLocation } from './util/pageTransition'
+import { useReveal, useShownLocation } from './util/pageTransition'
 import { useTheme } from './settings'
 
 // Loaded when first opened, so the daily path (Train, Clients) and a client's questionnaire don't
@@ -64,8 +64,6 @@ function later<P extends object>(fetchScreen: () => Promise<ComponentType<P>>) {
 const PRELOAD_SCREENS_MS = 400
 /** The start frame never stays longer than this: after it the app shows what it has. */
 const START_TIMEOUT_MS = 4000
-/** Read by index.html before anything is drawn: this device has been signed in, so the start frame shows the navigation. */
-const SIGNED_IN_KEY = 'pg_signed_in'
 
 const TABS = [
   { to: '/train', label: 'Train' },
@@ -120,15 +118,6 @@ function useStartReady(uid: string | null): boolean {
   return (dataReady && restReady) || late
 }
 
-function setSignedInBefore(yes: boolean) {
-  try {
-    if (yes) localStorage.setItem(SIGNED_IN_KEY, '1')
-    else localStorage.removeItem(SIGNED_IN_KEY)
-  } catch {
-    // Storage blocked: the start frame just shows no navigation.
-  }
-}
-
 export default function App() {
   useTheme() // follows changes; index.html has already applied the saved theme
   const { user, loading } = useAuth()
@@ -137,11 +126,11 @@ export default function App() {
   const owner = user?.email?.toLowerCase() === OWNER_EMAIL
   const fit = matchPath('/fit/:uid/:token', location.pathname)
   const ready = useStartReady(user && owner && !fit ? user.uid : null)
+  // The start frame fades out as the first screen fades in.
+  const revealed = useReveal(ready && owner)
 
   useEffect(() => {
-    if (loading || fit) return
-    setSignedInBefore(owner)
-    if (!owner) stopLive()
+    if (!loading && !fit && !owner) stopLive()
   }, [loading, owner, fit])
 
   if (!isFirebaseConfigured) return <NotConfiguredScreen />
@@ -159,7 +148,7 @@ export default function App() {
   // Stop before the shell.
   if (!owner) return <NoAccessScreen />
   // One calm frame until everything for the first screen is there; then it appears complete.
-  if (!ready) return <Splash />
+  if (!revealed) return <Splash />
   return <Shell />
 }
 
@@ -168,13 +157,20 @@ export default function App() {
  * location is the page on screen (useShownLocation), so the old page isn't scrolled while it is still shown.
  */
 function useScrollMemory(location: Location) {
-  const navType = useNavigationType()
+  // How the newest step was taken. Read when the shown page changes, never a reason to run again:
+  // it changes as soon as a link is tapped, while the old page is still on screen, and running
+  // then scrolled that page back to its top just before it left.
+  const currentNavType = useNavigationType()
+  const navType = useRef(currentNavType)
+  useLayoutEffect(() => {
+    navType.current = currentNavType
+  })
   const positions = useRef(new Map<string, number>())
   useLayoutEffect(() => {
     recordPath(location.pathname)
     const key = location.key
     const map = positions.current
-    const saved = navType === 'POP' ? map.get(key) : undefined
+    const saved = navType.current === 'POP' ? map.get(key) : undefined
     window.scrollTo(0, saved ?? 0)
     // Lists fill from the offline cache a moment later; try once more when they have.
     const frame = saved ? requestAnimationFrame(() => window.scrollTo(0, saved)) : 0
@@ -185,7 +181,7 @@ function useScrollMemory(location: Location) {
       cancelAnimationFrame(frame)
       window.removeEventListener('scroll', onScroll)
     }
-  }, [location.key, location.pathname, navType])
+  }, [location.key, location.pathname])
 }
 
 function Shell() {

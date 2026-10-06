@@ -66,7 +66,14 @@ export function useShownLocation(tabs: string[], prepare: (pathname: string) => 
       const root = document.documentElement
       root.dataset.nav = kind
       // The callback runs a frame later, outside React's own work, so the update may be flushed in it.
-      const transition = start(() => flushSync(() => setShown(location)))
+      const transition = start(() => {
+        const scrolledTo = window.scrollY
+        flushSync(() => setShown(location))
+        // The new page opens at its own scroll position (App's scroll memory, in the same pass).
+        // The picture of the old page is hung in the new page's frame, so it is moved by the
+        // difference: otherwise a list scrolled down would jump back to its top as it leaves.
+        root.style.setProperty('--leaving-shift', `${window.scrollY - scrolledTo}px`)
+      })
       const done = () => {
         if (latest.current === location) delete root.dataset.nav
       }
@@ -81,4 +88,32 @@ export function useShownLocation(tabs: string[], prepare: (pathname: string) => 
   }, [location, shown, navType, tabs, prepare])
 
   return shown
+}
+
+/**
+ * The start frame gives way to the app: false until `ready`, then true, changing inside a view
+ * transition so the frame fades out as the first screen fades in (<html data-nav="start">).
+ */
+export function useReveal(ready: boolean): boolean {
+  const [revealed, setRevealed] = useState(false)
+  const started = useRef(false)
+  useLayoutEffect(() => {
+    if (!ready || started.current) return
+    started.current = true
+    const start = document.startViewTransition?.bind(document)
+    if (!start || reducedMotion()) {
+      // eslint-disable-next-line react/set-state-in-effect
+      setRevealed(true)
+      return
+    }
+    const root = document.documentElement
+    root.dataset.nav = 'start'
+    const transition = start(() => flushSync(() => setRevealed(true)))
+    const done = () => {
+      if (root.dataset.nav === 'start') delete root.dataset.nav
+    }
+    transition.finished.then(done, done)
+    transition.ready.catch(() => undefined)
+  }, [ready])
+  return revealed
 }

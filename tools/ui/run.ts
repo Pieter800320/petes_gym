@@ -169,6 +169,27 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Back to Clients', run: 'history.back()', waitMs: 700 },
     ],
   },
+  // Train: an exercise opens under its line, and closes again.
+  'open-card': {
+    start: '/train',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'Open the first exercise', run: click('.ex-line'), waitMs: 800 },
+      { label: 'Close it', run: click('.ex-line'), waitMs: 600 },
+    ],
+  },
+  // From a list scrolled down: into a client near the bottom, and back to the same place.
+  scrolled: {
+    start: '/clients',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'Scroll down', run: 'window.scrollTo(0, 700)', waitMs: 400 },
+      { label: 'Open a client', run: click('a.line-link[href="#/clients/c15"]'), waitMs: 900 },
+      { label: 'Back to the list', run: 'history.back()', waitMs: 900 },
+    ],
+  },
   // A page opened the moment the app is up, before the other screens were fetched in the background.
   'early-open': {
     start: '/train',
@@ -186,9 +207,8 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Pick the first person', run: click('.sheet .line-link'), waitMs: 1200 },
     ],
   },
-  // The very first start on a device, and a start while signed out.
-  'first-ever': { start: '/train', dark: true, storage: { pg_signed_in: '' }, settleMs: 2500 },
-  'signed-out': { start: '/train', dark: true, storage: { pg_signed_in: '' }, signedOut: true, settleMs: 2000 },
+  // A start while signed out.
+  'signed-out': { start: '/train', dark: true, signedOut: true, settleMs: 2000 },
   // On the PC: the navigation is a rail on the left.
   'desktop-start': { start: '/clients', desktop: true, settleMs: 2500, steps: [{ label: 'Train', run: tab('train'), waitMs: 800 }] },
 }
@@ -209,8 +229,7 @@ async function record(chrome: Chrome, name: string, scenario: Scenario): Promise
   // A blank page first, so the app's own page starts from nothing; storage is set on its origin.
   await chrome.send('Page.navigate', { url: `http://localhost:${PORT}/blank.html` })
   await sleep(300)
-  // As on Pete's phone: the app has been used before (App.tsx sets pg_signed_in).
-  await chrome.evaluate(`localStorage.clear(); sessionStorage.clear(); ${Object.entries({ pg_signed_in: '1', ...scenario.storage }).map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)})`).join(';')}`)
+  await chrome.evaluate(`localStorage.clear(); sessionStorage.clear(); ${Object.entries(scenario.storage ?? {}).map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)})`).join(';')}`)
 
   let frames = 0
   let startedAt = 0

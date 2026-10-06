@@ -9,8 +9,8 @@
     <title>Pete's Gym</title>
     <!--
       Before the first picture is drawn: Pete's theme (settings.ts keeps it under pg_theme_v1; the
-      colours are --color-bg of tokens.css, for the phone's status bar), and whether this device
-      has been signed in before, which decides if the start frame below shows the navigation.
+      colours are --color-bg of tokens.css, for the phone's status bar), and whether the browser
+      has view transitions (app.css then leaves the first screen's fade to them).
       Without this the app started dark and turned light a moment later.
     -->
     <script>
@@ -21,7 +21,7 @@
           if (theme === 'light' || theme === 'dark') root.setAttribute('data-theme', theme)
           var light = theme === 'light' || (theme !== 'dark' && matchMedia('(prefers-color-scheme: light)').matches)
           document.querySelector('meta[name="theme-color"]').setAttribute('content', light ? '#FBFBF9' : '#121212')
-          if (localStorage.getItem('pg_signed_in')) root.classList.add('signed-in-before')
+          if (document.startViewTransition) root.classList.add('vt')
         } catch (e) {}
       })()
     </script>
@@ -33,8 +33,12 @@
     <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-800-normal.woff2" />
   </head>
   <body>
-    <!-- The start frame: what is on screen until the app has its data (the same as <Splash /> in GateScreens.tsx). -->
-    <div id="root"><div class="shell splash" aria-busy="true"><nav class="nav"></nav><main class="shell-main"></main></div></div>
+    <!--
+      The start frame: what is on screen until the app has its data (the same as <Splash /> in
+      GateScreens.tsx). It is the app's icon in the middle, like the picture the phone itself shows
+      while an installed app starts, so the one hands over to the other without a visible change.
+    -->
+    <div id="root"><div class="splash" aria-busy="true"><svg class="splash-icon" viewBox="0 0 512 512" aria-hidden="true"><circle cx="256" cy="256" r="168" fill="#FF4A3D"/><g stroke="#121212" stroke-width="34" stroke-linecap="round" fill="none"><path d="M190 196v120M322 196v120M150 226v60M362 226v60M190 256h132"/></g></svg></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

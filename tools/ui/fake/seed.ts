@@ -1,5 +1,5 @@
 /*
- * Made-up data for the test build: Pieter with a current programme, eight invented clients, two
+ * Made-up data for the test build: Pieter with a current programme, twenty invented clients, two
  * fitness profile links not answered yet, a few notes and sessions. No real person is in here.
  */
 type Data = Record<string, unknown>
@@ -34,7 +34,7 @@ const client = (name: string, ageDays: number, extra: Data = {}): Data => ({
   createdAt: NOW - ageDays * DAY, updatedAt: NOW - ageDays * DAY, ...extra,
 })
 
-const NAMES = ['Anna Beispiel', 'Ben Muster', 'Clara Probe', 'David Test', 'Eva Vorlage', 'Finn Entwurf', 'Greta Modell', 'Hans Platzhalter']
+const NAMES = ['Anna Beispiel', 'Ben Muster', 'Clara Probe', 'David Test', 'Eva Vorlage', 'Finn Entwurf', 'Greta Modell', 'Hans Platzhalter', 'Ida Sample', 'Jan Dummy', 'Kai Fiktiv', 'Lea Erfunden', 'Max Niemand', 'Nora Irgendwer', 'Ole Beliebig', 'Pia Namenlos', 'Rolf Statist', 'Sina Attrappe', 'Till Kulisse', 'Uwe Schablone']
 
 export const SEED: Record<string, Data> = {
   [`${U}/clients/self`]: client('Pieter', 300, { isSelf: true }),
