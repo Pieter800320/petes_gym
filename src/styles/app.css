@@ -200,8 +200,8 @@ svg { flex: none; }
   background: var(--color-accent); color: var(--color-on-accent);
   /* 18px as drawn at rest. */
   font-family: var(--font-display); font-size: calc(18px / var(--dial-rest-scale)); font-weight: 600; letter-spacing: 0.12em;
-  /* A small round shadow directly under the button, nothing sideways. */
-  box-shadow: 0 6px 14px -4px var(--color-accent-shadow);
+  /* A small round shadow directly under the button, nothing sideways. Sized as drawn at rest; it grows with the clock. */
+  box-shadow: 0 calc(5px / var(--dial-rest-scale)) calc(12px / var(--dial-rest-scale)) calc(-3.5px / var(--dial-rest-scale)) var(--color-accent-shadow);
   scale: var(--dial-rest-scale); transform-origin: 50% 100%;
   transition: transform 0.15s var(--ease-standard), scale var(--motion-state) var(--ease-standard), background-color var(--motion-state) var(--ease-standard);
 }
@@ -743,6 +743,8 @@ button.setting:disabled { opacity: 0.4; }
   margin: -14px -12px -14px var(--space-2); padding: 14px 12px;
   border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px;
 }
+/* During a session the clock is taller than the plain button: the toast stands clear of it. */
+@media (max-width: 899px) { :root:has(.dial-running) .snackbar { bottom: calc(var(--dial-bottom) + var(--dial-clock-size) + var(--space-3)); } }
 /* Desktop: centred under the page (right of the rail), near the bottom edge; the dial is in the rail. */
 @media (min-width: 900px) { .snackbar { left: calc(var(--rail-width) + var(--space-3)); bottom: var(--space-4); } }
 @keyframes snack-in { from { opacity: 0; transform: translateY(12px); } }
@@ -785,7 +787,10 @@ button.setting:disabled { opacity: 0.4; }
 .dial-wrap { position: relative; display: flex; }
 .dial-side {
   pointer-events: auto;
-  position: absolute; left: -16px; top: -16px; width: 48px; height: 48px; border-radius: 50%; border: 0;
+  /* Its middle lies 12px inside the ring's upper-left point, whatever the clock's size (the ring is
+     0.1465 of its width away from the box's corner there; the button is 48px). */
+  --dial-side-at: calc(var(--dial-clock-size) * 0.1465 - 32.4px);
+  position: absolute; left: var(--dial-side-at); top: var(--dial-side-at); width: 48px; height: 48px; border-radius: 50%; border: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--color-accent); color: var(--color-on-accent);
   box-shadow: 0 0 0 3px var(--color-bg);

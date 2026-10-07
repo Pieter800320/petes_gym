@@ -113,8 +113,8 @@
   --gutter: 24px;
   /* The round action button sits at one fixed height on every tab. */
   --dial-size: 96px;
-  --dial-clock-size: 112px;       /* the dial as a running session's clock */
-  --dial-rest-scale: 0.857;       /* --dial-size / --dial-clock-size: how the dial is drawn as a plain action */
+  --dial-clock-size: 140px;       /* the dial as a running session's clock: wide enough for "1:02:45" inside the ring */
+  --dial-rest-scale: 0.686;       /* --dial-size / --dial-clock-size: how the dial is drawn as a plain action */
   --dial-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 10px);
 
   color-scheme: dark;

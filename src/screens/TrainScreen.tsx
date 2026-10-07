@@ -280,35 +280,57 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
 
       <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} clientName={guestName ?? 'You'} onChange={change} />
 
-      {running ? (
-        <FinishDial workout={running} onFinish={finish} />
-      ) : (
-        <Dial
-          label="START"
-          longLabel="Start session"
-          disabled={Boolean(active)}
-          ariaLabel={active ? 'Another session is running' : `Start day ${index + 1}`}
-          onClick={() => {
-            flush()
-            startWorkout(programme.id, programme.clientId, session)
-          }}
-        />
-      )}
+      <SessionDial
+        workout={running}
+        onFinish={finish}
+        startDisabled={Boolean(active)}
+        startLabel={active ? 'Another session is running' : `Start day ${index + 1}`}
+        onStart={() => {
+          flush()
+          startWorkout(programme.id, programme.clientId, session)
+        }}
+      />
     </div>
   )
 }
 
-/** The session dial: FINISH with the clock, plus Pause/Resume on its edge. Ticks on its own so the day list doesn't redraw every second. */
-function FinishDial({ workout, onFinish }: { workout: ActiveWorkout; onFinish: () => void }) {
-  const paused = Boolean(workout.pausedAt)
+interface SessionDialProps {
+  /** The session running on this programme, if any. */
+  workout: ActiveWorkout | null
+  onFinish: () => void
+  onStart: () => void
+  startDisabled: boolean
+  startLabel: string
+}
+
+/**
+ * Train's dial in both its states: START, and during a session FINISH with the clock, plus
+ * Pause/Resume on its edge. One component in one place, so the button on screen stays the same
+ * element and swells into the clock at Start and shrinks back at Finish (two components swapped
+ * here would replace it, and nothing would move). Ticks on its own so the day list doesn't redraw
+ * every second.
+ */
+function SessionDial({ workout, onFinish, onStart, startDisabled, startLabel }: SessionDialProps) {
   const [now, setNow] = useState(() => Date.now())
+  const on = Boolean(workout)
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [])
+    if (!on) return
+    const tick = () => setNow(Date.now())
+    // At once as well: the moment kept from before this session is older than its start.
+    const first = setTimeout(tick, 0)
+    const t = setInterval(tick, 1000)
+    return () => {
+      clearTimeout(first)
+      clearInterval(t)
+    }
+  }, [on])
+  if (!workout) return <Dial label="START" longLabel="Start session" disabled={startDisabled} ariaLabel={startLabel} onClick={onStart} />
+  const paused = Boolean(workout.pausedAt)
   return (
     <Dial
       label="FINISH"
+      restLabel="START"
+      longLabel="Start session"
       confirmLabel="TAP AGAIN"
       ignoreUntil={workout.startedAt + FINISH_GUARD_MS}
       time={formatClock(activeMs(workout, now) / 1000)}

@@ -124,6 +124,8 @@ interface DialProps {
   ariaLabel?: string
   /** Running clock: shows the time with the label underneath, as a progress ring. */
   time?: string
+  /** With a running clock: the word of the plain button it grew out of ("START"). It stays on the disc under the clock's face, so the word doesn't change while the face grows over it or shrinks away. */
+  restLabel?: string
   disabled?: boolean
   /** Paused clock: grey ring, dimmed frozen time. */
   paused?: boolean
@@ -140,9 +142,14 @@ interface DialProps {
  * rectangular button in the navigation rail, under the tabs; a running session shows the clock
  * with Finish, and Pause as its own button below.
  */
-export function Dial({ label, longLabel, onClick, ariaLabel, time, disabled, paused, side, confirmLabel, ignoreUntil }: DialProps) {
+export function Dial({ label, longLabel, onClick, ariaLabel, time, restLabel, disabled, paused, side, confirmLabel, ignoreUntil }: DialProps) {
   const { desktop, slot } = useRailSlot()
   const [armed, setArmed] = useState(false)
+  const running = Boolean(time)
+  const shown = (armed && confirmLabel) || label
+  // The clock's face as it last ran: it keeps its time and word while it shrinks away after Finish.
+  const [face, setFace] = useState({ time, sub: shown })
+  if (running && (face.time !== time || face.sub !== shown)) setFace({ time, sub: shown })
 
   useEffect(() => {
     if (!armed) return
@@ -165,8 +172,6 @@ export function Dial({ label, longLabel, onClick, ariaLabel, time, disabled, pau
     }
   }
 
-  const running = Boolean(time)
-  const shown = (armed && confirmLabel) || label
   const armedClass = armed ? ' armed' : ''
   // Own haptics when it confirms (the global tap tick would double up).
   const hapticMode = confirmLabel ? 'none' : 'strong'
@@ -184,10 +189,10 @@ export function Dial({ label, longLabel, onClick, ariaLabel, time, disabled, pau
           data-haptic={hapticMode}
         >
           <span className="dial-inner" aria-hidden={!running}>
-            <span className="dial-time">{time}</span>
-            <span className="dial-sub">{shown}</span>
+            <span className="dial-time">{running ? time : face.time}</span>
+            <span className="dial-sub">{running ? shown : face.sub}</span>
           </span>
-          <span className="dial-short" aria-hidden={running}>{shown}</span>
+          <span className="dial-short" aria-hidden={running}>{running ? restLabel ?? shown : shown}</span>
           <span className="dial-long">{armed ? shown : longLabel ?? label}</span>
         </button>
         {side && (

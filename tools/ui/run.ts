@@ -280,6 +280,22 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Back by itself', run: `(() => { const mark = window.__rec.marks[window.__rec.marks.length - 1]; mark.label += ': rest=' + document.documentElement.dataset.rest + ', nav opacity ' + getComputedStyle(document.querySelector('.nav')).opacity + ', dial says "' + document.querySelector('.dial-short').textContent + '"' })()`, waitMs: 300 },
     ],
   },
+  // Train: the clock swells at Start and shrinks back at Finish; in between the session is made
+  // an hour and more old, to see that "1:02:05" fits the clock's face, also on the resting face.
+  'long-session': {
+    start: '/train',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'START', run: click('.dial'), waitMs: 1500 },
+      { label: 'Over an hour', run: `(() => { const w = JSON.parse(localStorage.getItem('pg_active_workout_v2')); w.startedAt -= 3725000; localStorage.setItem('pg_active_workout_v2', JSON.stringify(w)); window.dispatchEvent(new Event('pg:active-workout')) })()`, waitMs: 1500 },
+      { label: 'Wait', run: '0', waitMs: 9500 },
+      { label: 'Resting', run: REST_PROBE, waitMs: 300 },
+      { label: 'Tap the empty screen', run: tapAt('.ex-line'), waitMs: 1000 },
+      { label: 'FINISH, first tap', run: tapAt('.dial'), waitMs: 600 },
+      { label: 'FINISH, second tap', run: tapAt('.dial'), waitMs: 1500 },
+    ],
+  },
   // The same on the PC, where the dial is a button in the rail.
   'desktop-session': { start: '/train', desktop: true, settleMs: 2500, steps: [{ label: 'Start session', run: click('.dial'), waitMs: 1500 }] },
   // A client's page: an earlier programme opened for the first time, back, and opened again.
