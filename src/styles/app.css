@@ -224,6 +224,31 @@ svg { flex: none; }
 /* Desktop-only parts of the action button (see the desktop block further down). */
 .dial-long, .dial-side-text, .rail-action { display: none; }
 
+/* ── The resting face ─────────────────────────────────────────────── */
+/* A running session left untouched (util/restingFace.ts sets data-rest on <html>): everything
+   fades out except the dial's dock, which travels to just above the middle of the screen. Only
+   drawing changes (opacity, translate): nothing leaves the layout, so nothing can jump when the
+   app comes back, and the clock is the same element all along. The dock sits --dial-bottom above
+   the screen's lower edge and is as tall as the clock, which gives the distance without measuring.
+   Phone only. A new thing pinned to the screen (position: fixed) that should fade belongs in
+   both lists below. */
+@media (max-width: 899px) {
+  :is(.nav, .update-banner, .screen.rests > :not(.dial-dock)) { transition: opacity var(--motion-rest-in) var(--ease-standard); }
+  .screen.rests > .dial-dock { transition: translate var(--motion-rest-in) var(--ease-standard); }
+  :root[data-rest="on"] :is(.nav, .update-banner, .screen.rests > :not(.dial-dock)) { opacity: 0; transition-duration: var(--motion-rest-out); }
+  :root[data-rest="on"] .screen.rests > .dial-dock {
+    translate: 0 calc(var(--rest-clock-at) - 100dvh + var(--dial-bottom) + var(--dial-clock-size) / 2);
+    transition-duration: var(--motion-rest-out);
+  }
+  /* Come back to while the session ran on: resting already, without the fade. */
+  :root[data-rest-instant] :is(.nav, .update-banner, .screen.rests > *) { transition: none; }
+  /* Resting, and until the finger that woke the app is up: what is faded can't be tapped or
+     scrolled. The dial and its Pause button ask for taps themselves (pointer-events: auto). */
+  :root[data-rest] { touch-action: none; }
+  :root[data-rest] body { overflow: hidden; }
+  :root[data-rest] :is(.nav, .update-banner, .shell-main) { pointer-events: none; }
+}
+
 /* ── Buttons and links ────────────────────────────────────────────── */
 .btn-cta, .btn-outline, .btn-acc, .btn-ghost {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);

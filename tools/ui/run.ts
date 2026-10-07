@@ -137,6 +137,24 @@ interface Scenario {
 }
 
 const click = (selector: string) => `document.querySelector(${JSON.stringify(selector)}).click()`
+/** A tap as the screen delivers it: finger down, up, then the click, all to whatever lies on top at the middle of the element. */
+const tapAt = (selector: string) => `(() => {
+  const r = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect()
+  const x = r.left + r.width / 2, y = r.top + r.height / 2
+  const hit = document.elementFromPoint(x, y)
+  for (const type of ['pointerdown', 'pointerup']) hit.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: x, clientY: y }))
+  hit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: x, clientY: y }))
+})()`
+/** Adds to the step's line in the timeline what the resting face is doing: its state, what is faded, where the clock is, what lies on top at an exercise. */
+const REST_PROBE = `(() => {
+  const mark = window.__rec.marks[window.__rec.marks.length - 1]
+  const dial = document.querySelector('.dial').getBoundingClientRect()
+  const line = document.querySelector('.ex-line').getBoundingClientRect()
+  const top = document.elementFromPoint(line.left + line.width / 2, line.top + line.height / 2)
+  mark.label += ': rest=' + document.documentElement.dataset.rest + ', page opacity ' + getComputedStyle(document.querySelector('.big-title')).opacity + ', nav opacity ' + getComputedStyle(document.querySelector('.nav')).opacity
+    + ', clock middle at ' + Math.round((dial.top + dial.height / 2) / innerHeight * 100) + '% of the screen, dial says "' + document.querySelector('.dial-sub').textContent + '", open cards ' + document.querySelectorAll('.drop').length
+    + ', on top at the exercise: ' + top.tagName.toLowerCase() + ', scrollY ' + Math.round(scrollY)
+})()`
 const tab = (name: string) => click(`a.nav-link[href="#/${name}"]`)
 
 const SCENARIOS: Record<string, Scenario> = {
@@ -230,6 +248,30 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'START', run: click('.dial'), waitMs: 2000 },
       { label: 'FINISH, first tap', run: click('.dial'), waitMs: 600 },
       { label: 'FINISH, second tap', run: click('.dial'), waitMs: 1200 },
+    ],
+  },
+  // Train: a running session left untouched fades out around the clock (the resting face). A tap
+  // on a faded exercise brings the app back and opens nothing; a tap on the resting clock works as
+  // always and stays resting; Pause brings the app back by itself. Then the app is left and come
+  // back to: resting at once.
+  rest: {
+    start: '/train',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'START', run: click('.dial'), waitMs: 9000 },
+      { label: 'Still awake', run: REST_PROBE, waitMs: 2500 },
+      { label: 'Resting', run: REST_PROBE, waitMs: 300 },
+      { label: 'Tap a faded exercise', run: tapAt('.ex-line'), waitMs: 1200 },
+      { label: 'Awake again', run: REST_PROBE, waitMs: 10800 },
+      { label: 'Resting again', run: REST_PROBE, waitMs: 300 },
+      { label: 'FINISH, first tap, on the resting clock', run: tapAt('.dial'), waitMs: 800 },
+      { label: 'Still resting, armed', run: REST_PROBE, waitMs: 3000 },
+      { label: 'Pause, on the resting clock', run: tapAt('.dial-side'), waitMs: 1200 },
+      { label: 'Back by itself', run: REST_PROBE, waitMs: 300 },
+      { label: 'Resume', run: tapAt('.dial-side'), waitMs: 600 },
+      { label: 'Leave the app and come back', run: `document.dispatchEvent(new Event('visibilitychange'))`, waitMs: 600 },
+      { label: 'Resting at once', run: REST_PROBE, waitMs: 300 },
     ],
   },
   // The same on the PC, where the dial is a button in the rail.

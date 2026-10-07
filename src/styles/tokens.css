@@ -93,6 +93,10 @@
   --motion-state: 260ms;          /* the dial changing between START and the running clock */
   --motion-open: 300ms;           /* an exercise or a progression opening under its line */
   --motion-close: 220ms;          /* and closing again */
+  /* The resting face (util/restingFace.ts, app.css): the app fades out around a running clock. */
+  --motion-rest-out: 600ms;       /* going to rest: slowly, nobody is waiting for it */
+  --motion-rest-in: 220ms;        /* a tap brings the app back: at once */
+  --rest-clock-at: 46dvh;         /* where the clock's middle rests, from the top: a single thing on an empty screen looks centred a touch above the middle */
   /* The start frame (app.css .splash): the manifest's background colour, and the icon's size and
      place on it. Measured on 2026-10-06 in a screen recording of Pete's phone, so that the frame
      sits exactly on the picture Android shows while the app starts: there the red disc is 180px

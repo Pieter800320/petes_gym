@@ -23,6 +23,7 @@ import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { ActiveWorkout, Programme, Workout } from '../data/types'
 import { setTrainProgrammeId, useTrainProgrammeId } from '../settings'
 import { splitDayTitle } from '../util/dayTitle'
+import { useRestingFace } from '../util/restingFace'
 
 /** Horizontal finger travel (px) that counts as a swipe to the next or previous day. */
 const SWIPE_PX = 70
@@ -129,6 +130,8 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
   const [editOpen, setEditOpen] = useState(false)
   const paused = Boolean(running?.pausedAt)
   useWakeLock(Boolean(running) && !paused)
+  // Left untouched while the clock runs, the app fades out around the clock.
+  useRestingFace(Boolean(running) && !paused)
 
   // During a session, exercises changed since Start show their new numbers in the accent colour.
   const changed = useMemo(() => {
@@ -168,7 +171,7 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
   const otherSince = elsewhere ? new Date(elsewhere.startedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''
 
   return (
-    <div className="screen has-dial">
+    <div className="screen has-dial rests">
       <TopBar overline={running ? (paused ? <span className="live-label">PAUSED</span> : <span className="live-label"><span className="live-dot" />IN SESSION</span>) : today()} noteClientId={programme.clientId} />
       {guestName && (
         <div className="banner row-banner">
