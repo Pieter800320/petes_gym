@@ -1,5 +1,5 @@
 /*
- * The resting face: while a session's clock runs and the screen hasn't been touched for a while,
+ * The resting face: while a session is on (running or paused) and the screen hasn't been touched for a while,
  * the app fades out and only the clock (the dial with its Pause button) stays, on the plain
  * background, moved to just above the middle of the screen. Phone layout only.
  *
@@ -13,12 +13,13 @@
  *                        no fade on the way in.
  *
  * While resting two things respond: the clock (its normal actions; it stays resting) and
- * everywhere else (wakes the app). When the clock stops (pause, finish, cancel) the caller's
+ * everywhere else (wakes the app). Pause and Resume are the clock's own actions, so a paused
+ * session rests like a running one. When the session ends (finish, cancel) the caller's
  * `on` turns false and the app comes back by itself.
  */
 import { useEffect } from 'react'
 
-/** No touch, key or scroll for this long while the clock runs: the app fades out around the clock. */
+/** No touch, key or scroll for this long during a session: the app fades out around the clock. */
 export const REST_AFTER_MS = 10_000
 /** The resting face is the phone's: on desktop the clock is a button in the navigation rail. */
 const PHONE = '(max-width: 899px)'
@@ -27,7 +28,7 @@ const CLOCK = '.dial-wrap'
 /** Typing is not idling, even with the fingers off the screen. */
 const TEXT_FIELD = 'textarea, input, select, [contenteditable]'
 
-/** on: the session's clock is running (not paused) on the screen that calls this. */
+/** on: a session is on (running or paused) on the screen that calls this. */
 export function useRestingFace(on: boolean) {
   useEffect(() => {
     if (!on) return

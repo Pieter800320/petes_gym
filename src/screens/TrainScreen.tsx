@@ -130,8 +130,9 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
   const [editOpen, setEditOpen] = useState(false)
   const paused = Boolean(running?.pausedAt)
   useWakeLock(Boolean(running) && !paused)
-  // Left untouched while the clock runs, the app fades out around the clock.
-  useRestingFace(Boolean(running) && !paused)
+  // A session left untouched fades out around the clock. Paused counts too: Pause and Resume on
+  // the resting clock work like Finish there, without bringing the app back.
+  useRestingFace(Boolean(running))
 
   // During a session, exercises changed since Start show their new numbers in the accent colour.
   const changed = useMemo(() => {

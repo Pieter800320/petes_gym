@@ -153,7 +153,7 @@ const REST_PROBE = `(() => {
   const top = document.elementFromPoint(line.left + line.width / 2, line.top + line.height / 2)
   mark.label += ': rest=' + document.documentElement.dataset.rest + ', page opacity ' + getComputedStyle(document.querySelector('.big-title')).opacity + ', nav opacity ' + getComputedStyle(document.querySelector('.nav')).opacity
     + ', clock middle at ' + Math.round((dial.top + dial.height / 2) / innerHeight * 100) + '% of the screen, dial says "' + document.querySelector('.dial-sub').textContent + '", open cards ' + document.querySelectorAll('.drop').length
-    + ', on top at the exercise: ' + top.tagName.toLowerCase() + ', scrollY ' + Math.round(scrollY)
+    + ', paused ' + document.querySelector('.dial').classList.contains('dial-paused') + ', on top at the exercise: ' + top.tagName.toLowerCase() + ', scrollY ' + Math.round(scrollY)
 })()`
 const tab = (name: string) => click(`a.nav-link[href="#/${name}"]`)
 
@@ -252,8 +252,8 @@ const SCENARIOS: Record<string, Scenario> = {
   },
   // Train: a running session left untouched fades out around the clock (the resting face). A tap
   // on a faded exercise brings the app back and opens nothing; a tap on the resting clock works as
-  // always and stays resting; Pause brings the app back by itself. Then the app is left and come
-  // back to: resting at once.
+  // always and stays resting, Pause and Resume included. The app is left and come back to: resting
+  // at once. Finishing on the resting clock brings the app back by itself.
   rest: {
     start: '/train',
     dark: true,
@@ -268,10 +268,16 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'FINISH, first tap, on the resting clock', run: tapAt('.dial'), waitMs: 800 },
       { label: 'Still resting, armed', run: REST_PROBE, waitMs: 3000 },
       { label: 'Pause, on the resting clock', run: tapAt('.dial-side'), waitMs: 1200 },
-      { label: 'Back by itself', run: REST_PROBE, waitMs: 300 },
-      { label: 'Resume', run: tapAt('.dial-side'), waitMs: 600 },
+      { label: 'Still resting, paused', run: REST_PROBE, waitMs: 300 },
+      { label: 'Resume, on the resting clock', run: tapAt('.dial-side'), waitMs: 1200 },
+      { label: 'Still resting, running', run: REST_PROBE, waitMs: 300 },
+      { label: 'Tap the empty screen', run: tapAt('.ex-line'), waitMs: 1200 },
+      { label: 'Awake', run: REST_PROBE, waitMs: 300 },
       { label: 'Leave the app and come back', run: `document.dispatchEvent(new Event('visibilitychange'))`, waitMs: 600 },
       { label: 'Resting at once', run: REST_PROBE, waitMs: 300 },
+      { label: 'FINISH, first tap', run: tapAt('.dial'), waitMs: 600 },
+      { label: 'FINISH, second tap', run: tapAt('.dial'), waitMs: 1200 },
+      { label: 'Back by itself', run: `(() => { const mark = window.__rec.marks[window.__rec.marks.length - 1]; mark.label += ': rest=' + document.documentElement.dataset.rest + ', nav opacity ' + getComputedStyle(document.querySelector('.nav')).opacity + ', dial says "' + document.querySelector('.dial-short').textContent + '"' })()`, waitMs: 300 },
     ],
   },
   // The same on the PC, where the dial is a button in the rail.
