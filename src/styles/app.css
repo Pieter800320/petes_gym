@@ -294,6 +294,15 @@ svg { flex: none; }
 /* The main action in red beside the second one, outlined: equal halves. */
 .button-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .button-pair > * { min-width: 0; padding: 0 var(--space-3); }
+/* The programme page's pair stays in view above the tabs while the document scrolls, and rests in
+   its own place at the end. Sticky, not fixed: nothing is laid out again and nothing needs room
+   kept free for it. It spans the page's width on the page's background, a rule above. */
+.action-bar {
+  position: sticky; bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px)); z-index: 10;
+  margin: 0 calc(-1 * var(--gutter)); padding: 10px var(--gutter);
+  background: var(--color-bg); border-top: 1px solid var(--color-border);
+}
+@media (min-width: 900px) { .action-bar { bottom: 0; } }
 
 .text-link { align-self: flex-start; border: 0; background: none; padding: 8px 0; color: var(--color-accent); font-weight: 600; font-size: 14px; text-decoration: none; }
 .text-link.quiet { color: var(--color-text-muted); font-weight: 500; }

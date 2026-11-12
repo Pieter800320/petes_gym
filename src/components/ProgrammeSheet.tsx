@@ -3,7 +3,7 @@
  * Every line can be edited in place (tap it). Used by Create (the Programme bar) and the
  * programme page (Edit programme).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AutoTextarea } from './AutoTextarea'
 import { BlockSheet } from './BlockSheet'
 import { ConfirmButton } from './ConfirmButton'
@@ -34,7 +34,17 @@ interface ProgrammeSheetProps {
   onConfirm?: () => void
   /** Create only: moves the draft to Recently deleted. */
   onDelete?: () => void
+  /** The exercise Pete was looking at: the sheet opens scrolled to it, its card open if it was open there. */
+  focus?: SheetFocus | null
 }
+
+export interface SheetFocus {
+  rowId: string
+  open: boolean
+}
+
+/** Room left above the exercise the sheet opens on: the line before it shows too, so it's clear where it is. */
+const FOCUS_MARGIN_PX = 56
 
 /** A little longer than the autosave delay of the screens that host this sheet (700 ms). */
 const SAVED_AFTER_MS = 1000
@@ -67,13 +77,14 @@ interface DayEditorProps {
   onMoveRowToDay?: (row: ExerciseRow) => void
   claude?: Set<string>
   mine?: Set<string>
+  initialOpenRow?: string
 }
 
 /**
  * One day of the sheet. It binds the sheet's handlers to this day once, so DayList (memoised)
  * renders again only when its own day changed: typing in one day no longer redraws all of them.
  */
-function DayEditor({ session, index, changeDay, editBlock, openDayMenu, onMoveRowToDay, claude, mine }: DayEditorProps) {
+function DayEditor({ session, index, changeDay, editBlock, openDayMenu, onMoveRowToDay, claude, mine, initialOpenRow }: DayEditorProps) {
   const id = session.id
   const onChange = useCallback((fn: (s: ProgrammeSession) => ProgrammeSession) => changeDay(id, fn), [changeDay, id])
   const onEditBlock = useCallback((blockId: string) => editBlock(id, blockId), [editBlock, id])
@@ -91,11 +102,21 @@ function DayEditor({ session, index, changeDay, editBlock, openDayMenu, onMoveRo
       onMoveRowToDay={onMoveRowToDay}
       claude={claudeHere}
       mine={mineHere}
+      initialOpenRow={initialOpenRow}
     />
   )
 }
 
-export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChange: save, locked = false, claude, mine, issues = [], onConfirm, onDelete }: ProgrammeSheetProps) {
+export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChange: save, locked = false, claude, mine, issues = [], onConfirm, onDelete, focus }: ProgrammeSheetProps) {
+  const docRef = useRef<HTMLFieldSetElement>(null)
+  // Opened on an exercise: scrolled to it before the sheet is first drawn, so it slides in there.
+  useLayoutEffect(() => {
+    if (!open || !focus) return
+    const row = docRef.current?.querySelector<HTMLElement>(`[data-row="${CSS.escape(focus.rowId)}"]`)
+    const body = row?.closest<HTMLElement>('.sheet-body')
+    if (!row || !body) return
+    body.scrollTop += row.getBoundingClientRect().top - body.getBoundingClientRect().top - FOCUS_MARGIN_PX
+  }, [open, focus])
   const [block, setBlock] = useState<{ sessionId: string | null; blockId: string } | null>(null)
   const [showIssues, setShowIssues] = useState(false)
   /** The day whose ⋯ menu is open. */
@@ -180,7 +201,7 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
           </div>
         </div>
       )}
-      <fieldset className="doc" disabled={locked}>
+      <fieldset ref={docRef} className="doc" disabled={locked}>
         {locked && <div className="banner">Claude is working. Editing is paused until it's done.</div>}
 
         <header className="doc-mast">
@@ -238,6 +259,7 @@ export function ProgrammeSheet({ open, onClose, programme: p, clientName, onChan
               onMoveRowToDay={p.sessions.length > 1 ? setMoveRow : undefined}
               claude={claude}
               mine={mine}
+              initialOpenRow={focus?.open && sessionRows(s).some((r) => r.id === focus.rowId) ? focus.rowId : undefined}
             />
             <div className="doc-day-actions">
               <button type="button" className="text-link" onClick={() => { const b = newProgressionBlock({ title: 'Progression' }); onChange(mapSession(p, s.id, (x) => ({ ...x, progressionBlocks: [...x.progressionBlocks, b] }))); setBlock({ sessionId: s.id, blockId: b.id }) }}>

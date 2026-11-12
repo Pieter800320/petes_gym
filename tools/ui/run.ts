@@ -180,6 +180,23 @@ const GLOBAL_REST_PROBE = `(() => {
     + ', at ' + location.hash + ', scrollY ' + Math.round(scrollY)
     + ', dials ' + document.querySelectorAll('.dial').length
 })()`
+/** Where the programme page's button pair is, against the tabs, and which exercise the document shows first. */
+const BAR_PROBE = `(() => {
+  const mark = window.__rec.marks[window.__rec.marks.length - 1]
+  const bar = document.querySelector('.action-bar').getBoundingClientRect()
+  const nav = document.querySelector('.nav').getBoundingClientRect()
+  const first = [...document.querySelectorAll('.paper-doc .ex')].find((e) => e.getBoundingClientRect().top >= 0)
+  mark.label += ': bar bottom ' + Math.round(bar.bottom) + ', nav top ' + Math.round(nav.top) + ', bar on screen ' + (bar.bottom <= innerHeight) + ', scrollY ' + Math.round(scrollY) + ', first exercise in view "' + (first ? first.querySelector('.ex-name').textContent + '" (' + first.dataset.row + ')' : '"')
+})()`
+/** Which exercise the Edit sheet shows at its top, and which card is open there. */
+const SHEET_PROBE = `(() => {
+  const mark = window.__rec.marks[window.__rec.marks.length - 1]
+  const body = document.querySelector('.sheet .sheet-body')
+  const top = body.getBoundingClientRect().top
+  const first = [...body.querySelectorAll('.ex')].find((e) => e.getBoundingClientRect().top >= top)
+  const open = body.querySelector('.ex.open .ex-name')
+  mark.label += ': sheet scrollTop ' + Math.round(body.scrollTop) + ', first exercise "' + (first ? first.querySelector('.ex-name').textContent + '" (' + first.dataset.row + ') ' + Math.round(first.getBoundingClientRect().top - top) + 'px down' : '"') + ', open card "' + (open ? open.textContent : '') + '"'
+})()`
 const tab = (name: string) => click(`a.nav-link[href="#/${name}"]`)
 
 const SCENARIOS: Record<string, Scenario> = {
@@ -384,6 +401,32 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'FINISH, first tap', run: tapAt('.rest-clock .dial'), waitMs: 600 },
       { label: 'FINISH, second tap', run: tapAt('.rest-clock .dial'), waitMs: 1200 },
       { label: 'Back by itself', run: GLOBAL_REST_PROBE, waitMs: 300 },
+    ],
+  },
+  // A programme's page: the button pair stays above the tabs while the document scrolls, and
+  // Edit programme opens on the exercise in view (its card open if it was open), else at the top.
+  'edit-here': {
+    start: '/clients',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'Open the client', run: click('a.line-link[href="#/clients/c0"]'), waitMs: 900 },
+      { label: 'A programme', run: click('a.leader-link'), waitMs: 1000 },
+      { label: 'At the top', run: BAR_PROBE, waitMs: 300 },
+      { label: 'Edit programme, from the top', run: click('.action-bar .btn-outline'), waitMs: 1200 },
+      { label: 'Sheet', run: SHEET_PROBE, waitMs: 300 },
+      { label: 'Done', run: 'history.back()', waitMs: 900 },
+      { label: 'Scroll into day 2', run: `scrollTo(0, document.querySelectorAll('.paper-doc .day')[1].getBoundingClientRect().top + scrollY - 40)`, waitMs: 800 },
+      { label: 'Scrolled', run: BAR_PROBE, waitMs: 300 },
+      { label: 'Edit programme, scrolled', run: click('.action-bar .btn-outline'), waitMs: 1200 },
+      { label: 'Sheet', run: SHEET_PROBE, waitMs: 300 },
+      { label: 'Done', run: 'history.back()', waitMs: 900 },
+      { label: 'Open an exercise', run: `document.querySelectorAll('.paper-doc .ex-line')[5].click()`, waitMs: 900 },
+      { label: 'Edit programme, card open', run: click('.action-bar .btn-outline'), waitMs: 1200 },
+      { label: 'Sheet', run: SHEET_PROBE, waitMs: 300 },
+      { label: 'Done', run: 'history.back()', waitMs: 900 },
+      { label: 'Scroll to the end', run: 'scrollTo(0, document.body.scrollHeight)', waitMs: 800 },
+      { label: 'At the end', run: BAR_PROBE, waitMs: 300 },
     ],
   },
   // A client's page: an earlier programme opened for the first time, back, and opened again.

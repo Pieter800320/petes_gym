@@ -49,13 +49,15 @@ interface DayListProps {
   changed?: Set<string>
   /** The programme-wide progression ("How the 8 weeks build"), listed after the day's own. Read-only. */
   programmeBlock?: ProgressionBlock | null
+  /** The exercise whose card is open when the list first appears (Edit programme opened on it). */
+  initialOpenRow?: string
 }
 
 /** Memoised: with stable props (see DayEditor in ProgrammeSheet) an edit to one day leaves the other days alone. */
-export const DayList = memo(function DayList({ session: s, index, mode, onChange, onEditBlock, onDayMenu, onMoveRowToDay, hideHeader, claude, mine, changed, programmeBlock }: DayListProps) {
+export const DayList = memo(function DayList({ session: s, index, mode, onChange, onEditBlock, onDayMenu, onMoveRowToDay, hideHeader, claude, mine, changed, programmeBlock, initialOpenRow }: DayListProps) {
   /** Edit: the section whose ⋯ menu is open. */
   const [sectionMenu, setSectionMenu] = useState<string | null>(null)
-  const [openRow, setOpenRow] = useState<string | null>(null)
+  const [openRow, setOpenRow] = useState<string | null>(initialOpenRow ?? null)
   const [openBlock, setOpenBlock] = useState<string | null>(null)
   const [swapFor, setSwapFor] = useState<ExerciseRow | null>(null)
   /** Train: the section whose "+ Exercise" line is showing, and the one being added to. */
@@ -123,7 +125,7 @@ export const DayList = memo(function DayList({ session: s, index, mode, onChange
             const open = openRow === r.id
             const mark = claude?.has(r.id) ? ' mark-claude' : mine?.has(r.id) ? ' mark-mine' : ''
             return (
-              <div key={r.id} className={`ex${open ? ' open' : ''}${mark}`}>
+              <div key={r.id} className={`ex${open ? ' open' : ''}${mark}`} data-row={r.id}>
                 <button type="button" className="ex-line" onClick={() => setOpenRow(open ? null : r.id)} aria-expanded={open}>
                   <span className="ex-name">
                     {r.superset && <span className="ex-ss">{r.superset}</span>}

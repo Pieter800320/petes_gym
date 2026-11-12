@@ -1,17 +1,18 @@
 /*
  * A programme on its own page: the paper document, the same one the client receives.
  * Reached from a client's page (current or earlier programmes). Read-only: it is changed through
- * Edit programme (the same exercise card as in Train, plus structure). No clock: only Pete's own
- * sessions are timed, in Train. A red button and an outlined one (Edit programme), a quiet link to
- * Rework with Claude; the rarer actions are in ⋯.
+ * Edit programme (the same exercise card as in Train, plus structure), which opens on the exercise
+ * Pete was looking at. No clock: only Pete's own sessions are timed, in Train. A red button and an
+ * outlined one (Edit programme) stay in view above the tabs while the document scrolls (sticky);
+ * a quiet link to Rework with Claude; the rarer actions are in ⋯.
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { DayList } from '../components/DayList'
 import { ExportSheet } from '../components/ExportSheet'
 import { IconMore } from '../components/Icons'
-import { ProgrammeSheet } from '../components/ProgrammeSheet'
+import { ProgrammeSheet, type SheetFocus } from '../components/ProgrammeSheet'
 import { Sheet } from '../components/Sheet'
 import { TopBar } from '../components/TopBar'
 import { toast } from '../components/toast'
@@ -25,6 +26,23 @@ import { getCreateProgrammeId, setCreateProgrammeId } from '../settings'
 import { leaveFor } from '../util/navHistory'
 
 const STATUS_LABEL: Record<ProgrammeStatus, string> = { draft: 'Draft', active: 'Current', archived: 'Archived' }
+/** Scrolled less than this, Pete is at the top of the document: Edit programme opens at its top too. */
+const AT_TOP_PX = 40
+
+/**
+ * The exercise Pete is looking at in the document: the one whose card is open, else the first
+ * exercise line whose top is on screen. Null at the top of the page (the sheet opens at its top).
+ */
+function exerciseInView(doc: HTMLElement | null): SheetFocus | null {
+  if (!doc) return null
+  const open = doc.querySelector<HTMLElement>('.ex.open[data-row]')
+  if (open?.dataset.row) return { rowId: open.dataset.row, open: true }
+  if (window.scrollY < AT_TOP_PX) return null
+  for (const ex of doc.querySelectorAll<HTMLElement>('.ex[data-row]')) {
+    if (ex.getBoundingClientRect().top >= 0 && ex.dataset.row) return { rowId: ex.dataset.row, open: false }
+  }
+  return null
+}
 
 export function ProgrammeScreen() {
   const { id } = useParams()
@@ -53,6 +71,12 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
   // A programme just started by hand opens ready to be typed in; coming back to the page (POP) doesn't reopen the sheet.
   const [editOpen, setEditOpen] = useState(() => navType !== 'POP' && Boolean((location.state as { edit?: boolean } | null)?.edit))
   const [moreOpen, setMoreOpen] = useState(false)
+  const docRef = useRef<HTMLElement>(null)
+  const [focus, setFocus] = useState<SheetFocus | null>(null)
+  const openEdit = () => {
+    setFocus(exerciseInView(docRef.current))
+    setEditOpen(true)
+  }
   const [exportOpen, setExportOpen] = useState(false)
 
   const client = clients.find((c) => c.id === programme.clientId)
@@ -98,7 +122,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
           </div>
         ))}
 
-      <article className="paper-doc">
+      <article ref={docRef} className="paper-doc">
         <span className="paper-eyebrow">{STATUS_LABEL[programme.status]}{programme.durationWeeks ? ` · ${programme.durationWeeks}-week plan` : ''}</span>
         <h1 className="display paper-doc-title">{programme.title}</h1>
         {programme.goal && <p className="paper-goal">{programme.goal}</p>}
@@ -117,7 +141,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
       {!deleted && (
       <>
       {draft && <div className="banner live-note">This is a draft. Check it, change what you like, then make it current.</div>}
-      <div className="button-pair">
+      <div className="button-pair action-bar">
         {isMine ? (
           <button type="button" className="btn-cta" onClick={trainMine}>{programme.status === 'active' ? 'Open in Train' : 'Make current & train'}</button>
         ) : draft ? (
@@ -125,7 +149,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
         ) : (
           <button type="button" className="btn-cta" onClick={() => setExportOpen(true)}>Send to {firstName}</button>
         )}
-        <button type="button" className="btn-outline" onClick={() => setEditOpen(true)}>Edit programme</button>
+        <button type="button" className="btn-outline" onClick={openEdit}>Edit programme</button>
       </div>
       {CLAUDE_IN_APP && <Link to={`/create/${programme.id}`} className="text-link quiet" onClick={flush}>Rework with Claude ›</Link>}
 
@@ -156,7 +180,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
         </div>
       </Sheet>
 
-      <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} clientName={isMine ? 'You' : client?.name} onChange={change} />
+      <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} clientName={isMine ? 'You' : client?.name} onChange={change} focus={focus} />
       <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} programme={programme} client={client} />
       </>
       )}
