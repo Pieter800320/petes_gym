@@ -145,6 +145,20 @@ const tapAt = (selector: string) => `(() => {
   for (const type of ['pointerdown', 'pointerup']) hit.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: x, clientY: y }))
   hit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: x, clientY: y }))
 })()`
+/**
+ * A tap in the order a phone delivers it: finger down, finger up, and only then the click, hit-tested
+ * again at that moment (after the page has reacted to the finger lifting), like Chrome on Android.
+ */
+const fingerTap = (selector: string) => `(() => {
+  const r = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect()
+  const x = r.left + r.width / 2, y = r.top + r.height / 2
+  const opts = { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerType: 'touch', isPrimary: true }
+  document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', opts))
+  setTimeout(() => {
+    document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerup', opts))
+    requestAnimationFrame(() => document.elementFromPoint(x, y).dispatchEvent(new MouseEvent('click', opts)))
+  }, 80)
+})()`
 /** Adds to the step's line in the timeline what the resting face is doing: its state, what is faded, where the clock is, what lies on top at an exercise. */
 const REST_PROBE = `(() => {
   const mark = window.__rec.marks[window.__rec.marks.length - 1]
@@ -273,7 +287,7 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'START', run: click('.dial'), waitMs: 9000 },
       { label: 'Still awake', run: REST_PROBE, waitMs: 2500 },
       { label: 'Resting', run: REST_PROBE, waitMs: 300 },
-      { label: 'Tap a faded exercise', run: tapAt('.ex-line'), waitMs: 1200 },
+      { label: 'Tap a faded exercise', run: fingerTap('.ex-line'), waitMs: 1200 },
       { label: 'Awake again', run: REST_PROBE, waitMs: 10800 },
       { label: 'Resting again', run: REST_PROBE, waitMs: 300 },
       { label: 'FINISH, first tap, on the resting clock', run: tapAt('.dial'), waitMs: 800 },
@@ -284,6 +298,9 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Still resting, running', run: REST_PROBE, waitMs: 300 },
       { label: 'Tap the empty screen', run: tapAt('.ex-line'), waitMs: 1200 },
       { label: 'Awake', run: REST_PROBE, waitMs: 300 },
+      { label: 'Tap an exercise, awake', run: fingerTap('.ex-line'), waitMs: 800 },
+      { label: 'It opens', run: REST_PROBE, waitMs: 300 },
+      { label: 'Close it', run: fingerTap('.ex-line'), waitMs: 800 },
       { label: 'Leave the app and come back', run: `document.dispatchEvent(new Event('visibilitychange'))`, waitMs: 600 },
       { label: 'Resting at once', run: REST_PROBE, waitMs: 300 },
       { label: 'FINISH, first tap', run: tapAt('.dial'), waitMs: 600 },
@@ -353,8 +370,8 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Open the client', run: click('a.line-link[href="#/clients/c0"]'), waitMs: 900 },
       { label: 'Scroll a little', run: 'scrollTo(0, 120)', waitMs: 11000 },
       { label: 'Resting', run: GLOBAL_REST_PROBE, waitMs: 300 },
-      { label: 'Tap the faded page', run: tapAt('.topbar'), waitMs: 1200 },
-      { label: 'Awake', run: GLOBAL_REST_PROBE, waitMs: 10800 },
+      { label: 'Tap the faded Send button', run: fingerTap('.button-pair .btn-cta'), waitMs: 1200 },
+      { label: 'Awake', run: `${GLOBAL_REST_PROBE.slice(0, -4)}; window.__rec.marks[window.__rec.marks.length - 1].label += ', sheets open ' + document.querySelectorAll('.sheet, [role=dialog]').length })()`, waitMs: 10800 },
       { label: 'Resting again', run: GLOBAL_REST_PROBE, waitMs: 300 },
       { label: 'Pause, on the resting clock', run: tapAt('.rest-clock .dial-side'), waitMs: 1200 },
       { label: 'Still resting, paused', run: GLOBAL_REST_PROBE, waitMs: 300 },
@@ -362,7 +379,7 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Tap the empty screen', run: tapAt('.topbar'), waitMs: 600 },
       { label: 'Clients tab', run: tab('clients'), waitMs: 11000 },
       { label: 'Resting on Clients', run: GLOBAL_REST_PROBE, waitMs: 300 },
-      { label: 'Tap where Add client is', run: tapAt('.shell-main .dial'), waitMs: 1200 },
+      { label: 'Tap where Add client is', run: fingerTap('.shell-main .dial'), waitMs: 1200 },
       { label: 'Awake, no sheet', run: `${GLOBAL_REST_PROBE.slice(0, -4)}; window.__rec.marks[window.__rec.marks.length - 1].label += ', sheets open ' + document.querySelectorAll('.sheet, [role=dialog]').length })()`, waitMs: 10800 },
       { label: 'FINISH, first tap', run: tapAt('.rest-clock .dial'), waitMs: 600 },
       { label: 'FINISH, second tap', run: tapAt('.rest-clock .dial'), waitMs: 1200 },
