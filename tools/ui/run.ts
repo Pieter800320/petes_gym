@@ -298,6 +298,23 @@ const SCENARIOS: Record<string, Scenario> = {
   },
   // The same on the PC, where the dial is a button in the rail.
   'desktop-session': { start: '/train', desktop: true, settleMs: 2500, steps: [{ label: 'Start session', run: click('.dial'), waitMs: 1500 }] },
+  // Pete's clock runs while he opens a client's programme (read-only, no clock there), then Train
+  // shows his clock again; it was never hidden or stopped.
+  'client-adjust': {
+    start: '/train',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'START', run: click('.dial'), waitMs: 1500 },
+      { label: 'Clients', run: tab('clients'), waitMs: 800 },
+      { label: 'Open the client', run: click('a.line-link[href="#/clients/c0"]'), waitMs: 900 },
+      { label: 'A programme', run: click('a.leader-link'), waitMs: 1000 },
+      { label: 'Open an exercise', run: click('.paper-doc .ex-line'), waitMs: 900 },
+      { label: 'Card', run: `(() => { const mark = window.__rec.marks[window.__rec.marks.length - 1]; mark.label += ': steppers ' + document.querySelectorAll('.paper-doc .ex.open button').length + ' buttons, dials on page ' + document.querySelectorAll('.dial').length })()`, waitMs: 300 },
+      { label: 'Train', run: tab('train'), waitMs: 1200 },
+      { label: 'Clock', run: `(() => { const mark = window.__rec.marks[window.__rec.marks.length - 1]; mark.label += ': dial says "' + document.querySelector('.dial').textContent + '", disabled ' + document.querySelector('.dial').disabled })()`, waitMs: 300 },
+    ],
+  },
   // A client's page: an earlier programme opened for the first time, back, and opened again.
   earlier: {
     start: '/clients',

@@ -1,7 +1,9 @@
 /*
  * A programme on its own page: the paper document, the same one the client receives.
- * Reached from a client's page (current or earlier programmes). A red button and an outlined one
- * (Edit programme), a quiet link to Rework with Claude; the rarer actions are in ⋯.
+ * Reached from a client's page (current or earlier programmes). Read-only: it is changed through
+ * Edit programme (the same exercise card as in Train, plus structure). No clock: only Pete's own
+ * sessions are timed, in Train. A red button and an outlined one (Edit programme), a quiet link to
+ * Rework with Claude; the rarer actions are in ⋯.
  */
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom'
@@ -19,7 +21,7 @@ import { activateProgramme, createNextBlock, duplicateProgramme } from '../data/
 import { restoreProgramme, softDeleteProgramme, updateProgrammeFields, useClients, useProgramme, useProgrammes } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { Programme, ProgrammeStatus } from '../data/types'
-import { getCreateProgrammeId, setCreateProgrammeId, setTrainProgrammeId } from '../settings'
+import { getCreateProgrammeId, setCreateProgrammeId } from '../settings'
 import { leaveFor } from '../util/navHistory'
 
 const STATUS_LABEL: Record<ProgrammeStatus, string> = { draft: 'Draft', active: 'Current', archived: 'Archived' }
@@ -70,17 +72,9 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
     toast('Now the current programme')
   }
 
-  /** A client's programme: Train shows it (their session, their history) until Pete goes back to his own. */
-  function openInTrain() {
-    flush()
-    setTrainProgrammeId(programme.id)
-    navigate('/train')
-  }
-
   function trainMine() {
     flush()
     if (programme.status !== 'active') activateProgramme(uid, programme, siblings)
-    setTrainProgrammeId(null)
     navigate('/train')
   }
 
@@ -137,11 +131,7 @@ function ProgrammeDetail({ stored }: { stored: Programme }) {
 
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title={programme.title}>
         <div className="lines">
-          {isMine ? (
-            <MenuLine title="Export" meta="HTML or Word, English or German" onClick={() => { setMoreOpen(false); setExportOpen(true) }} />
-          ) : (
-            <MenuLine title="Open in Train" meta={`Run ${firstName}'s session: clock, tweaks and notes`} onClick={openInTrain} />
-          )}
+          {isMine && <MenuLine title="Export" meta="HTML or Word, English or German" onClick={() => { setMoreOpen(false); setExportOpen(true) }} />}
           <MenuLine title="Build next block" meta="A new draft based on this one, in Create" onClick={() => { flush(); navigate(draftPath(createNextBlock(uid, programme))) }} />
           {programme.status !== 'active' && (
             <MenuLine title="Make current" meta={`${isMine ? 'Your' : `${firstName}'s`} current programme is archived`} onClick={() => { setMoreOpen(false); makeCurrent() }} />

@@ -1,10 +1,12 @@
 /*
- * Train — a training card to work from: Pete's own current programme, or a client's programme he
- * opened here ("Open in Train" on its page) to run their session.
+ * Train — Pete's own training card: his current programme. Clients' sessions are not timed; their
+ * programmes are adjusted on their own page.
  * Start sets the clock, Pause stops it (paused time isn't counted), Finish records the session.
+ * A running clock always shows here until it is finished or cancelled, also when it was started on
+ * a programme that is no longer the current one.
  * Changes made to an exercise during the session (sets, reps, rest, swaps) stick to the programme and are listed with the session.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { DayList } from '../components/DayList'
@@ -21,7 +23,6 @@ import { estimateSessionMin, formatClock, sessionRows } from '../data/programmeU
 import { deleteWorkout, useClients, useProgramme, useProgrammes, useWorkouts } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
 import type { ActiveWorkout, Programme, Workout } from '../data/types'
-import { setTrainProgrammeId, useTrainProgrammeId } from '../settings'
 import { splitDayTitle } from '../util/dayTitle'
 import { useRestingFace } from '../util/restingFace'
 
@@ -52,49 +53,99 @@ function toastSaved(uid: string, previous: ActiveWorkout, saved: { durationSec: 
 
 const today = () => new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()
 
-/** Shows Pete's own current programme, unless a client's programme has been opened in Train. */
+/** Shows Pete's own current programme. */
 export function TrainScreen() {
   const { data: clients, loading: clientsLoading } = useClients()
   const self = clients.find((c) => c.isSelf)
   const { data: programmes, loading } = useProgrammes(self?.id ?? '__none__')
   const programme = programmes.find((p) => p.status === 'active') ?? null
-
-  // A client's programme opened in Train takes over until Pete goes back to his own.
-  const guestId = useTrainProgrammeId()
-  const { data: guest, loading: guestLoading } = useProgramme(guestId ?? undefined)
-  const guestGone = guestId !== null && !guestLoading && (!guest || Boolean(guest.deletedAt))
-  useEffect(() => {
-    // Deleted meanwhile (here or on another device): fall back to Pete's own programme.
-    if (guestGone) setTrainProgrammeId(null)
-  }, [guestGone])
-
-  if (guestId !== null && !guestGone) {
-    if (guestLoading || clientsLoading || !guest) return <TrainLoading />
-    const owner = clients.find((c) => c.id === guest.clientId)
-    return <TrainProgramme key={guest.id} stored={guest} guestName={owner && !owner.isSelf ? owner.name : undefined} ownProgrammeId={programme?.id} />
-  }
+  const clock = useRunningSession(programme?.id)
 
   if (clientsLoading || (self && loading)) return <TrainLoading />
 
   if (!programme) {
     return (
-      <div className="screen">
+      <div className={`screen${clock.running ? ' has-dial rests' : ''}`}>
         <TopBar overline={today()} />
         <BigTitle text="Train" />
         {!self ? (
           <p className="lead">Train is for your own training. Add your profile first: Clients → You.</p>
         ) : (
           <div className="stack">
-            <p className="lead">No current programme. Build one for yourself in Create, or open a client's programme and choose “Open in Train” in its ⋯ menu.</p>
+            <p className="lead">No current programme. Build one for yourself in Create.</p>
             <Link to="/create" className="text-link">Go to Create ›</Link>
           </div>
+        )}
+        {/* A clock still running (its programme was archived meanwhile) stays until it is finished. */}
+        {clock.running && (
+          <>
+            <div className="quiet-links">
+              <RunningElsewhere clock={clock} />
+              <ConfirmButton className="btn-ghost small" onConfirm={() => { cancelWorkout(); toast('Session cancelled, nothing saved') }}>Cancel session</ConfirmButton>
+            </div>
+            <SessionDial workout={clock.running} onFinish={clock.finish} onStart={() => undefined} startDisabled startLabel="" />
+          </>
         )}
       </div>
     )
   }
 
   // Keyed so the day selection resets when the current programme changes.
-  return <TrainProgramme key={programme.id} stored={programme} ownProgrammeId={programme.id} />
+  return <TrainProgramme key={programme.id} stored={programme} clock={clock} />
+}
+
+interface RunningSession {
+  /** The running clock, whatever programme it was started on. */
+  running: ActiveWorkout | null
+  /** It was started on the programme Train shows. */
+  here: boolean
+  /** Started on another programme (one that was current before): that programme, if it still exists. */
+  source: Programme | null
+  /** Saves the session to the programme it was started on and stops the clock. */
+  finish: () => void
+  /** Train's programme hands over its pending edits, so they are saved before its session is recorded. */
+  setFlush: (fn: (() => void) | null) => void
+}
+
+/**
+ * The one running clock and how it is finished. It belongs to the programme it was started on; a
+ * session started on an earlier current programme still shows here and is saved to that programme.
+ */
+function useRunningSession(shownId: string | undefined): RunningSession {
+  const { user } = useAuth()
+  const running = useActiveWorkout()
+  const here = Boolean(running && running.programmeId === shownId)
+  const { data: started, loading: startedLoading } = useProgramme(running?.programmeId)
+  const flushRef = useRef<(() => void) | null>(null)
+  const source = started && !started.deletedAt ? started : null
+  const setFlush = useCallback((fn: (() => void) | null) => { flushRef.current = fn }, [])
+  return {
+    running,
+    here,
+    source,
+    setFlush,
+    finish: () => {
+      if (!user || !running || startedLoading) return
+      if (here) flushRef.current?.()
+      // Without its programme (deleted meanwhile) the exercises it started with are recorded.
+      const saved = finishWorkout(user.uid, running, source?.sessions.find((s) => s.id === running.sessionId))
+      toastSaved(user.uid, running, saved)
+    },
+  }
+}
+
+/** For a clock started on another programme: which one, and that Finish saves the session there. */
+function RunningElsewhere({ clock }: { clock: RunningSession }) {
+  const { running, source } = clock
+  if (!running) return null
+  const day = source ? source.sessions.findIndex((s) => s.id === running.sessionId) : -1
+  return (
+    <span className="muted small">
+      {source
+        ? `This session was started on ${source.title}${day >= 0 ? `, day ${day + 1}` : ''}. Finish saves it there.`
+        : 'This session’s programme was deleted. Finish saves the exercises it started with.'}
+    </span>
+  )
 }
 
 /** Shown while the programme loads: START keeps its place (greyed out) instead of popping in later. */
@@ -109,19 +160,17 @@ function TrainLoading() {
   )
 }
 
-/** guestName: the client whose programme this is, when it isn't Pete's own. ownProgrammeId: Pete's own current programme. */
-function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Programme; guestName?: string; ownProgrammeId?: string }) {
+function TrainProgramme({ stored, clock }: { stored: Programme; clock: RunningSession }) {
   const { user } = useAuth()
   const { programme, change, flush } = useProgrammeDraft(stored)
   const { data: workouts, loading } = useWorkouts({ programmeId: stored.id })
-  const active = useActiveWorkout()
-  const running = active?.programmeId === stored.id ? active : null
-  // A session running on another programme: which one, and whose, so Pete can go to it.
-  const elsewhere = active && !running ? active : null
-  const { data: otherProgramme, loading: otherLoading } = useProgramme(elsewhere?.programmeId)
-  const { data: clients } = useClients()
+  const { running, here, setFlush } = clock
+  useEffect(() => {
+    setFlush(flush)
+    return () => setFlush(null)
+  }, [setFlush, flush])
   const upNext = nextSessionIndex(programme, workouts)
-  const runningIndex = running ? programme.sessions.findIndex((s) => s.id === running.sessionId) : -1
+  const runningIndex = running && here ? programme.sessions.findIndex((s) => s.id === running.sessionId) : -1
   const [selected, setSelected] = useState<number | null>(null)
   const index = Math.min(selected ?? (runningIndex >= 0 ? runningIndex : upNext), programme.sessions.length - 1)
   const session = programme.sessions[index]
@@ -136,7 +185,7 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
 
   // During a session, exercises changed since Start show their new numbers in the accent colour.
   const changed = useMemo(() => {
-    if (!running || !session || session.id !== running.sessionId) return new Set<string>()
+    if (!running || !here || !session || session.id !== running.sessionId) return new Set<string>()
     const before = new Map((running.baseline ?? []).map((r) => [r.id, r]))
     return new Set(
       sessionRows(session)
@@ -146,7 +195,7 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
         })
         .map((r) => r.id),
     )
-  }, [running, session])
+  }, [running, here, session])
 
   // Which day is "up next" depends on the sessions done so far: wait for them rather than showing
   // day 1 and then jumping. A running session names its own day, so it shows straight away.
@@ -160,26 +209,13 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
   const nextNote = loading ? null : running ? <span className="up-next held" aria-hidden="true">Up next</span> : index === upNext ? <span className="up-next">Up next</span> : <span className="up-next other">Up next: day {upNext + 1}</span>
 
   function finish() {
-    if (!user || !running) return
-    flush()
-    const saved = finishWorkout(user.uid, running, programme.sessions.find((s) => s.id === running.sessionId))
+    clock.finish()
     setSelected(null)
-    toastSaved(user.uid, running, saved)
   }
-
-  const otherGone = !otherLoading && (!otherProgramme || Boolean(otherProgramme.deletedAt))
-  const otherOwner = clients.find((c) => c.id === otherProgramme?.clientId)
-  const otherSince = elsewhere ? new Date(elsewhere.startedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''
 
   return (
     <div className="screen has-dial rests">
       <TopBar overline={running ? (paused ? <span className="live-label">PAUSED</span> : <span className="live-label"><span className="live-dot" />IN SESSION</span>) : today()} noteClientId={programme.clientId} />
-      {guestName && (
-        <div className="banner row-banner">
-          <span>Training with <b>{guestName}</b></span>
-          <button type="button" className="text-link quiet" style={{ flex: 'none' }} onClick={() => { flush(); setTrainProgrammeId(null) }}>Back to mine ›</button>
-        </div>
-      )}
       <BigTitle
         text={main}
         accent={extra || undefined}
@@ -236,6 +272,7 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
 
       {running ? (
         <div className="quiet-links">
+          {!here && <RunningElsewhere clock={clock} />}
           <span className="muted small">
             {paused ? 'Paused. The clock is stopped; paused time isn’t counted.' : 'Changes you make now are saved to the programme and listed with this session.'}
           </span>
@@ -243,48 +280,18 @@ function TrainProgramme({ stored, guestName, ownProgrammeId }: { stored: Program
         </div>
       ) : (
         <div className="quiet-links">
-          {elsewhere && !otherLoading && otherGone && (
-            <>
-              <span className="muted small">A session is still running, but that programme was deleted.</span>
-              <button type="button" className="text-link" onClick={() => toastSaved(user.uid, elsewhere, finishWorkout(user.uid, elsewhere, undefined))}>Save what was done</button>
-              <ConfirmButton className="btn-ghost small" armedLabel="Tap again: nothing is saved" onConfirm={() => { cancelWorkout(); toast('Session discarded, nothing saved') }}>Discard</ConfirmButton>
-            </>
-          )}
-          {elsewhere && !otherGone && (
-            <>
-              <span className="muted small">
-                {otherProgramme
-                  ? `A session with ${otherOwner ? (otherOwner.isSelf ? 'you' : otherOwner.name) : 'a client'} is running (${otherProgramme.title}, since ${otherSince}).`
-                  : 'A session on another programme is running.'}
-              </span>
-              {otherProgramme && (
-                <button
-                  type="button"
-                  className="text-link"
-                  onClick={() => {
-                    flush()
-                    // Pete's own current programme is what Train shows by default; any other is opened by its id.
-                    setTrainProgrammeId(otherProgramme.id === ownProgrammeId ? null : otherProgramme.id)
-                  }}
-                >
-                  Go to that session ›
-                </button>
-              )}
-              <ConfirmButton className="btn-ghost small" armedLabel="Tap again: nothing is saved" onConfirm={() => { cancelWorkout(); toast('That session was discarded, nothing saved') }}>Discard that session</ConfirmButton>
-            </>
-          )}
           <button type="button" className="text-link" onClick={() => setEditOpen(true)}>Edit programme ›</button>
           {CLAUDE_IN_APP && <Link to={`/create/${programme.id}`} className="text-link quiet" onClick={flush}>Rework with Claude ›</Link>}
         </div>
       )}
 
-      <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} clientName={guestName ?? 'You'} onChange={change} />
+      <ProgrammeSheet open={editOpen} onClose={() => { flush(); setEditOpen(false) }} programme={programme} clientName="You" onChange={change} />
 
       <SessionDial
         workout={running}
         onFinish={finish}
-        startDisabled={Boolean(active)}
-        startLabel={active ? 'Another session is running' : `Start day ${index + 1}`}
+        startDisabled={false}
+        startLabel={`Start day ${index + 1}`}
         onStart={() => {
           flush()
           startWorkout(programme.id, programme.clientId, session)
