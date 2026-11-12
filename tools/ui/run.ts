@@ -155,6 +155,17 @@ const REST_PROBE = `(() => {
     + ', clock middle at ' + Math.round((dial.top + dial.height / 2) / innerHeight * 100) + '% of the screen, dial says "' + document.querySelector('.dial-sub').textContent + '", open cards ' + document.querySelectorAll('.drop').length
     + ', paused ' + document.querySelector('.dial').classList.contains('dial-paused') + ', on top at the exercise: ' + top.tagName.toLowerCase() + ', scrollY ' + Math.round(scrollY)
 })()`
+/** The resting face outside Train: its state, the page's and the clock's opacity, where the clock is, the address and scroll. */
+const GLOBAL_REST_PROBE = `(() => {
+  const mark = window.__rec.marks[window.__rec.marks.length - 1]
+  const clock = document.querySelector('.rest-clock .dial')
+  const dock = document.querySelector('.rest-clock .dial-dock')
+  const r = clock ? clock.getBoundingClientRect() : null
+  mark.label += ': rest=' + document.documentElement.dataset.rest + ', page opacity ' + getComputedStyle(document.querySelector('.shell-main')).opacity
+    + ', resting clock ' + (dock ? getComputedStyle(dock).visibility + ' ' + getComputedStyle(dock).opacity + ' at ' + Math.round((r.top + r.height / 2) / innerHeight * 100) + '%, says "' + document.querySelector('.rest-clock .dial-sub').textContent + '", paused ' + clock.classList.contains('dial-paused') : 'none')
+    + ', at ' + location.hash + ', scrollY ' + Math.round(scrollY)
+    + ', dials ' + document.querySelectorAll('.dial').length
+})()`
 const tab = (name: string) => click(`a.nav-link[href="#/${name}"]`)
 
 const SCENARIOS: Record<string, Scenario> = {
@@ -313,6 +324,36 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Card', run: `(() => { const mark = window.__rec.marks[window.__rec.marks.length - 1]; mark.label += ': steppers ' + document.querySelectorAll('.paper-doc .ex.open button').length + ' buttons, dials on page ' + document.querySelectorAll('.dial').length })()`, waitMs: 300 },
       { label: 'Train', run: tab('train'), waitMs: 1200 },
       { label: 'Clock', run: `(() => { const mark = window.__rec.marks[window.__rec.marks.length - 1]; mark.label += ': dial says "' + document.querySelector('.dial').textContent + '", disabled ' + document.querySelector('.dial').disabled })()`, waitMs: 300 },
+    ],
+  },
+  // The resting face on any page: the clock runs, Pete is on a client's page (scrolled) and on
+  // Clients; left untouched the page fades and the clock appears. A tap elsewhere brings the same
+  // page back where it was; Pause works on the resting clock; the faded "Add client" can't be
+  // pressed; Finish's two taps bring the page back.
+  'rest-anywhere': {
+    start: '/train',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'START', run: click('.dial'), waitMs: 1200 },
+      { label: 'Clients', run: tab('clients'), waitMs: 800 },
+      { label: 'Open the client', run: click('a.line-link[href="#/clients/c0"]'), waitMs: 900 },
+      { label: 'Scroll a little', run: 'scrollTo(0, 120)', waitMs: 11000 },
+      { label: 'Resting', run: GLOBAL_REST_PROBE, waitMs: 300 },
+      { label: 'Tap the faded page', run: tapAt('.topbar'), waitMs: 1200 },
+      { label: 'Awake', run: GLOBAL_REST_PROBE, waitMs: 10800 },
+      { label: 'Resting again', run: GLOBAL_REST_PROBE, waitMs: 300 },
+      { label: 'Pause, on the resting clock', run: tapAt('.rest-clock .dial-side'), waitMs: 1200 },
+      { label: 'Still resting, paused', run: GLOBAL_REST_PROBE, waitMs: 300 },
+      { label: 'Resume', run: tapAt('.rest-clock .dial-side'), waitMs: 800 },
+      { label: 'Tap the empty screen', run: tapAt('.topbar'), waitMs: 600 },
+      { label: 'Clients tab', run: tab('clients'), waitMs: 11000 },
+      { label: 'Resting on Clients', run: GLOBAL_REST_PROBE, waitMs: 300 },
+      { label: 'Tap where Add client is', run: tapAt('.shell-main .dial'), waitMs: 1200 },
+      { label: 'Awake, no sheet', run: `${GLOBAL_REST_PROBE.slice(0, -4)}; window.__rec.marks[window.__rec.marks.length - 1].label += ', sheets open ' + document.querySelectorAll('.sheet, [role=dialog]').length })()`, waitMs: 10800 },
+      { label: 'FINISH, first tap', run: tapAt('.rest-clock .dial'), waitMs: 600 },
+      { label: 'FINISH, second tap', run: tapAt('.rest-clock .dial'), waitMs: 1200 },
+      { label: 'Back by itself', run: GLOBAL_REST_PROBE, waitMs: 300 },
     ],
   },
   // A client's page: an earlier programme opened for the first time, back, and opened again.

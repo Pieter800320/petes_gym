@@ -7,6 +7,7 @@ import { NoteSheet } from './components/NoteSheet'
 import { onOpenNote, onOpenSettings, type NoteRequest } from './components/noteEvents'
 import { SettingsSheet } from './components/SettingsSheet'
 import { Snackbar } from './components/Snackbar'
+import { SessionKeeper } from './components/SessionClock'
 import { RAIL_ACTION_ID } from './components/TopBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { ClientScreen } from './screens/ClientScreen'
@@ -306,6 +307,8 @@ function Shell() {
       <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <Snackbar />
       <UpdateBanner />
+      {/* The session clock on every page: screen kept awake, and the resting face outside Train. */}
+      <SessionKeeper onTrain={shown.pathname.startsWith('/train')} />
     </div>
   )
 }

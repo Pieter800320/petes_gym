@@ -6,30 +6,29 @@
  * a programme that is no longer the current one.
  * Changes made to an exercise during the session (sets, reps, rest, swaps) stick to the programme and are listed with the session.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { DayList } from '../components/DayList'
 import { PinnedNotes } from '../components/PinnedNotes'
 import { ProgrammeSheet } from '../components/ProgrammeSheet'
+import { SessionDial } from '../components/SessionClock'
 import { BigTitle, Dial, TopBar } from '../components/TopBar'
-import { IconPause, IconPlay } from '../components/Icons'
 import { toast } from '../components/toast'
 import { useAuth } from '../auth/useAuth'
 import { CLAUDE_IN_APP } from '../claude/inApp'
-import { activeMs, cancelWorkout, finishWorkout, pauseWorkout, restoreActiveWorkout, resumeWorkout, startWorkout, useActiveWorkout } from '../data/activeWorkout'
+import { cancelWorkout, startWorkout } from '../data/activeWorkout'
 import { mapSession } from '../data/programmeEdits'
-import { estimateSessionMin, formatClock, sessionRows } from '../data/programmeUtils'
-import { deleteWorkout, useClients, useProgramme, useProgrammes, useWorkouts } from '../data/store'
+import { estimateSessionMin, sessionRows } from '../data/programmeUtils'
+import { useClients, useProgrammes, useWorkouts } from '../data/store'
 import { useProgrammeDraft } from '../data/useProgrammeDraft'
-import type { ActiveWorkout, Programme, Workout } from '../data/types'
+import { useRunningSession, type RunningSession } from '../data/useRunningSession'
+import type { Programme, Workout } from '../data/types'
 import { splitDayTitle } from '../util/dayTitle'
 import { useRestingFace } from '../util/restingFace'
 
 /** Horizontal finger travel (px) that counts as a swipe to the next or previous day. */
 const SWIPE_PX = 70
-/** FINISH ignores taps this soon after Start: the second tap of a double tap on START lands on it. */
-const FINISH_GUARD_MS = 1500
 
 /** Index of the session after the most recently completed one ("up next"). */
 function nextSessionIndex(p: Programme, workouts: Workout[]): number {
@@ -37,18 +36,6 @@ function nextSessionIndex(p: Programme, workouts: Workout[]): number {
   if (!last) return 0
   const i = p.sessions.findIndex((s) => s.id === last.sessionId)
   return i < 0 ? 0 : (i + 1) % p.sessions.length
-}
-
-/** "Session saved", with Undo for as long as the message shows: the session then runs on as it was. */
-function toastSaved(uid: string, previous: ActiveWorkout, saved: { durationSec: number; workoutId: string }) {
-  toast(`Session saved · ${Math.max(1, Math.round(saved.durationSec / 60))} min`, {
-    label: 'Undo',
-    run: () => {
-      // Only when the session can run again: with another one started meanwhile, the saved session stays.
-      if (restoreActiveWorkout(previous)) deleteWorkout(uid, saved.workoutId)
-      else toast('Another session is running, so this one stays saved')
-    },
-  })
 }
 
 const today = () => new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()
@@ -60,6 +47,9 @@ export function TrainScreen() {
   const { data: programmes, loading } = useProgrammes(self?.id ?? '__none__')
   const programme = programmes.find((p) => p.status === 'active') ?? null
   const clock = useRunningSession(programme?.id)
+  // A session left untouched fades out around the clock. Paused counts too: Pause and Resume on
+  // the resting clock work like Finish there, without bringing the app back.
+  useRestingFace(Boolean(clock.running))
 
   if (clientsLoading || (self && loading)) return <TrainLoading />
 
@@ -92,46 +82,6 @@ export function TrainScreen() {
 
   // Keyed so the day selection resets when the current programme changes.
   return <TrainProgramme key={programme.id} stored={programme} clock={clock} />
-}
-
-interface RunningSession {
-  /** The running clock, whatever programme it was started on. */
-  running: ActiveWorkout | null
-  /** It was started on the programme Train shows. */
-  here: boolean
-  /** Started on another programme (one that was current before): that programme, if it still exists. */
-  source: Programme | null
-  /** Saves the session to the programme it was started on and stops the clock. */
-  finish: () => void
-  /** Train's programme hands over its pending edits, so they are saved before its session is recorded. */
-  setFlush: (fn: (() => void) | null) => void
-}
-
-/**
- * The one running clock and how it is finished. It belongs to the programme it was started on; a
- * session started on an earlier current programme still shows here and is saved to that programme.
- */
-function useRunningSession(shownId: string | undefined): RunningSession {
-  const { user } = useAuth()
-  const running = useActiveWorkout()
-  const here = Boolean(running && running.programmeId === shownId)
-  const { data: started, loading: startedLoading } = useProgramme(running?.programmeId)
-  const flushRef = useRef<(() => void) | null>(null)
-  const source = started && !started.deletedAt ? started : null
-  const setFlush = useCallback((fn: (() => void) | null) => { flushRef.current = fn }, [])
-  return {
-    running,
-    here,
-    source,
-    setFlush,
-    finish: () => {
-      if (!user || !running || startedLoading) return
-      if (here) flushRef.current?.()
-      // Without its programme (deleted meanwhile) the exercises it started with are recorded.
-      const saved = finishWorkout(user.uid, running, source?.sessions.find((s) => s.id === running.sessionId))
-      toastSaved(user.uid, running, saved)
-    },
-  }
 }
 
 /** For a clock started on another programme: which one, and that Finish saves the session there. */
@@ -178,10 +128,6 @@ function TrainProgramme({ stored, clock }: { stored: Programme; clock: RunningSe
   /** The larger edits (days, sections, progressions): the same sheet as on the programme page. */
   const [editOpen, setEditOpen] = useState(false)
   const paused = Boolean(running?.pausedAt)
-  useWakeLock(Boolean(running) && !paused)
-  // A session left untouched fades out around the clock. Paused counts too: Pause and Resume on
-  // the resting clock work like Finish there, without bringing the app back.
-  useRestingFace(Boolean(running))
 
   // During a session, exercises changed since Start show their new numbers in the accent colour.
   const changed = useMemo(() => {
@@ -299,80 +245,4 @@ function TrainProgramme({ stored, clock }: { stored: Programme; clock: RunningSe
       />
     </div>
   )
-}
-
-interface SessionDialProps {
-  /** The session running on this programme, if any. */
-  workout: ActiveWorkout | null
-  onFinish: () => void
-  onStart: () => void
-  startDisabled: boolean
-  startLabel: string
-}
-
-/**
- * Train's dial in both its states: START, and during a session FINISH with the clock, plus
- * Pause/Resume on its edge. One component in one place, so the button on screen stays the same
- * element and swells into the clock at Start and shrinks back at Finish (two components swapped
- * here would replace it, and nothing would move). Ticks on its own so the day list doesn't redraw
- * every second.
- */
-function SessionDial({ workout, onFinish, onStart, startDisabled, startLabel }: SessionDialProps) {
-  const [now, setNow] = useState(() => Date.now())
-  const on = Boolean(workout)
-  useEffect(() => {
-    if (!on) return
-    const tick = () => setNow(Date.now())
-    // At once as well: the moment kept from before this session is older than its start.
-    const first = setTimeout(tick, 0)
-    const t = setInterval(tick, 1000)
-    return () => {
-      clearTimeout(first)
-      clearInterval(t)
-    }
-  }, [on])
-  if (!workout) return <Dial label="START" longLabel="Start session" disabled={startDisabled} ariaLabel={startLabel} onClick={onStart} />
-  const paused = Boolean(workout.pausedAt)
-  return (
-    <Dial
-      label="FINISH"
-      restLabel="START"
-      longLabel="Start session"
-      confirmLabel="TAP AGAIN"
-      ignoreUntil={workout.startedAt + FINISH_GUARD_MS}
-      time={formatClock(activeMs(workout, now) / 1000)}
-      onClick={onFinish}
-      ariaLabel="Finish session"
-      paused={paused}
-      // The small button only ever runs the clock; the dial only ever ends the session.
-      side={paused ? { icon: <IconPlay />, label: 'Resume', onClick: resumeWorkout } : { icon: <IconPause />, label: 'Pause', onClick: pauseWorkout }}
-    />
-  )
-}
-
-/** Keeps the screen awake while a session runs. */
-function useWakeLock(on: boolean) {
-  useEffect(() => {
-    if (!on) return
-    let lock: WakeLockSentinel | null = null
-    let cancelled = false
-    const request = async () => {
-      try {
-        if ('wakeLock' in navigator && document.visibilityState === 'visible') {
-          lock = await navigator.wakeLock.request('screen')
-          if (cancelled) lock.release()
-        }
-      } catch {
-        // Denied (battery saver, unsupported): the session works without it.
-      }
-    }
-    request()
-    // The lock is dropped whenever the page is hidden; take it again on return.
-    document.addEventListener('visibilitychange', request)
-    return () => {
-      cancelled = true
-      document.removeEventListener('visibilitychange', request)
-      lock?.release().catch(() => undefined)
-    }
-  }, [on])
 }

@@ -1,7 +1,8 @@
 /*
  * The resting face: while a session is on (running or paused) and the screen hasn't been touched for a while,
  * the app fades out and only the clock (the dial with its Pause button) stays, on the plain
- * background, moved to just above the middle of the screen. Phone layout only.
+ * background, moved to just above the middle of the screen. Phone layout only, on every page: on
+ * Train its own dial moves there; elsewhere the shell's resting clock appears there (SessionClock.tsx).
  *
  * It is drawn, never laid out: this file only sets attributes on <html>; app.css ("The resting
  * face") fades with opacity and moves the dial's dock with `translate`, so everything keeps its
@@ -22,14 +23,15 @@ import { useEffect } from 'react'
 /** No touch, key or scroll for this long during a session: the app fades out around the clock. */
 export const REST_AFTER_MS = 10_000
 /** The resting face is the phone's: on desktop the clock is a button in the navigation rail. */
-const PHONE = '(max-width: 899px)'
-/** What stays and keeps working while resting. */
-const CLOCK = '.dial-wrap'
+export const PHONE = '(max-width: 899px)'
 /** Typing is not idling, even with the fingers off the screen. */
 const TEXT_FIELD = 'textarea, input, select, [contenteditable]'
 
-/** on: a session is on (running or paused) on the screen that calls this. */
-export function useRestingFace(on: boolean) {
+/**
+ * on: a session is on (running or paused). clock: what stays and keeps working while resting; on
+ * Train its own dial, on every other page the resting clock the shell draws (SessionClock.tsx).
+ */
+export function useRestingFace(on: boolean, clock = '.dial-wrap') {
   useEffect(() => {
     if (!on) return
     const html = document.documentElement
@@ -38,7 +40,7 @@ export function useRestingFace(on: boolean) {
     let resting = false
 
     const canRest = () => phone.matches && !html.classList.contains('sheet-open') && !document.activeElement?.matches(TEXT_FIELD)
-    const onClock = (target: EventTarget | null) => target instanceof Element && Boolean(target.closest(CLOCK))
+    const onClock = (target: EventTarget | null) => target instanceof Element && Boolean(target.closest(clock))
 
     /** (Re)starts the wait. When it ends at a moment the app can't rest (a sheet is open), it waits again. */
     const idle = () => {
@@ -110,5 +112,5 @@ export function useRestingFace(on: boolean) {
       phone.removeEventListener('change', onLayout)
       release()
     }
-  }, [on])
+  }, [on, clock])
 }

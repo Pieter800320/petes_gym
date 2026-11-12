@@ -247,7 +247,24 @@ svg { flex: none; }
   :root[data-rest] { touch-action: none; }
   :root[data-rest] body { overflow: hidden; }
   :root[data-rest] :is(.nav, .update-banner, .shell-main) { pointer-events: none; }
+
+  /* Every other page (SessionClock.tsx): the shell's resting clock waits, hidden, on the dial's
+     spot; resting, the whole page fades (its own dial too, which then takes no taps) and the clock
+     fades in while it travels to the same place as Train's. */
+  .shell-main { transition: opacity var(--motion-rest-in) var(--ease-standard); }
+  :root[data-rest="on"]:has(.rest-clock) .shell-main { opacity: 0; transition-duration: var(--motion-rest-out); }
+  :root[data-rest]:has(.rest-clock) .shell-main :is(.dial, .dial-side) { pointer-events: none; }
+  .rest-clock > .dial-dock { visibility: hidden; opacity: 0; transition: opacity var(--motion-rest-in) var(--ease-standard), translate var(--motion-rest-in) var(--ease-standard), visibility 0s var(--motion-rest-in); }
+  :root[data-rest="on"] .rest-clock > .dial-dock {
+    visibility: visible; opacity: 1;
+    translate: 0 calc(var(--rest-clock-at) - 100dvh + var(--dial-bottom) + var(--dial-clock-size) / 2);
+    transition: opacity var(--motion-rest-out) var(--ease-standard), translate var(--motion-rest-out) var(--ease-standard), visibility 0s;
+  }
+  :root[data-rest-instant] :is(.shell-main, .rest-clock > .dial-dock) { transition: none; }
 }
+/* Two dials on screen must not share a name in a page change: the resting clock is never pictured apart. */
+.rest-clock :is(.dial-dock, .dial-short) { view-transition-name: none; }
+.rest-clock { display: contents; }
 
 /* ── Buttons and links ────────────────────────────────────────────── */
 .btn-cta, .btn-outline, .btn-acc, .btn-ghost {
