@@ -149,6 +149,12 @@ svg { flex: none; }
 ::view-transition-new(dial) { animation: page-arrive var(--motion-leave) var(--ease-standard) both; }
 ::view-transition-old(dial):only-child, ::view-transition-old(dial-word) { animation: page-leave var(--motion-leave) var(--ease-standard) both; }
 ::view-transition-new(dial):only-child, ::view-transition-new(dial-word) { animation: page-arrive var(--motion-arrive) var(--ease-arrive) var(--motion-wait) both; }
+/* A running clock is not the next page's plain action (ADD, NEW): pictured as one, the clock would
+   stay under it for the whole change. It has its own name, so it leaves and arrives with the page. */
+.dial-dock:has(.dial-running) { view-transition-name: dial-clock; }
+.dial-running .dial-short { view-transition-name: none; }
+::view-transition-old(dial-clock) { animation: page-leave var(--motion-leave) var(--ease-standard) both; }
+::view-transition-new(dial-clock) { animation: page-arrive var(--motion-arrive) var(--ease-arrive) var(--motion-wait) both; }
 /* Opened from another page: in from the right. Back: in from the left. Between tabs: the fade alone. */
 :root[data-nav="forward"]::view-transition-old(page) { animation-name: page-leave-left; }
 :root[data-nav="forward"]::view-transition-new(page) { animation-name: page-arrive-from-right; }

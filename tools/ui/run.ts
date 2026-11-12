@@ -326,6 +326,19 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Clock', run: `(() => { const mark = window.__rec.marks[window.__rec.marks.length - 1]; mark.label += ': dial says "' + document.querySelector('.dial').textContent + '", disabled ' + document.querySelector('.dial').disabled })()`, waitMs: 300 },
     ],
   },
+  // Tabs while the clock runs: Train's clock and another tab's plain action (ADD, NEW) are
+  // different buttons, so the dial must not cross-fade one into the other.
+  'session-tabs': {
+    start: '/train',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'START', run: click('.dial'), waitMs: 1500 },
+      { label: 'Clients', run: tab('clients'), waitMs: 1000 },
+      { label: 'Create', run: tab('create'), waitMs: 1000 },
+      { label: 'Train', run: tab('train'), waitMs: 1000 },
+    ],
+  },
   // The resting face on any page: the clock runs, Pete is on a client's page (scrolled) and on
   // Clients; left untouched the page fades and the clock appears. A tap elsewhere brings the same
   // page back where it was; Pause works on the resting clock; the faded "Add client" can't be
