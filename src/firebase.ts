@@ -10,6 +10,7 @@ import {
   waitForPendingWrites,
   type Firestore,
 } from 'firebase/firestore'
+import { capStartCheck } from './data/startCheck'
 import { firebaseConfig } from './firebaseConfig'
 
 /** False until firebaseConfig.ts has been filled in with the real project values. */
@@ -30,6 +31,9 @@ let db: Firestore | null = null
 if (isFirebaseConfigured) {
   app = initializeApp(firebaseConfig)
   auth = isPublicForm ? initializeAuth(app, { persistence: inMemoryPersistence }) : getAuth(app)
+  // Firebase Auth looks up `fetch` on each request. Set before its start-up check goes out
+  // (that waits for the saved sign-in to be read first): see startCheck.ts.
+  if (!isPublicForm) window.fetch = capStartCheck(window.fetch.bind(window), auth.authStateReady())
   // Persistent cache = full offline support: reads come from IndexedDB, writes queue
   // until the device is back online. The multi-tab manager lets the PWA and a browser
   // tab stay open at the same time without fighting over the cache.

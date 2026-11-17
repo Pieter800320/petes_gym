@@ -8,15 +8,19 @@ export interface User {
 }
 export interface Auth {
   currentUser: User | null
+  authStateReady(): Promise<void>
 }
 
 const pieter: User = { uid: 'pieter', email: OWNER_EMAIL }
-const auth: Auth = { currentUser: null }
+let ready: () => void = () => {}
+const readyPromise = new Promise<void>((resolve) => (ready = resolve))
+const auth: Auth = { currentUser: null, authStateReady: () => readyPromise }
 const listeners = new Set<(u: User | null) => void>()
 let known = false
 
 function settle(user: User | null) {
   known = true
+  ready()
   auth.currentUser = user
   for (const l of listeners) l(user)
 }

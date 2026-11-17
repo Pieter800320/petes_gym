@@ -49,7 +49,7 @@ switch (command) {
     print(
       c
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map((x) => ({ id: x.id, name: x.name, isSelf: x.isSelf, programmes: p.filter((y) => y.clientId === x.id).length })),
+        .map((x) => ({ id: x.id, name: x.name, isSelf: x.isSelf, added: x.createdAt ? day(x.createdAt) : null, changed: x.updatedAt ? day(x.updatedAt) : null, programmes: p.filter((y) => y.clientId === x.id).length })),
     )
     break
   }
