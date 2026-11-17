@@ -200,13 +200,24 @@ const SHEET_PROBE = `(() => {
 /** The fitness profile link line in the open menu: its title and meta. */
 const LINK_PROBE = `(() => {
   const mark = window.__rec.marks[window.__rec.marks.length - 1]
-  const line = [...document.querySelectorAll('.sheet button')].find((b) => /profile link|Share link/.test(b.textContent))
+  const line = [...document.querySelectorAll('.sheet button')].find((b) => /profile link|Share link|Open WhatsApp/.test(b.textContent))
   mark.label += ': "' + (line ? line.innerText.replace(/\\n+/g, ' / ') : 'no link line') + '"'
 })()`
+/** Types into the New client sheet's name and mobile, the way React hears typing. */
+const TYPE_CLIENT = (name: string, mobile: string) => `(() => {
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+  for (const [id, value] of [['client-name', ${JSON.stringify(name)}], ['client-mobile', ${JSON.stringify(mobile)}]]) {
+    const input = document.getElementById(id)
+    set.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+})()`
+/** Taps the fitness profile link line in the open sheet. */
+const TAP_LINK_LINE = `[...document.querySelectorAll('.sheet button')].find((b) => /profile link|Share link|Open WhatsApp/.test(b.textContent)).click()`
 /** What the app opened or shared so far (needs the recorders of 'whatsapp-link'). */
 const OPENED_PROBE = `(() => {
   const mark = window.__rec.marks[window.__rec.marks.length - 1]
-  mark.label += ': ' + (window.__opened.length ? window.__opened.map((o) => decodeURIComponent(o).slice(0, 170)).join(' | ') : 'nothing')
+  mark.label += ': ' + (window.__opened.length ? window.__opened.map((o) => decodeURIComponent(o).slice(0, 170)).join(' | ') : 'nothing') + ' · now at ' + location.hash + ', sheets open ' + document.querySelectorAll('.sheet').length + ', toast "' + ([...document.querySelectorAll('.snackbar')].map((t) => t.textContent).join(' / ')) + '"'
   window.__opened = []
 })()`
 const tab = (name: string) => click(`a.nav-link[href="#/${name}"]`)
@@ -382,15 +393,24 @@ const SCENARIOS: Record<string, Scenario> = {
       { label: 'Close', run: `history.back()`, waitMs: 700 },
       { label: 'Clients', run: tab('clients'), waitMs: 1000 },
       { label: 'ADD', run: click('.dial'), waitMs: 900 },
-      { label: 'Type a name and a number', run: `(() => {
-        const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
-        for (const [id, value] of [['client-name', 'Test Person'], ['client-mobile', '0151 000 00000']]) {
-          const input = document.getElementById(id)
-          set.call(input, value)
-          input.dispatchEvent(new Event('input', { bubbles: true }))
-        }
-      })()`, waitMs: 400 },
       { label: 'Line', run: LINK_PROBE, waitMs: 100 },
+      { label: 'Type a name and a number', run: TYPE_CLIENT('Test Person', '0151 000 00000'), waitMs: 400 },
+      { label: 'Line', run: LINK_PROBE, waitMs: 100 },
+      { label: 'Tap: add and send', run: TAP_LINK_LINE, waitMs: 100 },
+      { label: 'Line', run: LINK_PROBE, waitMs: 1500 },
+      { label: 'Line', run: LINK_PROBE, waitMs: 100 },
+      { label: 'Tap: open WhatsApp', run: TAP_LINK_LINE, waitMs: 1200 },
+      { label: 'Opened', run: OPENED_PROBE, waitMs: 100 },
+      // No signal: the client is still saved; the link is for later.
+      { label: 'Clients', run: tab('clients'), waitMs: 1000 },
+      { label: 'Signal gone', run: `Object.defineProperty(navigator, 'onLine', { get: () => false, configurable: true })`, waitMs: 100 },
+      { label: 'ADD', run: click('.dial'), waitMs: 900 },
+      { label: 'Type a name and a number', run: TYPE_CLIENT('Gym Person', '+27 82 000 0000'), waitMs: 400 },
+      { label: 'Tap: add and send', run: TAP_LINK_LINE, waitMs: 1200 },
+      { label: 'Opened', run: OPENED_PROBE, waitMs: 100 },
+      { label: 'Client list', run: `(() => { const mark = window.__rec.marks[window.__rec.marks.length - 1]; mark.label += ': page mentions Gym Person ' + document.body.innerText.includes('Gym Person') + ' })()`, waitMs: 100 },
+      { label: 'About', run: click('.about-link'), waitMs: 900 },
+      { label: 'Contact', run: `(() => { const mark = window.__rec.marks[window.__rec.marks.length - 1]; mark.label += ': number shown ' + document.body.innerText.includes('+27 82 000 0000') })()`, waitMs: 100 },
     ],
   },
   'client-adjust': {

@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AutoTextarea } from './AutoTextarea'
 import { Sheet } from './Sheet'
+import { shareProfileLink } from './shareProfileLink'
 import { toast } from './toast'
-import { useProfileLink } from './useProfileLink'
 import { useAuth } from '../auth/useAuth'
+import { prepareLink, useInvites } from '../data/invites'
+import { whatsappNumber } from '../data/phone'
 import { EMPTY_CLIENT, createClient, updateClient } from '../data/store'
 import type { Client, ClientDraft } from '../data/types'
 
@@ -42,14 +44,69 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
     const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = client
     return rest
   })
-  const profileLink = useProfileLink(null, draft.name, draft.mobile)
+  const invites = useInvites()
+  // A new client saved by "Add … and send the profile link": from then on this form edits them.
+  const [savedId, setSavedId] = useState<string | null>(null)
+  const [link, setLink] = useState<{ status: 'idle' } | { status: 'preparing' } | { status: 'ready'; url: string }>({ status: 'idle' })
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const whatsapp = whatsappNumber(draft.mobile)
+  const firstName = draft.name.trim().split(/\s+/)[0]
 
   const set = <K extends keyof ClientDraft>(k: K, v: ClientDraft[K]) => setDraft((d) => ({ ...d, [k]: v }))
+  const cleaned = () => ({ ...draft, name: draft.name.trim(), mobile: (draft.mobile ?? '').trim(), email: (draft.email ?? '').trim(), address: (draft.address ?? '').trim() })
+
+  /**
+   * The line at the top of New client. The first tap saves the client (with the number) and makes
+   * their link, tied to that profile; once the server has it, the second tap opens WhatsApp (or the
+   * share sheet), which a phone allows only straight from a tap. Without signal the client is still
+   * saved, and the link is sent from their page later.
+   */
+  function addAndSend() {
+    if (!user || !draft.name.trim() || link.status === 'preparing') return
+    const clean = cleaned()
+    const first = clean.name.split(/\s+/)[0]
+    if (link.status === 'ready' && savedId) {
+      updateClient(user.uid, savedId, clean)
+      shareProfileLink(link.url, first, whatsappNumber(clean.mobile))
+      onDone()
+      navigate(`/clients/${savedId}`)
+      return
+    }
+    const id = savedId ?? createClient(user.uid, clean)
+    setSavedId(id)
+    setLink({ status: 'preparing' })
+    prepareLink(user.uid, invites, id, clean.name).then(
+      (url) => {
+        if (mounted.current) setLink({ status: 'ready', url })
+      },
+      (err: unknown) => {
+        const why = err instanceof Error ? err.message.replace(/ Send it when you have signal\.$/, '') : 'The link could not be created.'
+        toast(`${clean.name} added. ${why} Send it from ${first}'s page later.`)
+        if (!mounted.current) return
+        onDone()
+        navigate(`/clients/${id}`)
+      },
+    )
+  }
 
   function save() {
     if (!user || !draft.name.trim()) return
-    const clean = { ...draft, name: draft.name.trim(), mobile: (draft.mobile ?? '').trim(), email: (draft.email ?? '').trim(), address: (draft.address ?? '').trim() }
+    const clean = cleaned()
+    if (savedId) {
+      // Already saved by the link line: keep any change made since, then go to them.
+      updateClient(user.uid, savedId, clean)
+      onDone()
+      navigate(`/clients/${savedId}`)
+      return
+    }
     if (client) {
+
       updateClient(user.uid, client.id, clean)
       toast('Profile updated')
       onDone()
@@ -64,18 +121,20 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
   return (
     <div className="form">
       {!client && !draft.isSelf && (
-        // A link of their own: the answers come back into the app and create the profile.
-        <button type="button" className="row-link" onClick={profileLink.tap}>
+        // Saves the client and sends their own link: the answers come back into this profile.
+        <button type="button" className="row-link" onClick={addAndSend} disabled={!draft.name.trim() || link.status === 'preparing'}>
           <span className="grow">
-            <span className="title">{profileLink.status === 'ready' ? 'Share link ›' : 'Send the fitness profile link'}</span>
+            <span className="title">
+              {link.status === 'ready' ? (whatsapp ? 'Open WhatsApp ›' : 'Share link ›') : firstName ? `Add ${firstName} and send the profile link` : 'Add and send the profile link'}
+            </span>
             {/* Always two lines, so the form below doesn't move as a number is typed. */}
             <div className="meta">
-              {profileLink.status === 'preparing'
-                ? 'Preparing link…'
-                : profileLink.status === 'ready'
-                  ? 'The link is ready: tap to send it'
-                  : profileLink.whatsapp
-                    ? `Opens WhatsApp with +${profileLink.whatsapp}`
+              {link.status === 'preparing'
+                ? `${firstName} is added. Preparing the link…`
+                : link.status === 'ready'
+                  ? `The link is ready: tap to send it${whatsapp ? ` to +${whatsapp}` : ''}`
+                  : whatsapp
+                    ? `Opens WhatsApp with +${whatsapp}`
                     : 'Add a mobile number to send it by WhatsApp'}
             </div>
           </span>
@@ -126,7 +185,7 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
         </label>
       ))}
       <button type="button" className="btn-cta btn-block" onClick={save} disabled={!draft.name.trim()}>
-        {client ? 'Save changes' : 'Add client'}
+        {client ? 'Save changes' : savedId ? 'Done' : 'Add client'}
       </button>
     </div>
   )
