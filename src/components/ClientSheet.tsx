@@ -42,7 +42,7 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
     const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = client
     return rest
   })
-  const profileLink = useProfileLink(null, draft.name)
+  const profileLink = useProfileLink(null, draft.name, draft.mobile)
 
   const set = <K extends keyof ClientDraft>(k: K, v: ClientDraft[K]) => setDraft((d) => ({ ...d, [k]: v }))
 
@@ -68,7 +68,16 @@ function ClientForm({ client, initial, onDone }: { client?: Client; initial?: Pa
         <button type="button" className="row-link" onClick={profileLink.tap}>
           <span className="grow">
             <span className="title">{profileLink.status === 'ready' ? 'Share link ›' : 'Send the fitness profile link'}</span>
-            {profileLink.status !== 'idle' && <div className="meta">{profileLink.status === 'preparing' ? 'Preparing link…' : 'The link is ready: tap to send it'}</div>}
+            {/* Always two lines, so the form below doesn't move as a number is typed. */}
+            <div className="meta">
+              {profileLink.status === 'preparing'
+                ? 'Preparing link…'
+                : profileLink.status === 'ready'
+                  ? 'The link is ready: tap to send it'
+                  : profileLink.whatsapp
+                    ? `Opens WhatsApp with +${profileLink.whatsapp}`
+                    : 'Add a mobile number to send it by WhatsApp'}
+            </div>
           </span>
         </button>
       )}

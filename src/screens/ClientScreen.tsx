@@ -61,7 +61,7 @@ export function ClientScreen() {
   const [showAbout, setShowAbout] = useState(false)
 
   const client = clients.find((c) => c.id === id)
-  const profileLink = useProfileLink(client?.id ?? null, client?.name ?? '')
+  const profileLink = useProfileLink(client?.id ?? null, client?.name ?? '', client?.mobile)
 
   if (!client || !user) {
     return (
@@ -233,7 +233,7 @@ export function ClientScreen() {
           {!self && (
             <MenuLine
               title={profileLink.status === 'ready' ? 'Share link ›' : 'Send fitness profile link'}
-              meta={profileLink.status === 'preparing' ? 'Preparing link…' : profileLink.status === 'ready' ? `The link is ready: tap to send it to ${firstName}` : `WhatsApp ${firstName} your questionnaire`}
+              meta={profileLink.status === 'preparing' ? 'Preparing link…' : profileLink.status === 'ready' ? `The link is ready: tap to send it to ${firstName}` : profileLink.whatsapp ? `Opens WhatsApp with +${profileLink.whatsapp}` : `WhatsApp ${firstName} your questionnaire`}
               onClick={profileLink.tap}
             />
           )}

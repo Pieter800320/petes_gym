@@ -197,6 +197,18 @@ const SHEET_PROBE = `(() => {
   const open = body.querySelector('.ex.open .ex-name')
   mark.label += ': sheet scrollTop ' + Math.round(body.scrollTop) + ', first exercise "' + (first ? first.querySelector('.ex-name').textContent + '" (' + first.dataset.row + ') ' + Math.round(first.getBoundingClientRect().top - top) + 'px down' : '"') + ', open card "' + (open ? open.textContent : '') + '"'
 })()`
+/** The fitness profile link line in the open menu: its title and meta. */
+const LINK_PROBE = `(() => {
+  const mark = window.__rec.marks[window.__rec.marks.length - 1]
+  const line = [...document.querySelectorAll('.sheet button')].find((b) => /profile link|Share link/.test(b.textContent))
+  mark.label += ': "' + (line ? line.innerText.replace(/\\n+/g, ' / ') : 'no link line') + '"'
+})()`
+/** What the app opened or shared so far (needs the recorders of 'whatsapp-link'). */
+const OPENED_PROBE = `(() => {
+  const mark = window.__rec.marks[window.__rec.marks.length - 1]
+  mark.label += ': ' + (window.__opened.length ? window.__opened.map((o) => decodeURIComponent(o).slice(0, 170)).join(' | ') : 'nothing')
+  window.__opened = []
+})()`
 const tab = (name: string) => click(`a.nav-link[href="#/${name}"]`)
 
 const SCENARIOS: Record<string, Scenario> = {
@@ -345,6 +357,42 @@ const SCENARIOS: Record<string, Scenario> = {
   'desktop-session': { start: '/train', desktop: true, settleMs: 2500, steps: [{ label: 'Start session', run: click('.dial'), waitMs: 1500 }] },
   // Pete's clock runs while he opens a client's programme (read-only, no clock there), then Train
   // shows his clock again; it was never hidden or stopped.
+  // The fitness profile link goes straight to the client's WhatsApp number when the profile has one
+  // (c1 has a made-up number), else through the share sheet (c0 has none). window.open and
+  // navigator.share are replaced by recorders: what the app opened is added to the step's line.
+  'whatsapp-link': {
+    start: '/clients/c1',
+    dark: true,
+    settleMs: 2500,
+    steps: [
+      { label: 'Recorders', run: `window.__opened = []; window.open = (url) => { window.__opened.push('open ' + url); return null }; navigator.share = async (data) => { window.__opened.push('share ' + data.url) }`, waitMs: 100 },
+      { label: 'More', run: click('.icon-btn[aria-label^="More for"]'), waitMs: 700 },
+      { label: 'Line', run: LINK_PROBE, waitMs: 100 },
+      { label: 'Tap the link line', run: `[...document.querySelectorAll('.sheet button')].find((b) => /profile link|Share link/.test(b.textContent)).click()`, waitMs: 1500 },
+      { label: 'Line', run: LINK_PROBE, waitMs: 100 },
+      { label: 'Tap again', run: `[...document.querySelectorAll('.sheet button')].find((b) => /profile link|Share link/.test(b.textContent)).click()`, waitMs: 700 },
+      { label: 'Opened', run: OPENED_PROBE, waitMs: 100 },
+      { label: 'Close', run: `history.back()`, waitMs: 700 },
+      { label: 'Client without a number', run: `location.hash = '#/clients/c0'`, waitMs: 1200 },
+      { label: 'More', run: click('.icon-btn[aria-label^="More for"]'), waitMs: 700 },
+      { label: 'Line', run: LINK_PROBE, waitMs: 100 },
+      { label: 'Tap the link line', run: `[...document.querySelectorAll('.sheet button')].find((b) => /profile link|Share link/.test(b.textContent)).click()`, waitMs: 1500 },
+      { label: 'Tap again', run: `[...document.querySelectorAll('.sheet button')].find((b) => /profile link|Share link/.test(b.textContent)).click()`, waitMs: 700 },
+      { label: 'Opened', run: OPENED_PROBE, waitMs: 100 },
+      { label: 'Close', run: `history.back()`, waitMs: 700 },
+      { label: 'Clients', run: tab('clients'), waitMs: 1000 },
+      { label: 'ADD', run: click('.dial'), waitMs: 900 },
+      { label: 'Type a name and a number', run: `(() => {
+        const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+        for (const [id, value] of [['client-name', 'Test Person'], ['client-mobile', '0151 000 00000']]) {
+          const input = document.getElementById(id)
+          set.call(input, value)
+          input.dispatchEvent(new Event('input', { bubbles: true }))
+        }
+      })()`, waitMs: 400 },
+      { label: 'Line', run: LINK_PROBE, waitMs: 100 },
+    ],
+  },
   'client-adjust': {
     start: '/train',
     dark: true,

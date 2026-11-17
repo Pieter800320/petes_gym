@@ -3,6 +3,7 @@ import { shareProfileLink } from './shareProfileLink'
 import { toast } from './toast'
 import { useAuth } from '../auth/useAuth'
 import { prepareLink, readyLink, useInvites } from '../data/invites'
+import { whatsappNumber } from '../data/phone'
 
 type LinkState = { status: 'idle' } | { status: 'preparing' } | { status: 'ready'; link: string; name: string }
 
@@ -12,26 +13,28 @@ type LinkState = { status: 'idle' } | { status: 'preparing' } | { status: 'ready
  * it. Otherwise the tap creates it and waits, and the line then reads "Share link ›": the phone's
  * share sheet only opens straight from a tap, and the wait uses that tap up.
  * clientId: the client the answers are for, or null for someone without a profile yet.
+ * mobile: their number as typed; when it can be read, the link opens a WhatsApp chat with them.
  */
-export function useProfileLink(clientId: string | null, name: string): { status: LinkState['status']; tap: () => void } {
+export function useProfileLink(clientId: string | null, name: string, mobile?: string): { status: LinkState['status']; tap: () => void; whatsapp: string | null } {
   const { user } = useAuth()
   const invites = useInvites()
   const [state, setState] = useState<LinkState>({ status: 'idle' })
   const person = name.trim()
   const firstName = person.split(/\s+/)[0] || undefined
+  const whatsapp = whatsappNumber(mobile)
   // A link prepared for a name that has been retyped since is not this person's.
   const current: LinkState = state.status === 'ready' && state.name !== person ? { status: 'idle' } : state
 
   function tap() {
     if (!user || current.status === 'preparing') return
     if (current.status === 'ready') {
-      shareProfileLink(current.link, firstName)
+      shareProfileLink(current.link, firstName, whatsapp)
       setState({ status: 'idle' })
       return
     }
     const ready = readyLink(user.uid, invites, clientId, person)
     if (ready) {
-      shareProfileLink(ready, firstName)
+      shareProfileLink(ready, firstName, whatsapp)
       return
     }
     setState({ status: 'preparing' })
@@ -44,5 +47,5 @@ export function useProfileLink(clientId: string | null, name: string): { status:
     )
   }
 
-  return { status: current.status, tap }
+  return { status: current.status, tap, whatsapp }
 }
